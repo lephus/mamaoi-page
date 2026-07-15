@@ -1,0 +1,39 @@
+# === SECRETS — không bao giờ commit ===
+.env
+.env.*
+!.env.example
+*.json.key
+# Google service account keys (mọi biến thể)
+*-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f].json
+mamaoi-*.json
+service-account*.json
+credentials*.json
+
+# === Dependencies ===
+node_modules/
+.pnp
+.pnp.js
+
+# === Next.js ===
+.next/
+out/
+build/
+dist/
+
+# === Vercel ===
+.vercel
+
+# === TypeScript ===
+*.tsbuildinfo
+next-env.d.ts
+
+# === Logs ===
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# === Misc ===
+.DS_Store
+*.pem
+coverage/
