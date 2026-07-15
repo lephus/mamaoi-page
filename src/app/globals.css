@@ -1,0 +1,188 @@
+@import "tailwindcss";
+
+/*
+  Design tokens mirrored from the MamaOi Figma library
+  (file BsY0hebT7YbydhUsEwNbtx). These values are copied, not invented —
+  changing them here desyncs the web from the mobile app.
+*/
+@theme {
+  /* Brand */
+  --color-primary: #f08f8c;
+  --color-primary-hover: #ed9791;
+  --color-primary-pressed: #ae5b58;
+  --color-primary-faded: #fce9e8;
+  --color-primary-faded-hover: #fdf4f3;
+  --color-primary-border: #f8d5d3;
+
+  /*
+    Accents — one per tracking category, straight from the app.
+
+    These use Figma's base `bg_*_faded` tokens, not the `-hover` variants the
+    app puts on its cards. The app's cards are small and sit on white; the web's
+    are large and sit on cream, where the hover tints wash out to nothing.
+  */
+  --color-secondary: #8ca37c; /* sage — Ngủ */
+  --color-secondary-faded: #e8ede5;
+  --color-info: #7aafd8; /* blue — Nhắc nhở */
+  --color-info-faded: #eaf2f9;
+  --color-violet: #a297cc; /* violet — Bỉm */
+  --color-violet-faded: #eceaf5;
+  --color-warning: #f6c266; /* amber — Hút sữa */
+  --color-warning-faded: #fdf3e0;
+  --color-danger: #f47e72;
+  --color-success: #a5c561;
+  /*
+    Teal is the one hue not in the app's card set. It earns its place as the
+    sixth feature tint (Sức khoẻ): every other pastel here is warm or cool-blue,
+    so a coral sixth read as a near-duplicate of the pink first card. Teal also
+    carries a light medical association, which fits health tracking.
+  */
+  --color-teal: #4bb7a5;
+  --color-teal-faded: #e0f3ef;
+
+  /* Neutrals */
+  --color-ink: #292929;
+  --color-ink-faded: #737373;
+  --color-ink-placeholder: #c6c6c6;
+  --color-line: #e5e0dc;
+  --color-cream: #fdf8f4; /* warm page background from the app */
+
+  /* Type — Nunito carries the Vietnamese subset; verified against Google Fonts. */
+  --font-sans: var(--font-nunito), ui-sans-serif, system-ui, sans-serif;
+
+  --text-xs: 0.75rem; /* 12 */
+  --text-sm: 0.875rem; /* 14 */
+  --text-base: 1rem; /* 16 */
+  --text-lg: 1.25rem; /* 20 */
+  --text-xl: 1.5rem; /* 24 */
+  --text-2xl: 1.75rem; /* 28 */
+  --text-4xl: 2.5rem; /* 40 */
+  --text-5xl: 3rem; /* 48 */
+
+  /* Radii */
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+  --radius-2xl: 24px;
+  --radius-3xl: 32px;
+
+  /* Elevation */
+  --shadow-card: 0 4px 6px -2px #0d121c08, 0 12px 16px -4px #0d121c14;
+}
+
+/*
+  Card hover elevation. Kept in :root (not @theme) because it is only referenced
+  via var() inside a `hover:` arbitrary utility — Tailwind's dev build tree-shakes
+  such @theme vars, so :root guarantees it resolves in dev and production alike.
+*/
+:root {
+  --shadow-hover: 0 10px 15px -3px #0d121c14, 0 24px 32px -8px #0d121c24;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background: var(--color-cream);
+  color: var(--color-ink);
+}
+
+/* The page leans on scroll reveals; honour users who ask for less motion. */
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+@keyframes float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+.animate-float {
+  animation: float 4s ease-in-out infinite;
+}
+
+@keyframes reveal {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.animate-reveal {
+  animation: reveal 0.6s ease-out both;
+}
+
+/*
+  Scroll-reveal, driven by IntersectionObserver in <Reveal>. Transition-based
+  (not a keyframe) so it stays interruptible, and only transform/opacity move —
+  never layout, so there is no reflow or CLS as sections enter.
+*/
+.reveal {
+  opacity: 0;
+  transform: translateY(24px);
+  transition:
+    opacity 0.5s ease-out,
+    transform 0.5s ease-out;
+  will-change: transform, opacity;
+}
+
+.reveal.in-view {
+  opacity: 1;
+  transform: none;
+}
+
+/*
+  Safety net: if JavaScript never runs, nothing should stay invisible. The
+  reduced-motion block below also forces the final state, so motion-averse users
+  see content immediately rather than fading.
+*/
+@media (prefers-reduced-motion: reduce) {
+  .reveal {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+}
+
+/*
+  Smoothly expand/collapse the FAQ <details>. `interpolate-size` lets height
+  animate to and from `auto`; `::details-content` is the wrapper the browser
+  generates around the disclosure body. Browsers without support just snap open
+  (no regression). Skipped under reduced-motion.
+*/
+@media (prefers-reduced-motion: no-preference) {
+  details {
+    interpolate-size: allow-keywords;
+  }
+
+  details::details-content {
+    height: 0;
+    overflow: hidden;
+    transition:
+      height 0.3s ease,
+      content-visibility 0.3s allow-discrete;
+  }
+
+  details[open]::details-content {
+    height: auto;
+  }
+}
