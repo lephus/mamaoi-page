@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { sendEventEmail, sendWaitlistEmail, upsertContact } from "@/lib/brevo";
-import { appendSubmission, sheetsConfigured } from "@/lib/sheets";
+import { insertRegistration, supabaseConfigured } from "@/lib/supabase";
 import {
   generateCheckinCode,
   isRegistration,
@@ -95,14 +95,16 @@ export async function POST(request: Request) {
     warnings.push("email");
   }
 
-  if (sheetsConfigured()) {
+  // Structured record for /check-in + /admin. Event registrations only — the
+  // app waitlist has nothing to check in to, so it stays in Brevo alone.
+  // Non-fatal: she is already registered in Brevo. A failure here is logged
+  // loudly so ops can back-fill this row from Brevo before the event.
+  if (isRegistration(data) && supabaseConfigured()) {
     try {
-      await appendSubmission(data, checkinCode);
+      await insertRegistration(data, checkinCode!);
     } catch (err) {
-      // Logged loudly: this row must be back-filled from Brevo before the
-      // event, or she is missing from the ops team's check-in list.
-      console.error("[dang-ky] Sheets mirror failed:", data.email, err);
-      warnings.push("sheets");
+      console.error("[dang-ky] Supabase insert failed:", data.email, err);
+      warnings.push("supabase");
     }
   }
 

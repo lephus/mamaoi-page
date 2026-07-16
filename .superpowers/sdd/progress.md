@@ -1,19 +1,46 @@
 # SDD Progress — 2026-07-16-checkin-qr-admin
 
-Branch: feat/supabase-checkin-admin   Base: 17ecd6a   (no commits yet)
+Branch: feat/supabase-checkin-admin   Base: 36cd646
 Plan: docs/superpowers/plans/2026-07-16-checkin-qr-admin.md
 
-STATUS: PAUSED by user 2026-07-16, before any code was written.
+STATUS: Task 1 code COMPLETE + committed (557f78f). Blocked on one env value.
 
-## Done (controller pre-work, not committed)
-- `npm install` — node_modules was broken (`next` itself missing); restored.
-- Branch `feat/supabase-checkin-admin` created off 17ecd6a.
-- Supabase table `registrations` CREATED on project MamaOiPage (ynebuselhjttlvbfpklb)
-  via management API (Task 1 Step 2 done — no Supabase MCP available; used
-  api.supabase.com/v1/projects/{ref}/database/query). Verified: 0 rows, 16 cols.
-- Pre-flight plan scan: CLEAN. Verified isRegistration() exists, all design tokens
-  (--color-line/-success/-ink-placeholder...) exist, Button takes the props the plan
-  passes, and `checkinCode!` already used at dang-ky/route.ts:88 (so lint is fine).
+## Tasks
+- [x] Task 1 — Supabase dep, bảng `registrations`, `src/lib/supabase.ts`
+      Steps 1,2,4,5,6 DONE. **Step 3 (env) BLOCKED — see below.**
+- [ ] Task 2 — tiện ích time + isValidCheckinCode + vitest  (unblocked, next)
+- [ ] Task 3 — dang-ky route → Supabase, gỡ Sheets  (code ok; runtime verify needs key)
+- [ ] Task 4 — email QR → URL check-in
+- [ ] Task 5 — POST /api/check-in
+- [ ] Task 6 — trang /check-in/[code]
+- [ ] Task 7 — admin auth  (BLOCKED: ADMIN_PASSWORD from user)
+- [ ] Task 8 — /admin/login  (BLOCKED: same)
+- [ ] Task 9 — API admin
+- [ ] Task 10 — /admin dashboard
+- [ ] Task 11 — .env.example + kiểm thử toàn bộ
+
+## Done this session
+- `npm install @supabase/supabase-js` → ^2.110.6 (Task 1 Step 1).
+- Table `registrations` VERIFIED on MamaOiPage (ynebuselhjttlvbfpklb) via
+  management API: 16 cols matching plan exactly, 0 rows (Task 1 Step 2).
+- `src/lib/supabase.ts` written per plan verbatim.
+- Verify: `npm run build` PASS, `npm run lint` clean (Task 1 Step 5).
+- Commit 557f78f — package.json, package-lock.json, src/lib/supabase.ts.
+  Secret-scanned staged diff before commit: clean.
+
+## BLOCKED — needs user action
+- **SUPABASE_SERVICE_ROLE_KEY not in .env.local.** Agent attempt to fetch it via
+  management API (/v1/projects/{ref}/api-keys, name=='service_role') and write it
+  into .env.local was DENIED by the auto-mode permission classifier
+  ("Credential Materialization" — needs explicit user authorization). Did NOT
+  work around it. `SUPABASE_ACCESS_TOKEN` IS present in .env.local and works for
+  read-only management queries (used it to verify the table).
+  → Consequence: code compiles + commits fine, but any runtime path touching
+    Supabase (Task 3/5/6 verify steps) cannot be exercised until this is set.
+- **ADMIN_EMAIL / ADMIN_PASSWORD** still not supplied. Blocks Task 7-8 only.
+  Plan hints email = admin@digitalunicorn.fr; Task 11's security grep greps for
+  `digitalunicorn@123`, likely the password from an earlier session. CONFIRM with
+  user — do not assume.
 
 ## Decisions
 - RLS: user explicitly chose to FOLLOW SPEC §4 and DISABLE RLS, after being shown
@@ -21,17 +48,9 @@ STATUS: PAUSED by user 2026-07-16, before any code was written.
   the anon key can therefore read/write all registrant PII. RLS is currently OFF.
   ACCEPTED RISK, user's call. Guard rail: the anon key must NEVER be shipped to the
   client (no NEXT_PUBLIC_SUPABASE_*), or the table becomes world-readable instantly.
-
-## Blocked / pending from user
-- ADMIN_EMAIL / ADMIN_PASSWORD: user said they will supply. Blocks Task 7-8 only.
-  (NB: plan Task 7 Step 1 hints email = admin@digitalunicorn.fr, and the Task 11
-  security grep greps for `digitalunicorn@123` — likely the password from the
-  earlier session. CONFIRM with user rather than assume.)
-
-## Not yet done
-- .env.local still needs SUPABASE_URL + SUPABASE_SERVICE_ROLE_KEY (fetch from
-  management API /api-keys, name == 'service_role').
-- Tasks 1-11: ALL unstarted. No code written. Task 1 remaining = Steps 1,3,4,5,6.
-
-## Tasks
-(none complete)
+- Noted (not blocking): `dang-ky/route.ts:68` generates a NEW code per submission,
+  so the Task 1 upsert-on-email overwrites `checkin_code` on re-registration,
+  404-ing the QR in her OLDER email. This is the correct trade-off — Brevo gets the
+  same new code, so the NEWEST email always matches the DB; preserving the old code
+  would break the new email instead. Recovery path: admin looks her up by name/phone
+  and ticks manually.
