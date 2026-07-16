@@ -83,8 +83,12 @@ export function AdminDashboard({ initialRows }: { initialRows: RegistrationRow[]
         res.headers
           .get("Content-Disposition")
           ?.match(/filename="([^"]+)"/)?.[1] ?? "mamaoi-day-checkin.xlsx";
+      document.body.appendChild(a);
       a.click();
-      URL.revokeObjectURL(href);
+      a.remove();
+      // Hoãn revoke: trình duyệt cần một khoảng để bắt đầu tải blob URL sau click,
+      // revoke ngay có thể chạy trước, khiến file tải về rỗng/hỏng.
+      setTimeout(() => URL.revokeObjectURL(href), 1000);
     } catch {
       setExportError("Không kết nối được. Vui lòng thử lại.");
     } finally {
