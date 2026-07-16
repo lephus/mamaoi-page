@@ -105,3 +105,10 @@ export function generateCheckinCode(): string {
   const code = Array.from(bytes, (b) => alphabet[b % alphabet.length]).join("");
   return `MO-${code}`;
 }
+
+/** Định dạng mã check-in — khớp bảng chữ của `generateCheckinCode` (bỏ I,O,0,1). */
+export const CHECKIN_CODE_RE = /^MO-[2-9A-HJ-NP-Z]{6}$/;
+
+export function isValidCheckinCode(code: string): boolean {
+  return CHECKIN_CODE_RE.test(code);
+}
