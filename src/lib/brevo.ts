@@ -157,7 +157,12 @@ export async function sendEventEmail(
 ): Promise<void> {
   if (!isRegistration(data)) return;
 
-  const qrDataUrl = await QRCode.toDataURL(checkinCode, {
+  // QR nay dẫn thẳng tới trang check-in (quét bằng camera là mở trang), thay vì
+  // chỉ mã trơn. Mã chữ + QR đính kèm vẫn giữ để gõ tay / admin tra khi máy quét lỗi.
+  const base = process.env.NEXT_PUBLIC_SITE_URL ?? SITE.url;
+  const checkinUrl = `${base}/check-in/${checkinCode}`;
+
+  const qrDataUrl = await QRCode.toDataURL(checkinUrl, {
     width: 480,
     margin: 2,
     color: { dark: "#292929", light: "#ffffff" },
@@ -175,6 +180,11 @@ export async function sendEventEmail(
     </div>
     <p style="margin:0 0 16px;font-size:16px;line-height:24px;">
       Mẹ vui lòng đưa mã QR đính kèm email này tại quầy check-in.
+    </p>
+    <p style="margin:0 0 24px;text-align:center;">
+      <a href="${checkinUrl}" style="display:inline-block;background:#f08f8c;color:#ffffff;text-decoration:none;font-weight:700;padding:12px 28px;border-radius:9999px;">
+        Mở trang check-in
+      </a>
     </p>
     <table style="width:100%;font-size:15px;line-height:24px;">
       <tr><td style="padding:6px 0;color:#737373;">Thời gian</td><td style="padding:6px 0;font-weight:600;">${EVENT.dateLabel}</td></tr>
