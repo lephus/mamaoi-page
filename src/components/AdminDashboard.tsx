@@ -10,6 +10,8 @@ export function AdminDashboard({ initialRows }: { initialRows: RegistrationRow[]
   const [rows, setRows] = useState(initialRows);
   const [q, setQ] = useState("");
   const [busy, setBusy] = useState<string | null>(null);
+  const [exporting, setExporting] = useState(false);
+  const [exportError, setExportError] = useState("");
 
   const filtered = useMemo(() => {
     const s = q.trim().toLowerCase();
@@ -59,6 +61,37 @@ export function AdminDashboard({ initialRows }: { initialRows: RegistrationRow[]
     update(r.id, true, vnLocalInputToISO(localValue));
   }
 
+  /** Xuất đúng các dòng đang hiển thị (WYSIWYG) — server đọc lại từ DB theo id. */
+  async function exportXlsx() {
+    setExporting(true);
+    setExportError("");
+    try {
+      const res = await fetch("/api/admin/export", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ids: filtered.map((r) => r.id) }),
+      });
+      if (!res.ok) {
+        setExportError("Xuất file thất bại");
+        return;
+      }
+      const blob = await res.blob();
+      const href = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = href;
+      a.download =
+        res.headers
+          .get("Content-Disposition")
+          ?.match(/filename="([^"]+)"/)?.[1] ?? "mamaoi-day-checkin.xlsx";
+      a.click();
+      URL.revokeObjectURL(href);
+    } catch {
+      setExportError("Không kết nối được. Vui lòng thử lại.");
+    } finally {
+      setExporting(false);
+    }
+  }
+
   async function logout() {
     await fetch("/api/admin/logout", { method: "POST" });
     router.replace("/admin/login");
@@ -76,6 +109,13 @@ export function AdminDashboard({ initialRows }: { initialRows: RegistrationRow[]
             </p>
           </div>
           <div className="flex gap-2">
+            <button
+              onClick={exportXlsx}
+              disabled={exporting || filtered.length === 0}
+              className="rounded-full border border-line bg-white px-5 py-2.5 text-sm font-semibold text-ink hover:bg-primary-faded-hover disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {exporting ? "Đang xuất..." : `Xuất Excel (${filtered.length})`}
+            </button>
             <button
               onClick={refresh}
               className="rounded-full border border-line bg-white px-5 py-2.5 text-sm font-semibold text-ink hover:bg-primary-faded-hover"
@@ -97,6 +137,11 @@ export function AdminDashboard({ initialRows }: { initialRows: RegistrationRow[]
           placeholder="Tìm theo tên, SĐT hoặc mã..."
           className="mt-6 w-full rounded-xl border border-line bg-white px-4 py-3 text-base text-ink placeholder:text-ink-placeholder focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary sm:max-w-md"
         />
+        {exportError && (
+          <p role="alert" className="mt-3 text-sm text-danger">
+            {exportError}
+          </p>
+        )}
 
         <div className="mt-4 overflow-x-auto rounded-2xl border border-line bg-white">
           <table className="w-full min-w-[760px] text-left text-sm">
