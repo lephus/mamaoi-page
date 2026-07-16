@@ -6,6 +6,11 @@ import type { RegistrationRow } from "@/lib/supabase";
 import { isoToVNLocalInput, vnLocalInputToISO } from "@/lib/time";
 import { AdminDetailModal } from "./AdminDetailModal";
 
+// Làm mới thủ công tối đa thử lại bấy nhiêu lần khi phát hiện có một lượt ghi
+// xen vào giữa lúc gọi fetch và lúc có phản hồi. Chặn trường hợp nhân viên
+// tick liên tục khiến refresh() cứ fetch lại mãi không dừng.
+const MAX_MANUAL_REFRESH_RETRIES = 2;
+
 export function AdminDashboard({ initialRows }: { initialRows: RegistrationRow[] }) {
   const router = useRouter();
   const [rows, setRows] = useState(initialRows);
@@ -43,31 +48,48 @@ export function AdminDashboard({ initialRows }: { initialRows: RegistrationRow[]
   const refresh = useCallback(
     async (opts?: { manual?: boolean }) => {
       const manual = opts?.manual ?? false;
-      // Chụp lại "thế hệ ghi" TRƯỚC KHI gọi fetch, chỉ để so sánh SAU KHI có
-      // phản hồi — không dùng để quyết định có bắn request hay không.
-      const genAtStart = writeGenRef.current;
-      const res = await fetch("/api/admin/registrations");
-      if (res.status === 401) {
-        setStopped(true);
-        router.replace("/admin/login");
+      // Số lần được phép fetch lại nếu bản thủ công đụng một lượt ghi xen vào.
+      // Poll nền (manual=false) không retry — nó chạy lại tự nhiên sau 5s.
+      let retriesLeft = manual ? MAX_MANUAL_REFRESH_RETRIES : 0;
+      for (;;) {
+        // Chụp lại "thế hệ ghi" TRƯỚC KHI gọi fetch, chỉ để so sánh SAU KHI có
+        // phản hồi — không dùng để quyết định có bắn request hay không.
+        const genAtStart = writeGenRef.current;
+        const res = await fetch("/api/admin/registrations");
+        if (res.status === 401) {
+          setStopped(true);
+          router.replace("/admin/login");
+          return;
+        }
+        if (!res.ok) return;
+        const data = await res.json();
+        // GUARD PHẢI NẰM Ở ĐÂY — lúc ÁP dữ liệu — chứ không phải lúc BẮN
+        // request (kiểm busyRef trong setInterval bên dưới chỉ là tối ưu).
+        // Khoảng cách giữa lúc gọi fetch và lúc phản hồi này về là độ trễ
+        // mạng thật (wifi hội trường, vài trăm ms tới vài giây) — một lượt
+        // tick có thể bắt đầu VÀ kết thúc TRỌN VẸN trong khoảng đó. writeGenRef
+        // được tăng ở CẢ lúc bắt đầu ghi lẫn lúc ghi xong (xem update()), nên
+        // "đã có ghi xen vào" bắt được cả hai trường hợp: ghi đang chạy dở
+        // hoặc đã ghi xong trọn vẹn trong lúc chờ phản hồi này.
+        const staleWrite = writeGenRef.current !== genAtStart;
+        // Poll nền: bỏ áp nếu đang ghi HOẶC đã có ghi xen vào — không nuốt lỗi,
+        // chỉ đơn giản bỏ nhịp này, nhịp poll kế tiếp (5s sau) sẽ tự lấy lại.
+        if (!manual && (busyRef.current !== null || staleWrite)) {
+          return;
+        }
+        // Làm mới THỦ CÔNG: dữ liệu vừa nhận có ghi xen vào nên chắc chắn đã
+        // cũ hơn thao tác của người dùng — không được áp đè lên kết quả tick,
+        // nhưng cũng không được lặng lẽ bỏ qua yêu cầu của họ. Fetch lại để
+        // lấy dữ liệu tươi, giới hạn số lần thử lại để nhân viên tick liên
+        // tục không khiến vòng lặp này quay mãi (hết lượt thì đành áp tạm
+        // những gì có, còn hơn im lặng không phản hồi yêu cầu "Làm mới").
+        if (manual && staleWrite && retriesLeft > 0) {
+          retriesLeft -= 1;
+          continue;
+        }
+        setRows(data.rows as RegistrationRow[]);
         return;
       }
-      if (!res.ok) return;
-      const data = await res.json();
-      // GUARD PHẢI NẰM Ở ĐÂY — lúc ÁP dữ liệu — chứ không phải lúc BẮN request
-      // (kiểm busyRef trong setInterval bên dưới chỉ là tối ưu, không đủ).
-      // Khoảng cách giữa lúc gọi fetch và lúc phản hồi này về là độ trễ mạng
-      // thật (wifi hội trường, vài trăm ms tới vài giây) — một lượt tick có
-      // thể bắt đầu VÀ kết thúc TRỌN VẸN trong khoảng đó. Nếu chỉ chặn lúc
-      // bắn, ta sẽ bỏ lỡ đúng ca này và ghi đè state mới bằng snapshot cũ hơn
-      // (nút tick "nhảy ngược"). Vì vậy: bỏ áp nếu đang ghi (busyRef) HOẶC đã
-      // có một lượt ghi xen vào từ lúc chụp genAtStart (writeGenRef đổi).
-      // Làm mới THỦ CÔNG (manual=true) luôn áp — người dùng chủ động yêu cầu,
-      // không thể coi là "cũ hơn" so với chính thao tác của họ.
-      if (!manual && (busyRef.current !== null || writeGenRef.current !== genAtStart)) {
-        return;
-      }
-      setRows(data.rows as RegistrationRow[]);
     },
     [router],
   );
@@ -79,9 +101,12 @@ export function AdminDashboard({ initialRows }: { initialRows: RegistrationRow[]
     if (stopped) return;
     const id = setInterval(() => {
       // Bỏ nhịp SỚM khi đang ghi hoặc tab ẩn: chỉ để đỡ tốn một lượt gọi API
-      // vô ích. Đây KHÔNG PHẢI guard chống ghi đè — guard thật nằm trong
-      // refresh(), áp dụng lúc nhận phản hồi, vì việc ghi có thể bắt đầu SAU
-      // khi request này đã bắn đi rồi mới hoàn tất trước khi nó phản hồi về.
+      // vô ích, KHÔNG phải điều kiện bắt buộc cho tính đúng đắn. Guard chống
+      // ghi đè thật sự nằm trong refresh(), áp dụng lúc nhận phản hồi — và nó
+      // tự đứng vững độc lập với guard sớm này, vì writeGenRef được tăng ở CẢ
+      // lúc bắt đầu ghi lẫn lúc ghi xong (xem update()): dù busyRef đã về null
+      // trước khi phản hồi này tới, writeGenRef vẫn lệch so với genAtStart nếu
+      // có một lượt ghi hoàn tất trong lúc chờ, nên refresh() vẫn bỏ áp đúng.
       if (busyRef.current || document.hidden) return;
       // Lỗi mạng: bỏ qua nhịp này, giữ dữ liệu cũ — poll là nền, không làm phiền.
       void refresh().catch(() => {});
@@ -106,6 +131,14 @@ export function AdminDashboard({ initialRows }: { initialRows: RegistrationRow[]
       }
     } finally {
       setBusy(null);
+      // Tăng thế hệ ghi LẦN NỮA khi ghi xong. Nếu chỉ tăng lúc bắt đầu, một
+      // poll bắn ra TRƯỚC lúc ghi này bắt đầu nhưng có phản hồi về SAU khi ghi
+      // đã xong sẽ thấy busyRef=null và writeGenRef không đổi kể từ lúc nó
+      // chụp genAtStart (vì gen chỉ tăng một lần, ngay từ đầu, trước khi poll
+      // đó kịp chụp) — tưởng nhầm là dữ liệu còn mới rồi áp snapshot cũ đè lên
+      // kết quả tick. Tăng thêm ở đây khiến guard lúc áp trong refresh() tự
+      // đứng vững, không phụ thuộc việc setInterval có kịp thấy busyRef hay không.
+      writeGenRef.current += 1;
     }
   }
 
