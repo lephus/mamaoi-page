@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import type { RegistrationRow } from "@/lib/supabase";
 import { isoToVNLocalInput, vnLocalInputToISO } from "@/lib/time";
+import { AdminDetailModal } from "./AdminDetailModal";
 
 export function AdminDashboard({ initialRows }: { initialRows: RegistrationRow[] }) {
   const router = useRouter();
@@ -12,6 +13,7 @@ export function AdminDashboard({ initialRows }: { initialRows: RegistrationRow[]
   const [busy, setBusy] = useState<string | null>(null);
   const [exporting, setExporting] = useState(false);
   const [exportError, setExportError] = useState("");
+  const [openId, setOpenId] = useState<string | null>(null);
 
   const filtered = useMemo(() => {
     const s = q.trim().toLowerCase();
@@ -102,6 +104,8 @@ export function AdminDashboard({ initialRows }: { initialRows: RegistrationRow[]
     router.refresh();
   }
 
+  const openRow = openId ? (rows.find((r) => r.id === openId) ?? null) : null;
+
   return (
     <main className="flex-1 bg-cream">
       <div className="mx-auto max-w-6xl px-4 py-8">
@@ -164,8 +168,13 @@ export function AdminDashboard({ initialRows }: { initialRows: RegistrationRow[]
               {filtered.map((r) => (
                 <tr key={r.id} className="border-b border-line/60 last:border-0">
                   <td className="px-4 py-3">
-                    <div className="font-semibold text-ink">{r.ho_ten}</div>
-                    <div className="text-xs text-ink-faded">{r.checkin_code}</div>
+                    <button
+                      onClick={() => setOpenId(r.id)}
+                      className="text-left hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded"
+                    >
+                      <div className="font-semibold text-ink">{r.ho_ten}</div>
+                      <div className="text-xs text-ink-faded">{r.checkin_code}</div>
+                    </button>
                   </td>
                   <td className="px-4 py-3 text-ink">{r.sdt}</td>
                   <td className="px-4 py-3 text-ink">{r.tinh_thanh}</td>
@@ -206,6 +215,15 @@ export function AdminDashboard({ initialRows }: { initialRows: RegistrationRow[]
           </table>
         </div>
       </div>
+      {openRow && (
+        <AdminDetailModal
+          row={openRow}
+          busy={busy === openRow.id}
+          onClose={() => setOpenId(null)}
+          onToggle={toggle}
+          onEditTime={editTime}
+        />
+      )}
     </main>
   );
 }
