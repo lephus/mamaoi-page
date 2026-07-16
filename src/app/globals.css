@@ -151,6 +151,25 @@ body {
 }
 
 /*
+  Directional variants for the event timeline: rows slide in from their own side
+  instead of straight up. Gated behind `no-preference` so motion-averse users keep
+  the base state (the reduced-motion block below already forces `.reveal` flat, and
+  these more-specific selectors would otherwise override it).
+*/
+@media (prefers-reduced-motion: no-preference) {
+  .reveal.reveal-left {
+    transform: translateX(-28px);
+  }
+  .reveal.reveal-right {
+    transform: translateX(28px);
+  }
+  .reveal.reveal-left.in-view,
+  .reveal.reveal-right.in-view {
+    transform: none;
+  }
+}
+
+/*
   Safety net: if JavaScript never runs, nothing should stay invisible. The
   reduced-motion block below also forces the final state, so motion-averse users
   see content immediately rather than fading.
