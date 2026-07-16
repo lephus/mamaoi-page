@@ -130,7 +130,7 @@ export default function HomePage() {
         {/* ---------- Features — six colours ---------- */}
         <section
           id="tinh-nang"
-          className="flex min-h-[calc(100dvh_-_4rem)] scroll-mt-16 flex-col justify-center px-5 py-10"
+          className="scroll-mt-16 px-5 py-10"
         >
           <div className="mx-auto max-w-6xl">
             <Reveal className="mx-auto max-w-2xl text-center">
@@ -173,7 +173,7 @@ export default function HomePage() {
         </section>
 
         {/* ---------- Wonder Week: the app's differentiator ---------- */}
-        <section className="flex min-h-[100dvh] flex-col justify-center px-5 py-16">
+        <section className="px-5 py-10">
           <Reveal className="mx-auto grid max-w-6xl items-center gap-12 rounded-3xl bg-white p-8 shadow-[var(--shadow-card)] sm:p-12 md:grid-cols-2">
             <div>
               <span className="inline-block rounded-full bg-secondary-faded px-4 py-1.5 text-sm font-bold text-secondary">
@@ -230,7 +230,7 @@ export default function HomePage() {
         </section>
 
         {/* ---------- Bridge to the event ---------- */}
-        <section className="flex min-h-[100dvh] flex-col justify-center px-5 py-16">
+        <section className="px-5 py-10">
           <Reveal className="mx-auto max-w-4xl overflow-hidden rounded-3xl bg-primary-faded p-8 text-center sm:p-12">
             <Image
               src="/images/illo-baby-girl.png"
@@ -258,7 +258,7 @@ export default function HomePage() {
         {/* ---------- Closing waitlist CTA — the email lives here ---------- */}
         <section
           id="nhan-tin"
-          className="flex min-h-[100dvh] scroll-mt-20 flex-col justify-center px-5 py-16"
+          className="scroll-mt-20 px-5 py-10"
         >
           <Reveal className="mx-auto w-full max-w-xl">
             <div className="relative overflow-hidden rounded-[2rem] bg-white px-6 py-10 shadow-[var(--shadow-card)] sm:px-10 sm:py-12">
