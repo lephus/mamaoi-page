@@ -2,6 +2,7 @@ import nodemailer, { type Transporter } from "nodemailer";
 import QRCode from "qrcode";
 import { EVENT, SITE } from "./constants";
 import { isRegistration, type Submission } from "./validation";
+import { checkinUrl } from "./checkin-url";
 
 const BREVO_API = "https://api.brevo.com/v3";
 
@@ -159,10 +160,9 @@ export async function sendEventEmail(
 
   // QR nay dẫn thẳng tới trang check-in (quét bằng camera là mở trang), thay vì
   // chỉ mã trơn. Mã chữ + QR đính kèm vẫn giữ để gõ tay / admin tra khi máy quét lỗi.
-  const base = process.env.NEXT_PUBLIC_SITE_URL ?? SITE.url;
-  const checkinUrl = `${base}/check-in/${checkinCode}`;
+  const url = checkinUrl(checkinCode);
 
-  const qrDataUrl = await QRCode.toDataURL(checkinUrl, {
+  const qrDataUrl = await QRCode.toDataURL(url, {
     width: 480,
     margin: 2,
     color: { dark: "#292929", light: "#ffffff" },
@@ -182,7 +182,7 @@ export async function sendEventEmail(
       Mẹ vui lòng đưa mã QR đính kèm email này tại quầy check-in.
     </p>
     <p style="margin:0 0 24px;text-align:center;">
-      <a href="${checkinUrl}" style="display:inline-block;background:#f08f8c;color:#ffffff;text-decoration:none;font-weight:700;padding:12px 28px;border-radius:9999px;">
+      <a href="${url}" style="display:inline-block;background:#f08f8c;color:#ffffff;text-decoration:none;font-weight:700;padding:12px 28px;border-radius:9999px;">
         Mở trang check-in
       </a>
     </p>
