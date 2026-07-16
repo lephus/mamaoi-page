@@ -23,6 +23,9 @@ export function AdminDashboard({ initialRows }: { initialRows: RegistrationRow[]
   useEffect(() => {
     busyRef.current = busy;
   }, [busy]);
+  // Đếm số lượt GHI (update) đã bắt đầu. Dùng để phát hiện một lượt ghi chen
+  // vào giữa lúc poll gửi request và lúc phản hồi của CHÍNH request đó về.
+  const writeGenRef = useRef(0);
 
   const filtered = useMemo(() => {
     const s = q.trim().toLowerCase();
@@ -37,18 +40,37 @@ export function AdminDashboard({ initialRows }: { initialRows: RegistrationRow[]
 
   const checkedInCount = rows.filter((r) => r.checked_in).length;
 
-  const refresh = useCallback(async () => {
-    const res = await fetch("/api/admin/registrations");
-    if (res.status === 401) {
-      setStopped(true);
-      router.replace("/admin/login");
-      return;
-    }
-    if (res.ok) {
+  const refresh = useCallback(
+    async (opts?: { manual?: boolean }) => {
+      const manual = opts?.manual ?? false;
+      // Chụp lại "thế hệ ghi" TRƯỚC KHI gọi fetch, chỉ để so sánh SAU KHI có
+      // phản hồi — không dùng để quyết định có bắn request hay không.
+      const genAtStart = writeGenRef.current;
+      const res = await fetch("/api/admin/registrations");
+      if (res.status === 401) {
+        setStopped(true);
+        router.replace("/admin/login");
+        return;
+      }
+      if (!res.ok) return;
       const data = await res.json();
+      // GUARD PHẢI NẰM Ở ĐÂY — lúc ÁP dữ liệu — chứ không phải lúc BẮN request
+      // (kiểm busyRef trong setInterval bên dưới chỉ là tối ưu, không đủ).
+      // Khoảng cách giữa lúc gọi fetch và lúc phản hồi này về là độ trễ mạng
+      // thật (wifi hội trường, vài trăm ms tới vài giây) — một lượt tick có
+      // thể bắt đầu VÀ kết thúc TRỌN VẸN trong khoảng đó. Nếu chỉ chặn lúc
+      // bắn, ta sẽ bỏ lỡ đúng ca này và ghi đè state mới bằng snapshot cũ hơn
+      // (nút tick "nhảy ngược"). Vì vậy: bỏ áp nếu đang ghi (busyRef) HOẶC đã
+      // có một lượt ghi xen vào từ lúc chụp genAtStart (writeGenRef đổi).
+      // Làm mới THỦ CÔNG (manual=true) luôn áp — người dùng chủ động yêu cầu,
+      // không thể coi là "cũ hơn" so với chính thao tác của họ.
+      if (!manual && (busyRef.current !== null || writeGenRef.current !== genAtStart)) {
+        return;
+      }
       setRows(data.rows as RegistrationRow[]);
-    }
-  }, [router]);
+    },
+    [router],
+  );
 
   // Poll thay cho Supabase Realtime: realtime cần một khoá Supabase ở client,
   // mà RLS đang TẮT — khoá ở client là lộ toàn bộ PII của 500 mẹ. Xem spec
@@ -56,8 +78,10 @@ export function AdminDashboard({ initialRows }: { initialRows: RegistrationRow[]
   useEffect(() => {
     if (stopped) return;
     const id = setInterval(() => {
-      // Đang ghi thì bỏ nhịp: phản hồi poll có thể ghi đè kết quả vừa tick.
-      // Tab ẩn thì bỏ nhịp: máy ở quầy không gọi API khi nằm trong túi.
+      // Bỏ nhịp SỚM khi đang ghi hoặc tab ẩn: chỉ để đỡ tốn một lượt gọi API
+      // vô ích. Đây KHÔNG PHẢI guard chống ghi đè — guard thật nằm trong
+      // refresh(), áp dụng lúc nhận phản hồi, vì việc ghi có thể bắt đầu SAU
+      // khi request này đã bắn đi rồi mới hoàn tất trước khi nó phản hồi về.
       if (busyRef.current || document.hidden) return;
       // Lỗi mạng: bỏ qua nhịp này, giữ dữ liệu cũ — poll là nền, không làm phiền.
       void refresh().catch(() => {});
@@ -67,6 +91,9 @@ export function AdminDashboard({ initialRows }: { initialRows: RegistrationRow[]
 
   async function update(id: string, checkedIn: boolean, checkedInAt: string | null) {
     setBusy(id);
+    // Tăng thế hệ ghi NGAY khi bắt đầu — poll đang bay lúc này (nếu có) phải
+    // thấy được rằng đã có một lượt ghi xen vào, kể cả khi ghi xong rất nhanh.
+    writeGenRef.current += 1;
     try {
       const res = await fetch("/api/admin/checkin", {
         method: "POST",
@@ -154,7 +181,12 @@ export function AdminDashboard({ initialRows }: { initialRows: RegistrationRow[]
               {exporting ? "Đang xuất..." : `Xuất Excel (${filtered.length})`}
             </button>
             <button
-              onClick={refresh}
+              onClick={() => {
+                // Bấm tay: luôn áp kết quả (manual: true) và tự bắt lỗi mạng —
+                // khác poll nền, đây là yêu cầu chủ động nên không được nuốt
+                // lỗi thành unhandled rejection.
+                void refresh({ manual: true }).catch(() => {});
+              }}
               className="rounded-full border border-line bg-white px-5 py-2.5 text-sm font-semibold text-ink hover:bg-primary-faded-hover"
             >
               Làm mới
