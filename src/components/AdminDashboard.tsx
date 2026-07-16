@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { RegistrationRow } from "@/lib/supabase";
 import { isoToVNLocalInput, vnLocalInputToISO } from "@/lib/time";
 import { AdminDetailModal } from "./AdminDetailModal";
@@ -14,6 +14,15 @@ export function AdminDashboard({ initialRows }: { initialRows: RegistrationRow[]
   const [exporting, setExporting] = useState(false);
   const [exportError, setExportError] = useState("");
   const [openId, setOpenId] = useState<string | null>(null);
+  // Phiên hết hạn thì phải dừng hẳn, nếu không poll đẻ ra vòng lặp 401 mỗi 5s.
+  const [stopped, setStopped] = useState(false);
+  // `busy` đọc qua ref: interval chỉ tạo một lần, không phụ thuộc `busy`.
+  // Đồng bộ trong useEffect, KHÔNG gán thẳng khi render (React cấm ghi ref
+  // trong lúc render — dễ sai khi StrictMode render hai lần).
+  const busyRef = useRef<string | null>(null);
+  useEffect(() => {
+    busyRef.current = busy;
+  }, [busy]);
 
   const filtered = useMemo(() => {
     const s = q.trim().toLowerCase();
@@ -28,13 +37,33 @@ export function AdminDashboard({ initialRows }: { initialRows: RegistrationRow[]
 
   const checkedInCount = rows.filter((r) => r.checked_in).length;
 
-  async function refresh() {
+  const refresh = useCallback(async () => {
     const res = await fetch("/api/admin/registrations");
+    if (res.status === 401) {
+      setStopped(true);
+      router.replace("/admin/login");
+      return;
+    }
     if (res.ok) {
       const data = await res.json();
       setRows(data.rows as RegistrationRow[]);
     }
-  }
+  }, [router]);
+
+  // Poll thay cho Supabase Realtime: realtime cần một khoá Supabase ở client,
+  // mà RLS đang TẮT — khoá ở client là lộ toàn bộ PII của 500 mẹ. Xem spec
+  // 2026-07-16-admin-export-popup-poll-design.md.
+  useEffect(() => {
+    if (stopped) return;
+    const id = setInterval(() => {
+      // Đang ghi thì bỏ nhịp: phản hồi poll có thể ghi đè kết quả vừa tick.
+      // Tab ẩn thì bỏ nhịp: máy ở quầy không gọi API khi nằm trong túi.
+      if (busyRef.current || document.hidden) return;
+      // Lỗi mạng: bỏ qua nhịp này, giữ dữ liệu cũ — poll là nền, không làm phiền.
+      void refresh().catch(() => {});
+    }, 5000);
+    return () => clearInterval(id);
+  }, [refresh, stopped]);
 
   async function update(id: string, checkedIn: boolean, checkedInAt: string | null) {
     setBusy(id);
