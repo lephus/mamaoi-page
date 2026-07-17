@@ -304,7 +304,7 @@ export function AdminDashboard({ initialRows }: { initialRows: RegistrationRow[]
                   <td className="px-4 py-3">
                     <button
                       onClick={() => setOpenId(r.id)}
-                      className="text-left hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded"
+                      className="cursor-pointer text-left hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded"
                     >
                       <div className="font-semibold text-ink">{r.ho_ten}</div>
                       <div className="text-xs text-ink-faded">{r.checkin_code}</div>
