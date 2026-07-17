@@ -77,15 +77,24 @@ export function AdminDashboard({ initialRows }: { initialRows: RegistrationRow[]
         if (!manual && (busyRef.current !== null || staleWrite)) {
           return;
         }
-        // Làm mới THỦ CÔNG: dữ liệu vừa nhận có ghi xen vào nên chắc chắn đã
-        // cũ hơn thao tác của người dùng — không được áp đè lên kết quả tick,
-        // nhưng cũng không được lặng lẽ bỏ qua yêu cầu của họ. Fetch lại để
-        // lấy dữ liệu tươi, giới hạn số lần thử lại để nhân viên tick liên
-        // tục không khiến vòng lặp này quay mãi (hết lượt thì đành áp tạm
-        // những gì có, còn hơn im lặng không phản hồi yêu cầu "Làm mới").
-        if (manual && staleWrite && retriesLeft > 0) {
-          retriesLeft -= 1;
-          continue;
+        // Làm mới THỦ CÔNG: dữ liệu vừa nhận có thể đã cũ hơn thao tác của
+        // người dùng — staleWrite là ước lượng BẢO THỦ, không phải bằng
+        // chứng chắc chắn (một GET bắn lúc gen còn cũ vẫn có thể đọc DB sau
+        // khi ghi đã commit, nên đôi khi dữ liệu tươi vẫn bị gắn cờ oan).
+        // Không được áp đè lên kết quả tick, nhưng cũng không được lặng lẽ bỏ
+        // qua yêu cầu của họ. Fetch lại để lấy dữ liệu tươi, giới hạn số lần
+        // thử lại để nhân viên tick liên tục không khiến vòng lặp này quay mãi.
+        if (manual && staleWrite) {
+          if (retriesLeft > 0) {
+            retriesLeft -= 1;
+            continue;
+          }
+          // Hết lượt thử lại mà vẫn dính ghi xen vào: BỎ ÁP thay vì áp tạm.
+          // Đánh đổi có chủ đích — bấm Làm mới giữa cơn bão tick sẽ thấy dữ
+          // liệu cập nhật trễ tối đa 5s (poll nền tự lấy lại rồi), đổi lấy
+          // việc không bao giờ áp một snapshot cũ đè lên kết quả tick vừa ghi
+          // — đúng cú "nhảy ngược" mà writeGenRef ở update() sinh ra để diệt.
+          return;
         }
         setRows(data.rows as RegistrationRow[]);
         return;
@@ -131,13 +140,15 @@ export function AdminDashboard({ initialRows }: { initialRows: RegistrationRow[]
       }
     } finally {
       setBusy(null);
-      // Tăng thế hệ ghi LẦN NỮA khi ghi xong. Nếu chỉ tăng lúc bắt đầu, một
-      // poll bắn ra TRƯỚC lúc ghi này bắt đầu nhưng có phản hồi về SAU khi ghi
-      // đã xong sẽ thấy busyRef=null và writeGenRef không đổi kể từ lúc nó
-      // chụp genAtStart (vì gen chỉ tăng một lần, ngay từ đầu, trước khi poll
-      // đó kịp chụp) — tưởng nhầm là dữ liệu còn mới rồi áp snapshot cũ đè lên
-      // kết quả tick. Tăng thêm ở đây khiến guard lúc áp trong refresh() tự
-      // đứng vững, không phụ thuộc việc setInterval có kịp thấy busyRef hay không.
+      // Tăng thế hệ ghi LẦN NỮA khi ghi xong. Nếu chỉ tăng lúc bắt đầu, ca sau
+      // vẫn lọt lưới: một poll bắn ra SAU KHI ghi này đã bắt đầu (nên
+      // genAtStart chụp được gen đã tăng sẵn từ lúc bắt đầu, trước khi poll đó
+      // kịp chụp) nhưng có phản hồi về SAU KHI ghi đã xong (nên busyRef đã về
+      // null) sẽ thấy writeGenRef không đổi kể từ lúc nó chụp genAtStart — vì
+      // gen chỉ tăng một lần duy nhất, ngay từ đầu — tưởng nhầm là dữ liệu còn
+      // mới rồi áp snapshot cũ đè lên kết quả tick. Tăng thêm ở đây khiến guard
+      // lúc áp trong refresh() tự đứng vững, không phụ thuộc việc setInterval
+      // có kịp thấy busyRef hay không.
       writeGenRef.current += 1;
     }
   }
