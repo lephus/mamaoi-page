@@ -32,6 +32,19 @@ export function AdminDashboard({ initialRows }: { initialRows: RegistrationRow[]
   // nên giá trị của nó KHÔNG phải số lượt ghi. Dùng để phát hiện một lượt ghi
   // chen vào giữa lúc poll gửi request và lúc phản hồi của CHÍNH request đó về.
   const writeGenRef = useRef(0);
+  // Số thứ tự của lần fetch /api/admin/registrations gần nhất — tăng dần, cấp
+  // ngay trước mỗi lần gọi fetch (poll nền, thủ công, và từng vòng retry của
+  // thủ công đều lấy số riêng). Cùng appliedSeqRef bên dưới tạo lớp bảo vệ THỨ
+  // HAI, độc lập với writeGenRef: writeGenRef chỉ thấy được ghi từ CHÍNH máy
+  // này, còn một mẹ được check-in từ MÁY KHÁC ở quầy bên không hề đụng vào
+  // writeGenRef của máy này, nên khi hai poll của máy này chồng lên nhau (độ
+  // trễ mạng > 5s) và phản hồi CŨ về sau phản hồi MỚI, writeGenRef không phát
+  // hiện ra — phải so sánh thứ tự request để biết phản hồi nào tới sau bị lỡ.
+  const fetchSeqRef = useRef(0);
+  // Số thứ tự CAO NHẤT đã được setRows áp. Một phản hồi có số thứ tự nhỏ hơn
+  // giá trị này là hàng cũ về muộn sau một phản hồi mới hơn — bỏ áp thay vì
+  // ghi đè ngược.
+  const appliedSeqRef = useRef(0);
 
   const filtered = useMemo(() => {
     const s = q.trim().toLowerCase();
@@ -56,6 +69,9 @@ export function AdminDashboard({ initialRows }: { initialRows: RegistrationRow[]
         // Chụp lại "thế hệ ghi" TRƯỚC KHI gọi fetch, chỉ để so sánh SAU KHI có
         // phản hồi — không dùng để quyết định có bắn request hay không.
         const genAtStart = writeGenRef.current;
+        // Cấp số thứ tự cho CHÍNH lần fetch này, ngay trước khi gọi fetch —
+        // mỗi vòng lặp retry bên dưới quay lại đây nên tự lấy số mới.
+        const seq = ++fetchSeqRef.current;
         const res = await fetch("/api/admin/registrations");
         if (res.status === 401) {
           setStopped(true);
@@ -97,6 +113,16 @@ export function AdminDashboard({ initialRows }: { initialRows: RegistrationRow[]
           // — đúng cú "nhảy ngược" mà writeGenRef ở update() sinh ra để diệt.
           return;
         }
+        // Chống hai poll chồng nhau (độ trễ mạng > 5s khiến poll trước còn bay
+        // khi poll sau đã bắn): nếu đã có một phản hồi với số thứ tự CAO HƠN
+        // được áp trước đó, phản hồi hiện tại là hàng cũ về muộn — bỏ áp thay
+        // vì ghi đè ngược lên dữ liệu mới hơn. Đây là ca staleWrite ở trên
+        // không bắt được, vì ghi có thể đến từ MÁY KHÁC không đụng writeGenRef
+        // của máy này.
+        if (seq < appliedSeqRef.current) {
+          return;
+        }
+        appliedSeqRef.current = seq;
         setRows(data.rows as RegistrationRow[]);
         return;
       }
