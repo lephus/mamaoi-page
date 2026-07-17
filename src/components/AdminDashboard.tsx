@@ -28,8 +28,9 @@ export function AdminDashboard({ initialRows }: { initialRows: RegistrationRow[]
   useEffect(() => {
     busyRef.current = busy;
   }, [busy]);
-  // Đếm số lượt GHI (update) đã bắt đầu. Dùng để phát hiện một lượt ghi chen
-  // vào giữa lúc poll gửi request và lúc phản hồi của CHÍNH request đó về.
+  // Bộ đếm "thế hệ ghi": tăng ở CẢ lúc update() bắt đầu LẪN lúc update() xong,
+  // nên giá trị của nó KHÔNG phải số lượt ghi. Dùng để phát hiện một lượt ghi
+  // chen vào giữa lúc poll gửi request và lúc phản hồi của CHÍNH request đó về.
   const writeGenRef = useRef(0);
 
   const filtered = useMemo(() => {
@@ -226,9 +227,11 @@ export function AdminDashboard({ initialRows }: { initialRows: RegistrationRow[]
             </button>
             <button
               onClick={() => {
-                // Bấm tay: luôn áp kết quả (manual: true) và tự bắt lỗi mạng —
-                // khác poll nền, đây là yêu cầu chủ động nên không được nuốt
-                // lỗi thành unhandled rejection.
+                // Bấm tay (manual: true): được fetch lại tối đa
+                // MAX_MANUAL_REFRESH_RETRIES lần nếu đụng ghi chen vào; hết lượt
+                // mà vẫn dính thì BỎ ÁP — poll nền lấy lại trong ≤5s, còn áp thì
+                // sẽ thấy hàng nhảy ngược. Tự bắt lỗi mạng vì khác poll nền, đây
+                // là yêu cầu chủ động, không được nuốt thành unhandled rejection.
                 void refresh({ manual: true }).catch(() => {});
               }}
               className="rounded-full border border-line bg-white px-5 py-2.5 text-sm font-semibold text-ink hover:bg-primary-faded-hover"
