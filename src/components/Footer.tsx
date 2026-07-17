@@ -19,11 +19,14 @@ export function Footer() {
         <div>
           <h2 className="mb-3 text-sm font-bold text-ink">Khám phá</h2>
           <ul className="space-y-2 text-sm text-ink-faded">
-            <li>
+            {/* TẠM ẨN: trang chủ `/` đang bị redirect sang /su-kien (xem
+                next.config.ts), để lại link này thì bấm vào chỉ đi lòng vòng.
+                Bỏ comment để hiện lại, cùng lúc với việc mở lại trang chủ. */}
+            {/* <li>
               <Link href="/" className="hover:text-primary">
                 Ứng dụng Mama Ơi
               </Link>
-            </li>
+            </li> */}
             <li>
               <Link href="/su-kien" className="hover:text-primary">
                 Sự kiện Mama Ơi Day
