@@ -13,6 +13,10 @@ credentials*.json
 node_modules/
 .pnp
 .pnp.js
+# Dự án dùng npm, nguồn sự thật là package-lock.json (đã commit). Chạy nhầm
+# `yarn install` sẽ sinh ra yarn.lock — commit vào là có hai lockfile mâu
+# thuẫn nhau và Vercel có thể cài sai bản dependency.
+yarn.lock
 
 # === Next.js ===
 .next/
