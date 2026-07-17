@@ -1,6 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
-import { SITE } from "@/lib/constants";
+import { BUILT_BY, SITE } from "@/lib/constants";
 
 export function Footer() {
   return (
@@ -64,7 +64,8 @@ export function Footer() {
       </div>
 
       <div className="border-t border-line/60 py-5 text-center text-xs text-ink-faded">
-        © {new Date().getFullYear()} {SITE.company}. Bảo lưu mọi quyền.
+        <p>© {new Date().getFullYear()} {SITE.company}. Bảo lưu mọi quyền.</p>
+        <p className="mt-1">{BUILT_BY}</p>
       </div>
     </footer>
   );

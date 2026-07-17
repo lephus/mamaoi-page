@@ -9,10 +9,13 @@ export const SITE = {
   name: "Mama Ơi",
   tagline: "Theo dõi hành trình lớn lên của bé mỗi ngày",
   url: "https://mamaoi.vn",
-  company: "DigitalUnicorn",
-  email: "contact@digitalunicorn.fr",
-  phone: "0632642480",
+  company: "MamaOi",
+  email: "info@mamaoi.com",
+  phone: "+8499.999.999",
 } as const;
+
+/** Agency credit in the footer bottom bar. */
+export const BUILT_BY = "Built by Digital Unicorn";
 
 export const EVENT = {
   name: "Mama Ơi Day – Hành trình 1 năm đầu đời cùng con",
