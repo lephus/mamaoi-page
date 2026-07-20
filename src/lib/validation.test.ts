@@ -135,9 +135,16 @@ describe("registrationSchema — nhánh da_sinh", () => {
     ).toBe(false);
   });
 
+  // Mốc giờ ghim cứng, KHÔNG dùng `Date.now()` thật: bản cũ lấy "ngày mai" theo
+  // UTC làm đại diện cho tương lai, nhưng từ 00:00 tới 07:00 sáng giờ VN thì
+  // "ngày mai theo UTC" CHÍNH LÀ hôm nay theo giờ VN — server nhận đúng còn test
+  // lại đòi từ chối. Test đó đỏ mỗi ngày một lần, đúng 7 tiếng.
   it("ngày sinh ở tương lai thì lỗi", () => {
-    const mai = new Date(Date.now() + 86_400_000).toISOString().slice(0, 10);
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-07-15T05:00:00Z")); // 12:00 trưa 15/07 giờ VN
+    const mai = "2026-07-16";
     expect(registrationSchema.safeParse({ ...daSinh, beNgaySinh: mai }).success).toBe(false);
+    vi.useRealTimers();
   });
 
   it("bé trên 36 tháng thì lỗi", () => {
