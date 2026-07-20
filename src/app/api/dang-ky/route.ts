@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { sendEventEmail, sendWaitlistEmail, upsertContact } from "@/lib/brevo";
 import { appendRegistration, sheetsConfigured } from "@/lib/sheets";
-import { insertRegistration, supabaseConfigured } from "@/lib/supabase";
+import { insertRegistration, insertWaitlist, supabaseConfigured } from "@/lib/supabase";
 import {
   generateCheckinCode,
   isRegistration,
@@ -101,13 +101,21 @@ export async function POST(request: Request) {
     warnings.push("email");
   }
 
-  // Structured record for /check-in + /admin. Event registrations only — the
-  // app waitlist has nothing to check in to, so it stays in Brevo alone.
-  // Non-fatal: she is already registered in Brevo. A failure here is logged
-  // loudly so ops can back-fill this row from Brevo before the event.
-  if (isRegistration(data) && supabaseConfigured()) {
+  // Bản ghi có cấu trúc cho /check-in + /admin.
+  //  - Đăng ký sự kiện → bảng `registrations` (có mã check-in, thông tin bé).
+  //  - Waitlist app    → bảng `waitlist` (chỉ email + consent).
+  // Hai bảng RIÊNG, không gộp: gộp thì phải nới NOT NULL của ho_ten/sdt/
+  // tinh_thanh/checkin_code, tức gỡ luôn lưới an toàn của đăng ký sự kiện thật.
+  //
+  // Non-fatal ở CẢ HAI nhánh: mẹ đã đăng ký xong ở Brevo rồi. Lỗi ở đây chỉ
+  // log thật to để ops back-fill từ Brevo.
+  if (supabaseConfigured()) {
     try {
-      await insertRegistration(data, checkinCode!);
+      if (isRegistration(data)) {
+        await insertRegistration(data, checkinCode!);
+      } else {
+        await insertWaitlist(data.email, data.dongYNhanTin);
+      }
     } catch (err) {
       console.error("[dang-ky] Supabase insert failed:", data.email, err);
       warnings.push("supabase");
