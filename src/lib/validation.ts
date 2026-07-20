@@ -17,6 +17,21 @@ import { z } from "zod";
 const VN_PHONE = /^(0|\+84)[1-9]\d{8}$/;
 
 /**
+ * Số tháng tròn từ ngày sinh tới mốc. Chỉ đếm tháng ĐÃ QUA đủ ngày: bé sinh
+ * 25/01 tới 20/07 là 5 tháng, không phải 6 — mốc "mấy tháng tuổi" của mẹ luôn
+ * là ngày kỷ niệm hàng tháng, không phải số tháng lịch chênh nhau.
+ *
+ * Trả số âm nếu ngày sinh ở tương lai; caller chịu trách nhiệm chặn.
+ */
+export function thangTuoiTuNgaySinh(ngaySinh: Date, moc: Date): number {
+  let thang =
+    (moc.getFullYear() - ngaySinh.getFullYear()) * 12 +
+    (moc.getMonth() - ngaySinh.getMonth());
+  if (moc.getDate() < ngaySinh.getDate()) thang -= 1;
+  return thang;
+}
+
+/**
  * Bots fill hidden fields; humans never see them. Cheaper than a second captcha.
  *
  * Deliberately NOT `.max(0)`: rejecting it here would hand the bot a 400 naming
