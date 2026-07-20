@@ -86,6 +86,18 @@ const chungFields = {
     })
     .min(1, "Vui lòng chọn ít nhất một chủ đề"),
 
+  /**
+   * Ô tự do đi KÈM `chuDeQuanTam`, không thay thế nó. Danh sách 9 chủ đề chưa
+   * được khách chốt — 500 mẹ đầu tiên chính là cách phát hiện danh sách thật.
+   * Cố ý KHÔNG gộp vào mảng `chuDeQuanTam`: trộn text tự do vào mảng phân khúc
+   * sẽ phá phân khúc và vỡ chuỗi nối bằng dấu phẩy khi xuất ra Sheet.
+   */
+  chuDeKhac: z
+    .string()
+    .trim()
+    .max(200, "Chủ đề khác không được vượt quá 200 ký tự")
+    .optional(),
+
   nguonBietDen: z.enum(NGUON_VALUES as [string, ...string[]], {
     message: "Vui lòng cho biết mẹ biết đến chương trình từ đâu",
   }),

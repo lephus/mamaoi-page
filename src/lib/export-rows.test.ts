@@ -18,6 +18,7 @@ const base: RegistrationRow = {
   be_gioi_tinh: null,
   be_thang_tuoi: null,
   chu_de_quan_tam: ["an_dam", "ngu"],
+  chu_de_khac: null,
   nguon_biet_den: "facebook",
   di_cung_chong: true,
   dong_y_nhan_tin: true,
@@ -28,9 +29,9 @@ const base: RegistrationRow = {
 };
 
 describe("rowsToSheet", () => {
-  it("có đúng 21 cột và không lộ id", () => {
+  it("có đúng 22 cột và không lộ id", () => {
     const { headers } = rowsToSheet([base]);
-    expect(headers).toHaveLength(21);
+    expect(headers).toHaveLength(22);
     expect(headers).not.toContain("id");
     expect(headers[0]).toBe("Họ tên");
   });
@@ -88,7 +89,7 @@ describe("rowsToSheet", () => {
 
   it("danh sách rỗng vẫn trả header", () => {
     const { headers, rows } = rowsToSheet([]);
-    expect(headers).toHaveLength(21);
+    expect(headers).toHaveLength(22);
     expect(rows).toEqual([]);
   });
 
@@ -130,5 +131,26 @@ describe("rowsToSheet", () => {
   it("chủ đề rỗng thành chuỗi rỗng", () => {
     const { headers, rows } = rowsToSheet([{ ...base, chu_de_quan_tam: [] }]);
     expect(rows[0][headers.indexOf("Chủ đề quan tâm")]).toBe("");
+  });
+
+  it("có 22 cột, 'Chủ đề khác' ngay sau 'Chủ đề quan tâm'", () => {
+    const { headers } = rowsToSheet([]);
+    expect(headers).toHaveLength(22);
+    expect(headers.indexOf("Chủ đề khác")).toBe(headers.indexOf("Chủ đề quan tâm") + 1);
+  });
+
+  // Đọc giá trị THEO VỊ TRÍ CỦA NHÃN, không phải toContain. Đây là kiểu assert
+  // duy nhất bắt được lỗi lệch cột — mà file 22 cột này ops đọc trực tiếp.
+  it("giá trị chủ đề khác nằm đúng cột của nó", () => {
+    const { headers, rows } = rowsToSheet([
+      { ...base, chu_de_quan_tam: ["thai_ky"], chu_de_khac: "Trầm cảm sau sinh" },
+    ]);
+    expect(rows[0][headers.indexOf("Chủ đề khác")]).toBe("Trầm cảm sau sinh");
+    expect(rows[0][headers.indexOf("Chủ đề quan tâm")]).toBe("Thai kỳ");
+  });
+
+  it("chu_de_khac null thành chuỗi rỗng, không phải chữ 'null'", () => {
+    const { headers, rows } = rowsToSheet([{ ...base, chu_de_khac: null }]);
+    expect(rows[0][headers.indexOf("Chủ đề khác")]).toBe("");
   });
 });

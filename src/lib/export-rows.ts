@@ -3,7 +3,7 @@ import type { RegistrationRow, WaitlistRow } from "./supabase";
 import { formatCheckinTime, ngayVN } from "./time";
 
 /**
- * 21 cột = toàn bộ RegistrationRow trừ `id` (khoá nội bộ, vô nghĩa với ops).
+ * 22 cột = toàn bộ RegistrationRow trừ `id` (khoá nội bộ, vô nghĩa với ops).
  * Thứ tự cột này là thứ tự cột trong file Excel VÀ trong Google Sheet — đổi ở
  * đây là đổi cả hai. `sheets.ts` cố tình đọc lại từ đây thay vì tự khai mảng.
  */
@@ -20,6 +20,7 @@ const HEADERS = [
   "Giới tính bé",
   "Bé (tháng tuổi)",
   "Chủ đề quan tâm",
+  "Chủ đề khác",
   "Nguồn biết đến",
   "Đi cùng chồng",
   "Đồng ý nhận tin",
@@ -58,6 +59,7 @@ export function rowsToSheet(rows: RegistrationRow[]): {
       r.be_gioi_tinh === "nam" ? "Nam" : r.be_gioi_tinh === "nu" ? "Nữ" : "",
       r.be_thang_tuoi ?? "",
       r.chu_de_quan_tam.map(chuDeLabel).join(", "),
+      r.chu_de_khac ?? "",
       r.nguon_biet_den ? nguonBietDenLabel(r.nguon_biet_den) : "",
       yesNo(r.di_cung_chong),
       yesNo(r.dong_y_nhan_tin),

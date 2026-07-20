@@ -61,4 +61,25 @@ describe("registrationToRow", () => {
       "ngu",
     ]);
   });
+
+  it("chuDeKhac rỗng thành null, có nội dung thì giữ nguyên", () => {
+    const rong = registrationToRow(
+      { ...mangThai, chuDeKhac: "" } as Registration,
+      "MO-ABC234",
+      MOC,
+    );
+    expect(rong.chu_de_khac).toBeNull();
+
+    const co = registrationToRow(
+      { ...mangThai, chuDeKhac: "Trầm cảm sau sinh" } as Registration,
+      "MO-ABC234",
+      MOC,
+    );
+    expect(co.chu_de_khac).toBe("Trầm cảm sau sinh");
+  });
+
+  it("chuDeKhac vắng mặt cũng thành null", () => {
+    const r = registrationToRow(mangThai, "MO-ABC234", MOC);
+    expect(r.chu_de_khac).toBeNull();
+  });
 });

@@ -25,6 +25,8 @@ export type RegistrationRow = {
   /** DẪN XUẤT từ be_ngay_sinh lúc ghi. Nguồn sự thật là be_ngay_sinh. */
   be_thang_tuoi: number | null;
   chu_de_quan_tam: string[];
+  /** Ô tự do kèm `chu_de_quan_tam`. Null khi mẹ để trống. */
+  chu_de_khac: string | null;
   /**
    * Nullable vì migration `add column` không đặt được NOT NULL trên bảng đã có
    * dòng test. Mọi lượt ghi MỚI luôn có giá trị (schema bắt buộc); null chỉ có
@@ -97,6 +99,7 @@ export function registrationToRow(
     be_gioi_tinh: daSinh ? data.beGioiTinh : null,
     be_thang_tuoi: daSinh ? thangTuoiTuNgaySinh(data.beNgaySinh, moc) : null,
     chu_de_quan_tam: data.chuDeQuanTam,
+    chu_de_khac: data.chuDeKhac || null,
     nguon_biet_den: data.nguonBietDen,
     di_cung_chong: data.diCungChong,
     dong_y_nhan_tin: data.dongYNhanTin,

@@ -1,6 +1,6 @@
 -- Form đăng ký v2 + bảng waitlist.
 -- CHẠY TAY trong Supabase SQL editor TRƯỚC KHI deploy code mới.
--- An toàn để drop cột: đã xác nhận 2026-07-20 chưa có đăng ký thật.
+-- Chỉ thêm cột và constraint, KHÔNG drop gì. Chạy lại nhiều lần vẫn an toàn.
 -- Kiểm tra lại trước khi chạy:  select count(*) from registrations;
 
 alter table registrations
@@ -9,6 +9,7 @@ alter table registrations
   add column if not exists be_ngay_sinh    date,
   add column if not exists be_gioi_tinh    text,
   add column if not exists chu_de_quan_tam text[] not null default '{}',
+  add column if not exists chu_de_khac     text,
   add column if not exists nguon_biet_den  text;
 
 alter table registrations
@@ -21,6 +22,9 @@ alter table registrations
   add  constraint registrations_be_gioi_tinh_check
        check (be_gioi_tinh is null or be_gioi_tinh in ('nam','nu'));
 
+-- Cố ý KHÔNG ràng buộc giá trị của chu_de_quan_tam: danh sách 9 chủ đề chưa
+-- được khách chốt, và constraint ở đây sẽ phải sửa lockstep với constants.ts
+-- mỗi lần danh sách đổi — quên một bên là đăng ký chết. Zod chặn ở đường ghi.
 alter table registrations
   drop constraint if exists registrations_nguon_biet_den_check,
   add  constraint registrations_nguon_biet_den_check

@@ -195,6 +195,50 @@ describe("registrationSchema — field chung", () => {
   });
 });
 
+describe("chuDeKhac", () => {
+  const base = {
+    nguon: "su-kien",
+    hoTen: "Nguyễn Thị An",
+    email: "an@example.com",
+    sdt: "0912345678",
+    tinhThanh: "TP. Hồ Chí Minh",
+    chuDeQuanTam: ["thai_ky"],
+    nguonBietDen: "facebook",
+    dongYNhanTin: true,
+    trangThai: "mang_thai",
+    thaiTuan: 20,
+  };
+
+  it("vắng mặt vẫn hợp lệ — field optional", () => {
+    expect(registrationSchema.safeParse(base).success).toBe(true);
+  });
+
+  it("chuỗi rỗng vẫn hợp lệ", () => {
+    expect(registrationSchema.safeParse({ ...base, chuDeKhac: "" }).success).toBe(true);
+  });
+
+  it("nhận nội dung tự do", () => {
+    const r = registrationSchema.safeParse({ ...base, chuDeKhac: "Trầm cảm sau sinh" });
+    expect(r.success).toBe(true);
+    expect(r.data!.chuDeKhac).toBe("Trầm cảm sau sinh");
+  });
+
+  it("quá 200 ký tự bị chặn kèm message tiếng Việt", () => {
+    const r = registrationSchema.safeParse({ ...base, chuDeKhac: "a".repeat(201) });
+    expect(r.success).toBe(false);
+    expect(r.error!.issues[0].message).toBe("Chủ đề khác không được vượt quá 200 ký tự");
+  });
+
+  it("KHÔNG thay thế được ràng buộc chọn ít nhất một chủ đề", () => {
+    const r = registrationSchema.safeParse({
+      ...base,
+      chuDeQuanTam: [],
+      chuDeKhac: "Trầm cảm sau sinh",
+    });
+    expect(r.success).toBe(false);
+  });
+});
+
 describe("discriminator trangThai", () => {
   it("bỏ trống trangThai trả message tiếng Việt, không phải chuỗi Zod tiếng Anh", () => {
     const r = registrationSchema.safeParse({ nguon: "su-kien", trangThai: null });
