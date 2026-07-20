@@ -1,5 +1,5 @@
 /** Việt Nam cố định UTC+7, không DST — nên phép dịch +7h là chính xác. */
-const VN_OFFSET_MS = 7 * 60 * 60 * 1000;
+export const VN_OFFSET_MS = 7 * 60 * 60 * 1000;
 
 /** ISO instant → "HH:MM DD/MM/YYYY" theo giờ VN. */
 export function formatCheckinTime(iso: string): string {

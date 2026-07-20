@@ -16,23 +16,6 @@ import {
 // chừng sẽ báo thất bại cho một lượt đăng ký thực ra đã thành công.
 export const maxDuration = 60;
 
-/** Verify the reCAPTCHA token. Skipped entirely when no secret is configured. */
-async function passesRecaptcha(token: string | undefined): Promise<boolean> {
-  const secret = process.env.RECAPTCHA_SECRET_KEY;
-  if (!secret) return true; // not set up yet — do not block real registrations
-  if (!token) return false;
-
-  const res = await fetch("https://www.google.com/recaptcha/api/siteverify", {
-    method: "POST",
-    headers: { "Content-Type": "application/x-www-form-urlencoded" },
-    body: new URLSearchParams({ secret, response: token }),
-  });
-  const data = (await res.json()) as { success: boolean; score?: number };
-
-  // v3 returns a score (0.5 is Google's suggested floor); v2 returns none.
-  return data.success && (data.score === undefined || data.score >= 0.5);
-}
-
 export async function POST(request: Request) {
   let body: unknown;
   try {
@@ -51,6 +34,10 @@ export async function POST(request: Request) {
     const thu = (issues: { path: PropertyKey[]; message: string }[]) => {
       for (const issue of issues) {
         const key = String(issue.path[0] ?? "form");
+        // Không form nào có field tên `nguon` — nó không bao giờ render, nên
+        // bỏ qua thay vì để lọt chuỗi literal-mismatch tiếng Anh của Zod vào
+        // một payload lỗi mà mọi chỗ khác đều tiếng Việt.
+        if (key === "nguon") continue;
         fieldErrors[key] ??= issue.message;
       }
     };
@@ -75,13 +62,6 @@ export async function POST(request: Request) {
   // Honeypot. Answer 200 so the bot believes it won and does not retry.
   if (data.website) {
     return NextResponse.json({ ok: true });
-  }
-
-  if (!(await passesRecaptcha(data.recaptchaToken))) {
-    return NextResponse.json(
-      { error: "Xác thực bảo mật thất bại. Vui lòng thử lại." },
-      { status: 400 },
-    );
   }
 
   const checkinCode = isRegistration(data) ? generateCheckinCode() : undefined;

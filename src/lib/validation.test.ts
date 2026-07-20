@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, afterEach, vi } from "vitest";
 import {
   isValidCheckinCode,
   thangTuoiTuNgaySinh,
@@ -155,6 +155,28 @@ describe("registrationSchema — nhánh da_sinh", () => {
   });
 });
 
+describe("beNgaySinh — biên giờ VN, không phải UTC", () => {
+  afterEach(() => vi.useRealTimers());
+
+  // Client dùng `max={homNayVN()}` (giờ VN) cho input date. Server phải so
+  // sánh cùng múi giờ đó — nếu không, từ 00:00 tới 07:00 sáng giờ VN, UTC vẫn
+  // còn là hôm qua, và bé sinh đúng hôm nay (giờ VN) bị server chặn nhầm là
+  // "ở tương lai" dù client đã cho phép chọn ngày đó.
+  it("00:30 giờ VN (17:30 UTC hôm trước): bé sinh HÔM NAY giờ VN vẫn được chấp nhận", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-07-20T17:30:00Z")); // 00:30 sáng 21/07 giờ VN
+    const r = registrationSchema.safeParse({ ...daSinh, beNgaySinh: "2026-07-21" });
+    expect(r.success).toBe(true);
+  });
+
+  it("bé sinh NGÀY MAI giờ VN vẫn bị chặn dù vừa qua nửa đêm", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-07-20T17:30:00Z")); // 00:30 sáng 21/07 giờ VN
+    const r = registrationSchema.safeParse({ ...daSinh, beNgaySinh: "2026-07-22" });
+    expect(r.success).toBe(false);
+  });
+});
+
 describe("registrationSchema — field chung", () => {
   it("chuDeQuanTam rỗng thì lỗi", () => {
     expect(
@@ -236,6 +258,34 @@ describe("chuDeKhac", () => {
       chuDeKhac: "Trầm cảm sau sinh",
     });
     expect(r.success).toBe(false);
+  });
+});
+
+describe("facebook", () => {
+  const base = {
+    nguon: "su-kien",
+    hoTen: "Nguyễn Thị An",
+    email: "an@example.com",
+    sdt: "0912345678",
+    tinhThanh: "TP. Hồ Chí Minh",
+    chuDeQuanTam: ["thai_ky"],
+    nguonBietDen: "facebook",
+    dongYNhanTin: true,
+    trangThai: "mang_thai",
+    thaiTuan: 20,
+  };
+
+  // URL Facebook kèm tracking param (fbclid/mibextid) dễ vượt 200 ký tự — đây
+  // là lỗi thực tế mẹ sẽ gặp, không phải trường hợp biên lý thuyết.
+  it("quá 200 ký tự bị chặn kèm message tiếng Việt, không phải chuỗi Zod tiếng Anh", () => {
+    const r = registrationSchema.safeParse({
+      ...base,
+      facebook: "https://facebook.com/" + "a".repeat(200),
+    });
+    expect(r.success).toBe(false);
+    expect(r.error!.issues[0].message).toBe(
+      "Link Facebook không được vượt quá 200 ký tự",
+    );
   });
 });
 

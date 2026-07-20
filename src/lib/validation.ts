@@ -1,11 +1,12 @@
 import { z } from "zod";
 import { CHU_DE_VALUES, NGUON_VALUES } from "./constants";
+import { VN_OFFSET_MS } from "./time";
 
 /**
  * Two entry points, two shapes.
  *
  * The event form is the full "Membership First" record from the brief:
- * `trangThai` and `beThangTuoi` are typed fields that drive segmentation, not
+ * `trangThai` and `beNgaySinh` are typed fields that drive segmentation, not
  * decorative free text. A mother who registers today should never retype any
  * of this when the app launches.
  *
@@ -73,7 +74,12 @@ const chungFields = {
     .trim()
     .regex(VN_PHONE, "Số điện thoại không hợp lệ"),
 
-  facebook: z.string().trim().max(200).optional().or(z.literal("")),
+  facebook: z
+    .string()
+    .trim()
+    .max(200, "Link Facebook không được vượt quá 200 ký tự")
+    .optional()
+    .or(z.literal("")),
 
   tinhThanh: z
     .string({ error: "Vui lòng chọn thành phố" })
@@ -112,7 +118,6 @@ const chungFields = {
     message: "Vui lòng đồng ý để hoàn tất đăng ký",
   }),
 
-  recaptchaToken: z.string().optional(),
   website: honeypot,
 };
 
@@ -149,7 +154,13 @@ export const registrationSchema = z.discriminatedUnion("trangThai", [
       .max(80, "Tên bé không được vượt quá 80 ký tự"),
     beNgaySinh: z.coerce
       .date({ message: "Vui lòng chọn ngày sinh của bé" })
-      .refine((d) => d <= new Date(), "Ngày sinh không thể ở tương lai")
+      // So với "hôm nay giờ VN", không phải UTC: input date phía client dùng
+      // `max={homNayVN()}` (UTC+7). Từ 00:00 tới 07:00 giờ VN, UTC vẫn còn là
+      // hôm qua — so với `new Date()` (UTC) sẽ chặn nhầm bé sinh đúng hôm nay.
+      .refine(
+        (d) => d <= new Date(Date.now() + VN_OFFSET_MS),
+        "Ngày sinh không thể ở tương lai",
+      )
       .refine(
         (d) => thangTuoiTuNgaySinh(d, new Date()) <= GIOI_HAN_THANG_TUOI,
         `Bé trên ${GIOI_HAN_THANG_TUOI} tháng nằm ngoài phạm vi sự kiện`,
@@ -168,7 +179,6 @@ export const waitlistSchema = z.object({
   dongYNhanTin: z.literal(true, {
     message: "Vui lòng đồng ý nhận thông tin",
   }),
-  recaptchaToken: z.string().optional(),
   website: honeypot,
 });
 
