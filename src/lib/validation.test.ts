@@ -167,4 +167,12 @@ describe("registrationSchema — field chung", () => {
       registrationSchema.safeParse({ ...mangThai, dongYNhanTin: false }).success,
     ).toBe(false);
   });
+
+  it("thiếu thành phố báo đúng nguyên văn chuỗi khách duyệt", () => {
+    const r = registrationSchema.safeParse({ ...mangThai, tinhThanh: "" });
+    expect(r.success).toBe(false);
+    expect(r.error?.issues.find((i) => i.path[0] === "tinhThanh")?.message).toBe(
+      "Vui lòng chọn thành phố",
+    );
+  });
 });

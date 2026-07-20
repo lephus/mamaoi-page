@@ -63,7 +63,7 @@ const chungFields = {
 
   facebook: z.string().trim().max(200).optional().or(z.literal("")),
 
-  tinhThanh: z.string().trim().min(1, "Vui lòng chọn tỉnh/thành"),
+  tinhThanh: z.string().trim().min(1, "Vui lòng chọn thành phố"),
 
   chuDeQuanTam: z
     .array(z.enum(CHU_DE_VALUES as [string, ...string[]]))
