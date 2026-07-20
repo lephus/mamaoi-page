@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { CHU_DE_QUAN_TAM, NGUON_BIET_DEN, PROVINCES } from "@/lib/constants";
+import { buildRegistrationPayload } from "@/lib/registration-payload";
 import { trackRegistration } from "@/lib/analytics";
 import { Button } from "./ui/Button";
 
@@ -72,30 +73,7 @@ export function RegistrationForm() {
     setErrors({});
 
     const fd = new FormData(e.currentTarget);
-    const daSinh = fd.get("trangThai") === "da_sinh";
-    const payload = {
-      nguon: "su-kien" as const,
-      hoTen: String(fd.get("hoTen") ?? ""),
-      email: String(fd.get("email") ?? ""),
-      sdt: String(fd.get("sdt") ?? ""),
-      facebook: String(fd.get("facebook") ?? ""),
-      tinhThanh: String(fd.get("tinhThanh") ?? ""),
-      trangThai: fd.get("trangThai"),
-      chuDeQuanTam: chuDe,
-      nguonBietDen: fd.get("nguonBietDen"),
-      diCungChong: fd.get("diCungChong") === "on",
-      dongYNhanTin: fd.get("dongYNhanTin") === "on",
-      website: String(fd.get("website") ?? ""),
-      // Chỉ gửi field của nhánh ĐANG chọn. Nhánh kia để undefined — schema
-      // sẽ cắt bỏ, nhưng gửi đúng ngay từ đây thì thông báo lỗi cũng đúng chỗ.
-      ...(daSinh
-        ? {
-            tenBe: String(fd.get("tenBe") ?? ""),
-            beNgaySinh: String(fd.get("beNgaySinh") ?? ""),
-            beGioiTinh: fd.get("beGioiTinh"),
-          }
-        : { thaiTuan: fd.get("thaiTuan") }),
-    };
+    const payload = buildRegistrationPayload(fd, chuDe);
 
     try {
       const res = await fetch("/api/dang-ky", {
