@@ -29,3 +29,15 @@ STATUS: chưa bắt đầu.
   User đã biết và chấp nhận ("lộ k sao, kệ"). KHÔNG nhắc lại, KHÔNG tự sửa.
 - RLS đang TẮT theo lựa chọn của user. Guard rail: không bao giờ để key Supabase
   lọt ra client (không NEXT_PUBLIC_SUPABASE_*).
+
+## Tiến độ
+- Task 1: complete (commit 15dd6da..bac96b1, review clean — spec ✅, quality Approved)
+
+## Minor findings tồn đọng (final review phân loại lại)
+- [Task 1, đang xử lý ở Task 2] Typo comment `sheets.ts:17` "mảy cột" → "mảng cột".
+- [Task 1, plan-mandated] `registrationToSheetRow` gọi `new Date()` bên trong nên
+  không thuần đúng nghĩa, dù task đặt tên "hàm thuần". Là quyết định của spec
+  (Quyết định 2: Sheets độc lập Supabase nên tự sinh timestamp). Không test nào
+  assert cột "Thời điểm đăng ký" nên không che giấu lỗi. Để nguyên, chỉ ghi nhận.
+- [Task 1, plan-mandated] `id: ""` là trường giả do tái dùng `RegistrationRow`.
+  `rowsToSheet` không xuất id nên vô hại. Ghi nhận, không sửa.
