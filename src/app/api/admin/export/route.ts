@@ -1,7 +1,7 @@
 import ExcelJS from "exceljs";
 import { isAdmin } from "@/lib/admin-auth";
-import { rowsToSheet } from "@/lib/export-rows";
-import { listRegistrations } from "@/lib/supabase";
+import { rowsToSheet, waitlistToSheet } from "@/lib/export-rows";
+import { listRegistrations, listWaitlist } from "@/lib/supabase";
 import { isoToVNLocalInput } from "@/lib/time";
 
 /**
@@ -21,18 +21,24 @@ export async function POST(request: Request) {
   } catch {
     return Response.json({ error: "Dữ liệu không hợp lệ" }, { status: 400 });
   }
-  const { ids } = (body as { ids?: unknown }) ?? {};
+  const { ids, loai } = (body as { ids?: unknown; loai?: unknown }) ?? {};
   if (!Array.isArray(ids) || ids.some((i) => typeof i !== "string")) {
     return Response.json({ error: "Thiếu danh sách id" }, { status: 400 });
   }
+  // Thiếu `loai` = client cũ → giữ hành vi cũ (đăng ký sự kiện).
+  if (loai !== undefined && loai !== "su-kien" && loai !== "waitlist") {
+    return Response.json({ error: "Loại không hợp lệ" }, { status: 400 });
+  }
+  const laWaitlist = loai === "waitlist";
 
   try {
     const wanted = new Set(ids as string[]);
-    const rows = (await listRegistrations()).filter((r) => wanted.has(r.id));
-    const { headers, rows: data } = rowsToSheet(rows);
+    const { headers, rows: data } = laWaitlist
+      ? waitlistToSheet((await listWaitlist()).filter((r) => wanted.has(r.id)))
+      : rowsToSheet((await listRegistrations()).filter((r) => wanted.has(r.id)));
 
     const wb = new ExcelJS.Workbook();
-    const ws = wb.addWorksheet("Check-in");
+    const ws = wb.addWorksheet(laWaitlist ? "Waitlist" : "Check-in");
     ws.addRow(headers);
     ws.getRow(1).font = { bold: true };
     for (const r of data) ws.addRow(r);
@@ -44,11 +50,12 @@ export async function POST(request: Request) {
 
     const buf = await wb.xlsx.writeBuffer();
     const stamp = isoToVNLocalInput(new Date().toISOString()).slice(0, 10);
+    const ten = laWaitlist ? "mamaoi-waitlist" : "mamaoi-day-checkin";
     return new Response(new Uint8Array(buf as ArrayBuffer), {
       headers: {
         "Content-Type":
           "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        "Content-Disposition": `attachment; filename="mamaoi-day-checkin-${stamp}.xlsx"`,
+        "Content-Disposition": `attachment; filename="${ten}-${stamp}.xlsx"`,
       },
     });
   } catch (err) {
