@@ -1,8 +1,9 @@
 "use client";
 
 import { useEffect } from "react";
+import { chuDeLabel, nguonBietDenLabel } from "@/lib/constants";
 import type { RegistrationRow } from "@/lib/supabase";
-import { formatCheckinTime, isoToVNLocalInput } from "@/lib/time";
+import { formatCheckinTime, isoToVNLocalInput, ngayVN } from "@/lib/time";
 
 function Field({ label, value }: { label: string; value: string }) {
   return (
@@ -87,9 +88,35 @@ export function AdminDetailModal({
             label="Tình trạng"
             value={
               row.trang_thai === "mang_thai"
-                ? "Mang thai"
-                : `Đã sinh${row.be_thang_tuoi != null ? ` · bé ${row.be_thang_tuoi} tháng` : ""}`
+                ? `Mang thai${row.thai_tuan != null ? ` · ${row.thai_tuan} tuần` : ""}`
+                : "Đã sinh"
             }
+          />
+          {row.trang_thai === "da_sinh" && (
+            <>
+              <Field label="Tên bé" value={row.ten_be ?? ""} />
+              <Field label="Ngày sinh bé" value={ngayVN(row.be_ngay_sinh)} />
+              <Field
+                label="Giới tính bé"
+                value={
+                  row.be_gioi_tinh === "nam"
+                    ? "Bé trai"
+                    : row.be_gioi_tinh === "nu"
+                      ? "Bé gái"
+                      : ""
+                }
+              />
+              <Field
+                label="Tháng tuổi"
+                value={row.be_thang_tuoi != null ? `${row.be_thang_tuoi} tháng` : ""}
+              />
+            </>
+          )}
+          <Field label="Chủ đề quan tâm" value={row.chu_de_quan_tam.map(chuDeLabel).join(", ")} />
+          {row.chu_de_khac != null && <Field label="Chủ đề khác" value={row.chu_de_khac} />}
+          <Field
+            label="Nguồn biết đến"
+            value={row.nguon_biet_den ? nguonBietDenLabel(row.nguon_biet_den) : ""}
           />
           <Field label="Đi cùng chồng" value={row.di_cung_chong ? "Có" : "—"} />
           <Field label="Đồng ý nhận tin" value={row.dong_y_nhan_tin ? "Có" : "—"} />

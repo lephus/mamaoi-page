@@ -77,7 +77,7 @@ Copy is Vietnamese. Event names, section headings, and form labels are client-ap
 
 Both forms post to `POST /api/dang-ky`:
 
-1. Validate + verify reCAPTCHA
+1. Validate + honeypot check (a hidden `website` field — the anti-bot mechanism actually in service; reCAPTCHA was removed as dead code)
 2. **Brevo** — upsert contact with typed attributes, add to list, send the thank-you email. This is the source of truth.
 3. **Google Sheets** — append a mirror row for the ops team.
 

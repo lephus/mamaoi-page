@@ -191,3 +191,47 @@ export const PROVINCES = [
 
 /** Last updated date shown on the legal pages. */
 export const LEGAL_UPDATED = "15/07/2026";
+
+/**
+ * Chủ đề quan tâm — chọn nhiều. `value` là thứ lưu xuống DB và gửi Brevo;
+ * `label` là chữ hiện trên form (wording khách duyệt, đừng sửa).
+ */
+export const CHU_DE_QUAN_TAM = [
+  { value: "thai_ky", label: "Thai kỳ" },
+  { value: "ivf", label: "IVF" },
+  { value: "an_dam", label: "Ăn dặm" },
+  { value: "ngu", label: "Ngủ" },
+  { value: "tiem_chung", label: "Tiêm chủng" },
+  { value: "phat_trien_nao", label: "Phát triển não" },
+  { value: "van_dong", label: "Vận động" },
+  { value: "sua_me", label: "Nuôi con bằng sữa mẹ" },
+  { value: "sau_sinh", label: "Sau sinh" },
+] as const;
+
+/** Nguồn biết đến chương trình — chọn một. */
+export const NGUON_BIET_DEN = [
+  { value: "facebook", label: "Facebook" },
+  { value: "tiktok", label: "TikTok" },
+  { value: "instagram", label: "Instagram" },
+  { value: "ban_be", label: "Bạn bè" },
+  { value: "khac", label: "Khác" },
+] as const;
+
+export const CHU_DE_VALUES = CHU_DE_QUAN_TAM.map((c) => c.value) as readonly string[];
+export const NGUON_VALUES = NGUON_BIET_DEN.map((n) => n.value) as readonly string[];
+
+const CHU_DE_MAP = new Map<string, string>(
+  CHU_DE_QUAN_TAM.map((c) => [c.value, c.label]),
+);
+const NGUON_MAP = new Map<string, string>(
+  NGUON_BIET_DEN.map((n) => [n.value, n.label]),
+);
+
+/** Giá trị lạ trả về chính nó — export không bao giờ được nuốt mất dữ liệu. */
+export function chuDeLabel(value: string): string {
+  return CHU_DE_MAP.get(value) ?? value;
+}
+
+export function nguonBietDenLabel(value: string): string {
+  return NGUON_MAP.get(value) ?? value;
+}

@@ -8,37 +8,54 @@ const HEADERS = rowsToSheet([]).headers;
 /** Đọc ô theo tên cột — test không phụ thuộc thứ tự cột. */
 const at = (row: (string | number)[], header: string) => row[HEADERS.indexOf(header)];
 
-const base: Registration = {
-  nguon: "su-kien",
+const chung = {
+  nguon: "su-kien" as const,
   hoTen: "Nguyễn Thị Lan",
   email: "lan@example.com",
   sdt: "0901234567",
   facebook: "",
   tinhThanh: "TP.HCM",
-  trangThai: "mang_thai",
-  beThangTuoi: undefined,
+  chuDeQuanTam: ["an_dam", "ngu"],
+  nguonBietDen: "facebook",
   diCungChong: true,
-  dongYNhanTin: true,
+  dongYNhanTin: true as const,
 };
+
+const base = { ...chung, trangThai: "mang_thai", thaiTuan: 20 } as Registration;
+const daSinh = {
+  ...chung,
+  trangThai: "da_sinh",
+  tenBe: "Gạo",
+  beNgaySinh: new Date("2026-01-20"),
+  beGioiTinh: "nu",
+} as Registration;
 
 describe("registrationToSheetRow", () => {
   it("số ô khớp số cột của header", () => {
     expect(registrationToSheetRow(base, "MO-23456A")).toHaveLength(HEADERS.length);
   });
 
-  it("mẹ mang thai: 'Mang thai', cột tháng tuổi rỗng", () => {
+  it("mẹ mang thai: 'Mang thai', cột bé rỗng, có số tuần thai", () => {
     const row = registrationToSheetRow(base, "MO-23456A");
     expect(at(row, "Tình trạng")).toBe("Mang thai");
     expect(at(row, "Bé (tháng tuổi)")).toBe("");
+    expect(at(row, "Tên bé")).toBe("");
+    expect(at(row, "Thai (tuần)")).toBe(20);
   });
 
-  it("mẹ đã sinh: 'Đã sinh' kèm số tháng", () => {
-    const row = registrationToSheetRow(
-      { ...base, trangThai: "da_sinh", beThangTuoi: 6 },
-      "MO-23456A",
-    );
+  it("mẹ đã sinh: 'Đã sinh' kèm thông tin bé, cột tuần thai rỗng", () => {
+    const row = registrationToSheetRow(daSinh, "MO-23456A");
     expect(at(row, "Tình trạng")).toBe("Đã sinh");
-    expect(at(row, "Bé (tháng tuổi)")).toBe(6);
+    expect(at(row, "Tên bé")).toBe("Gạo");
+    expect(at(row, "Giới tính bé")).toBe("Nữ");
+    expect(at(row, "Ngày sinh bé")).toBe("20/01/2026");
+    expect(at(row, "Thai (tuần)")).toBe("");
+  });
+
+  it("chủ đề quan tâm nối bằng nhãn tiếng Việt", () => {
+    expect(at(registrationToSheetRow(base, "MO-23456A"), "Chủ đề quan tâm")).toBe(
+      "Ăn dặm, Ngủ",
+    );
   });
 
   it("không có Facebook thành chuỗi rỗng, không phải null hay 'null'", () => {

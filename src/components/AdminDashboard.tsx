@@ -2,18 +2,31 @@
 
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import type { RegistrationRow } from "@/lib/supabase";
+import type { RegistrationRow, WaitlistRow } from "@/lib/supabase";
 import { isoToVNLocalInput, vnLocalInputToISO } from "@/lib/time";
 import { AdminDetailModal } from "./AdminDetailModal";
+import { WaitlistTab } from "./WaitlistTab";
 
 // Làm mới thủ công tối đa thử lại bấy nhiêu lần khi phát hiện có một lượt ghi
 // xen vào giữa lúc gọi fetch và lúc có phản hồi. Chặn trường hợp nhân viên
 // tick liên tục khiến refresh() cứ fetch lại mãi không dừng.
 const MAX_MANUAL_REFRESH_RETRIES = 2;
 
-export function AdminDashboard({ initialRows }: { initialRows: RegistrationRow[] }) {
+export function AdminDashboard({
+  initialRows,
+  initialWaitlist,
+}: {
+  initialRows: RegistrationRow[];
+  initialWaitlist: WaitlistRow[];
+}) {
   const router = useRouter();
   const [rows, setRows] = useState(initialRows);
+  // Badge tab đọc số này thay vì initialWaitlist.length (prop tĩnh từ server) —
+  // WaitlistTab tự refetch và báo lại số dòng mới qua onCountChange, để badge
+  // trên tab và "Tổng: N email" trong panel luôn khớp nhau, giống cách tab
+  // "Sự kiện" đã đọc rows.length trực tiếp.
+  const [waitlistCount, setWaitlistCount] = useState(initialWaitlist.length);
+  const [tab, setTab] = useState<"su-kien" | "waitlist">("su-kien");
   const [q, setQ] = useState("");
   const [busy, setBusy] = useState<string | null>(null);
   const [exporting, setExporting] = useState(false);
@@ -134,7 +147,7 @@ export function AdminDashboard({ initialRows }: { initialRows: RegistrationRow[]
   // mà RLS đang TẮT — khoá ở client là lộ toàn bộ PII của 500 mẹ. Xem spec
   // 2026-07-16-admin-export-popup-poll-design.md.
   useEffect(() => {
-    if (stopped) return;
+    if (stopped || tab !== "su-kien") return;
     const id = setInterval(() => {
       // Bỏ nhịp SỚM khi đang ghi hoặc tab ẩn: chỉ để đỡ tốn một lượt gọi API
       // vô ích, KHÔNG phải điều kiện bắt buộc cho tính đúng đắn. Guard chống
@@ -148,7 +161,7 @@ export function AdminDashboard({ initialRows }: { initialRows: RegistrationRow[]
       void refresh().catch(() => {});
     }, 5000);
     return () => clearInterval(id);
-  }, [refresh, stopped]);
+  }, [refresh, stopped, tab]);
 
   async function update(id: string, checkedIn: boolean, checkedInAt: string | null) {
     setBusy(id);
@@ -198,7 +211,7 @@ export function AdminDashboard({ initialRows }: { initialRows: RegistrationRow[]
       const res = await fetch("/api/admin/export", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ids: filtered.map((r) => r.id) }),
+        body: JSON.stringify({ loai: "su-kien", ids: filtered.map((r) => r.id) }),
       });
       if (!res.ok) {
         setExportError("Xuất file thất bại");
@@ -237,116 +250,154 @@ export function AdminDashboard({ initialRows }: { initialRows: RegistrationRow[]
     <main className="flex-1 bg-cream">
       <div className="mx-auto max-w-6xl px-4 py-8">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <h1 className="text-2xl font-extrabold text-ink">Check-in — Mama Ơi Day</h1>
-            <p className="mt-1 text-sm text-ink-faded">
-              Đã check-in: <strong className="text-success">{checkedInCount}</strong> / {rows.length}
-            </p>
-          </div>
-          <div className="flex gap-2">
-            <button
-              onClick={exportXlsx}
-              disabled={exporting || filtered.length === 0}
-              className="rounded-full border border-line bg-white px-5 py-2.5 text-sm font-semibold text-ink hover:bg-primary-faded-hover disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {exporting ? "Đang xuất..." : `Xuất Excel (${filtered.length})`}
-            </button>
-            <button
-              onClick={() => {
-                // Bấm tay (manual: true): được fetch lại tối đa
-                // MAX_MANUAL_REFRESH_RETRIES lần nếu đụng ghi chen vào; hết lượt
-                // mà vẫn dính thì BỎ ÁP — poll nền lấy lại trong ≤5s, còn áp thì
-                // sẽ thấy hàng nhảy ngược. Tự bắt lỗi mạng vì khác poll nền, đây
-                // là yêu cầu chủ động, không được nuốt thành unhandled rejection.
-                void refresh({ manual: true }).catch(() => {});
-              }}
-              className="rounded-full border border-line bg-white px-5 py-2.5 text-sm font-semibold text-ink hover:bg-primary-faded-hover"
-            >
-              Làm mới
-            </button>
-            <button
-              onClick={logout}
-              className="rounded-full border border-line bg-white px-5 py-2.5 text-sm font-semibold text-ink-faded hover:bg-primary-faded-hover"
-            >
-              Đăng xuất
-            </button>
-          </div>
+          <h1 className="text-2xl font-extrabold text-ink">Mama Ơi — Admin</h1>
+          <button
+            onClick={logout}
+            className="rounded-full border border-line bg-white px-5 py-2.5 text-sm font-semibold text-ink-faded hover:bg-primary-faded-hover"
+          >
+            Đăng xuất
+          </button>
         </div>
 
-        <input
-          value={q}
-          onChange={(e) => setQ(e.target.value)}
-          placeholder="Tìm theo tên, SĐT hoặc mã..."
-          className="mt-6 w-full rounded-xl border border-line bg-white px-4 py-3 text-base text-ink placeholder:text-ink-placeholder focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary sm:max-w-md"
-        />
-        {exportError && (
-          <p role="alert" className="mt-3 text-sm text-danger">
-            {exportError}
-          </p>
-        )}
+        {/* Hai nguồn đăng ký hoàn toàn khác nhau: mẹ giữ chỗ sự kiện (có mã
+            check-in) và mẹ chờ app ra mắt (chỉ email). Gộp một bảng thì quá
+            nửa số cột bỏ trống. */}
+        <div role="tablist" aria-label="Nguồn đăng ký" className="mt-6 flex gap-2">
+          {(
+            [
+              { id: "su-kien", label: "Sự kiện", count: rows.length },
+              { id: "waitlist", label: "Waitlist app", count: waitlistCount },
+            ] as const
+          ).map((t) => (
+            <button
+              key={t.id}
+              role="tab"
+              aria-selected={tab === t.id}
+              onClick={() => setTab(t.id)}
+              className={`rounded-full px-5 py-2.5 text-sm font-semibold transition-colors ${
+                tab === t.id
+                  ? "bg-primary text-white"
+                  : "border border-line bg-white text-ink-faded hover:bg-primary-faded-hover"
+              }`}
+            >
+              {t.label} ({t.count})
+            </button>
+          ))}
+        </div>
 
-        <div className="mt-4 overflow-x-auto rounded-2xl border border-line bg-white">
-          <table className="w-full min-w-[760px] text-left text-sm">
-            <thead className="border-b border-line text-ink-faded">
-              <tr>
-                <th className="px-4 py-3 font-semibold">Họ tên</th>
-                <th className="px-4 py-3 font-semibold">SĐT</th>
-                <th className="px-4 py-3 font-semibold">Tỉnh/Thành</th>
-                <th className="px-4 py-3 font-semibold">Tình trạng</th>
-                <th className="px-4 py-3 font-semibold">Chồng</th>
-                <th className="px-4 py-3 font-semibold">Check-in</th>
-                <th className="px-4 py-3 font-semibold">Giờ check-in</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filtered.map((r) => (
-                <tr key={r.id} className="border-b border-line/60 last:border-0">
-                  <td className="px-4 py-3">
-                    <button
-                      onClick={() => setOpenId(r.id)}
-                      className="cursor-pointer text-left hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded"
-                    >
-                      <div className="font-semibold text-ink">{r.ho_ten}</div>
-                      <div className="text-xs text-ink-faded">{r.checkin_code}</div>
-                    </button>
-                  </td>
-                  <td className="px-4 py-3 text-ink">{r.sdt}</td>
-                  <td className="px-4 py-3 text-ink">{r.tinh_thanh}</td>
-                  <td className="px-4 py-3 text-ink">
-                    {r.trang_thai === "mang_thai"
-                      ? "Mang thai"
-                      : `Đã sinh${r.be_thang_tuoi != null ? ` · ${r.be_thang_tuoi}th` : ""}`}
-                  </td>
-                  <td className="px-4 py-3 text-ink">{r.di_cung_chong ? "Có" : "—"}</td>
-                  <td className="px-4 py-3">
-                    <button
-                      onClick={() => toggle(r)}
-                      disabled={busy === r.id}
-                      className={`rounded-full px-4 py-1.5 text-xs font-bold transition-colors disabled:opacity-50 ${
-                        r.checked_in
-                          ? "bg-success text-white"
-                          : "border border-line bg-white text-ink-faded hover:bg-primary-faded"
-                      }`}
-                    >
-                      {r.checked_in ? "✓ Đã check-in" : "Tick check-in"}
-                    </button>
-                  </td>
-                  <td className="px-4 py-3">
-                    {r.checked_in ? (
-                      <input
-                        type="datetime-local"
-                        defaultValue={r.checked_in_at ? isoToVNLocalInput(r.checked_in_at) : ""}
-                        onChange={(e) => editTime(r, e.target.value)}
-                        className="rounded-lg border border-line bg-white px-2 py-1 text-xs text-ink focus:outline-none focus:ring-2 focus:ring-primary"
-                      />
-                    ) : (
-                      <span className="text-xs text-ink-placeholder">—</span>
-                    )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+        <div className="mt-6">
+          {tab === "waitlist" ? (
+            <WaitlistTab initialRows={initialWaitlist} onCountChange={setWaitlistCount} />
+          ) : (
+            <>
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <p className="text-sm text-ink-faded">
+                  Đã check-in: <strong className="text-success">{checkedInCount}</strong> /{" "}
+                  {rows.length}
+                </p>
+                <div className="flex gap-2">
+                  <button
+                    onClick={exportXlsx}
+                    disabled={exporting || filtered.length === 0}
+                    className="rounded-full border border-line bg-white px-5 py-2.5 text-sm font-semibold text-ink hover:bg-primary-faded-hover disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {exporting ? "Đang xuất..." : `Xuất Excel (${filtered.length})`}
+                  </button>
+                  <button
+                    onClick={() => {
+                      // Bấm tay (manual: true): được fetch lại tối đa
+                      // MAX_MANUAL_REFRESH_RETRIES lần nếu đụng ghi chen vào; hết lượt
+                      // mà vẫn dính thì BỎ ÁP — poll nền lấy lại trong ≤5s, còn áp thì
+                      // sẽ thấy hàng nhảy ngược. Tự bắt lỗi mạng vì khác poll nền, đây
+                      // là yêu cầu chủ động, không được nuốt thành unhandled rejection.
+                      void refresh({ manual: true }).catch(() => {});
+                    }}
+                    className="rounded-full border border-line bg-white px-5 py-2.5 text-sm font-semibold text-ink hover:bg-primary-faded-hover"
+                  >
+                    Làm mới
+                  </button>
+                </div>
+              </div>
+
+              <input
+                value={q}
+                onChange={(e) => setQ(e.target.value)}
+                placeholder="Tìm theo tên, SĐT hoặc mã..."
+                className="mt-6 w-full rounded-xl border border-line bg-white px-4 py-3 text-base text-ink placeholder:text-ink-placeholder focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary sm:max-w-md"
+              />
+              {exportError && (
+                <p role="alert" className="mt-3 text-sm text-danger">
+                  {exportError}
+                </p>
+              )}
+
+              <div className="mt-4 overflow-x-auto rounded-2xl border border-line bg-white">
+                <table className="w-full min-w-[760px] text-left text-sm">
+                  <thead className="border-b border-line text-ink-faded">
+                    <tr>
+                      <th className="px-4 py-3 font-semibold">Họ tên</th>
+                      <th className="px-4 py-3 font-semibold">SĐT</th>
+                      <th className="px-4 py-3 font-semibold">Thành phố</th>
+                      <th className="px-4 py-3 font-semibold">Tình trạng</th>
+                      <th className="px-4 py-3 font-semibold">Chồng</th>
+                      <th className="px-4 py-3 font-semibold">Check-in</th>
+                      <th className="px-4 py-3 font-semibold">Giờ check-in</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filtered.map((r) => (
+                      <tr key={r.id} className="border-b border-line/60 last:border-0">
+                        <td className="px-4 py-3">
+                          <button
+                            onClick={() => setOpenId(r.id)}
+                            className="cursor-pointer text-left hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded"
+                          >
+                            <div className="font-semibold text-ink">{r.ho_ten}</div>
+                            <div className="text-xs text-ink-faded">{r.checkin_code}</div>
+                          </button>
+                        </td>
+                        <td className="px-4 py-3 text-ink">{r.sdt}</td>
+                        <td className="px-4 py-3 text-ink">{r.tinh_thanh}</td>
+                        <td className="px-4 py-3 text-ink">
+                          {r.trang_thai === "mang_thai"
+                            ? `Mang thai${r.thai_tuan != null ? ` · ${r.thai_tuan} tuần` : ""}`
+                            : `Đã sinh${r.be_thang_tuoi != null ? ` · ${r.be_thang_tuoi}th` : ""}`}
+                        </td>
+                        <td className="px-4 py-3 text-ink">{r.di_cung_chong ? "Có" : "—"}</td>
+                        <td className="px-4 py-3">
+                          <button
+                            onClick={() => toggle(r)}
+                            disabled={busy === r.id}
+                            className={`rounded-full px-4 py-1.5 text-xs font-bold transition-colors disabled:opacity-50 ${
+                              r.checked_in
+                                ? "bg-success text-white"
+                                : "border border-line bg-white text-ink-faded hover:bg-primary-faded"
+                            }`}
+                          >
+                            {r.checked_in ? "✓ Đã check-in" : "Tick check-in"}
+                          </button>
+                        </td>
+                        <td className="px-4 py-3">
+                          {r.checked_in ? (
+                            <input
+                              type="datetime-local"
+                              defaultValue={
+                                r.checked_in_at ? isoToVNLocalInput(r.checked_in_at) : ""
+                              }
+                              onChange={(e) => editTime(r, e.target.value)}
+                              className="rounded-lg border border-line bg-white px-2 py-1 text-xs text-ink focus:outline-none focus:ring-2 focus:ring-primary"
+                            />
+                          ) : (
+                            <span className="text-xs text-ink-placeholder">—</span>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </>
+          )}
         </div>
       </div>
       {openRow && (

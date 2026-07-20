@@ -1,5 +1,5 @@
 import { rowsToSheet } from "./export-rows";
-import type { RegistrationRow } from "./supabase";
+import { registrationToRow, type RegistrationRow } from "./supabase";
 import type { Registration } from "./validation";
 
 /**
@@ -38,31 +38,23 @@ export function sheetsConfigured(): boolean {
 }
 
 /**
- * Dựng RegistrationRow rồi đưa qua `rowsToSheet` để lấy đúng 15 ô theo đúng
+ * Dựng RegistrationRow rồi đưa qua `rowsToSheet` để lấy đúng 22 ô theo đúng
  * thứ tự cột của file .xlsx. Không tự viết mảng cột ở đây: thứ tự cột chỉ được
  * phép tồn tại một chỗ, là HEADERS trong export-rows.ts.
+ *
+ * Dùng lại `registrationToRow` của supabase.ts cho phần ánh xạ nghiệp vụ
+ * (nhánh mang thai/đã sinh, suy ra tháng tuổi) — hai bản sao của cùng phép ánh
+ * xạ sẽ trôi lệch nhau, và Sheet là nơi sai lệch đó khó bị phát hiện nhất.
  */
 export function registrationToSheetRow(
   data: Registration,
   code: string,
 ): (string | number)[] {
+  const now = new Date();
   const row: RegistrationRow = {
     id: "", // rowsToSheet không xuất id — giá trị này không bao giờ được đọc
-    created_at: new Date().toISOString(), // giờ server, lệch vài ms so với Postgres
-    checkin_code: code,
-    ho_ten: data.hoTen,
-    email: data.email,
-    sdt: data.sdt,
-    facebook: data.facebook || null,
-    tinh_thanh: data.tinhThanh,
-    trang_thai: data.trangThai,
-    be_thang_tuoi:
-      data.trangThai === "da_sinh" && data.beThangTuoi !== undefined
-        ? data.beThangTuoi
-        : null,
-    di_cung_chong: data.diCungChong,
-    dong_y_nhan_tin: data.dongYNhanTin,
-    nguon: data.nguon,
+    created_at: now.toISOString(), // giờ server, lệch vài ms so với Postgres
+    ...registrationToRow(data, code, now),
     // Sheet chụp lại thời điểm đăng ký, không theo dõi check-in.
     checked_in: false,
     checked_in_at: null,

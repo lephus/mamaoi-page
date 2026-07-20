@@ -274,7 +274,7 @@ export default function EventPage() {
         </section>
 
         {/* ---------- Giới thiệu ---------- */}
-        <section className="flex min-h-[100dvh] flex-col justify-center px-5 py-16">
+        <section className="px-5 py-14 sm:py-16">
           <div className="mx-auto grid max-w-5xl items-center gap-12 md:grid-cols-2 md:gap-16">
             {/* App welcome screen, framed as a phone on a soft sage glow. */}
             <Reveal className="relative flex justify-center">
@@ -329,7 +329,7 @@ export default function EventPage() {
         </section>
 
         {/* ---------- Gặp bé Gạo ---------- */}
-        <section className="flex min-h-[100dvh] flex-col justify-center px-5 py-16">
+        <section className="px-5 py-14 sm:py-16">
           <Reveal className="mx-auto grid max-w-5xl items-center gap-10 rounded-3xl bg-primary-faded p-8 sm:p-12 md:grid-cols-2 md:gap-16">
             {/* Cột hình — speech bubble đặt PHÍA TRÊN bé Gạo, không overlay lên các
                 trang trí đã "nướng" sẵn ở 4 góc của PNG (mặt trời, mây, cầu vồng, hoa). */}
@@ -396,7 +396,7 @@ export default function EventPage() {
         </section>
 
         {/* ---------- Điểm nổi bật ---------- */}
-        <section className="flex min-h-[100dvh] flex-col justify-center px-5 py-16">
+        <section className="px-5 py-14 sm:py-16">
           <div className="mx-auto max-w-6xl">
             <SectionHeading eyebrow="Điểm nổi bật" title="Điều gì đang chờ mẹ?" />
             <ul className="mt-12 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
@@ -437,7 +437,7 @@ export default function EventPage() {
         </section>
 
         {/* ---------- Diễn giả ---------- */}
-        <section className="flex min-h-[100dvh] flex-col justify-center px-5 py-16">
+        <section className="px-5 py-14 sm:py-16">
           <div className="mx-auto max-w-6xl">
             <SectionHeading eyebrow="Diễn giả" title="Học từ những người đi trước">
               Chuyên gia đầu ngành về mẹ và bé, cùng những người mẹ truyền cảm hứng.
@@ -530,7 +530,7 @@ export default function EventPage() {
         </section>
 
         {/* ---------- CTA #2 (middle) — scarcity, shaped like an event ticket ---------- */}
-        <section className="flex min-h-[100dvh] flex-col justify-center px-5 py-16">
+        <section className="px-5 py-14 sm:py-16">
           <Reveal className="mx-auto w-full max-w-2xl">
             <div className="relative overflow-hidden rounded-[2rem] bg-white shadow-[var(--shadow-card)]">
               {/* Soft blush + sage blobs so the card reads as a scene, not a flat box. */}
@@ -595,7 +595,7 @@ export default function EventPage() {
         </section>
 
         {/* ---------- Timeline ---------- */}
-        <section className="flex min-h-[100dvh] flex-col justify-center px-5 py-16">
+        <section className="px-5 py-14 sm:py-16">
           <div className="mx-auto w-full max-w-4xl">
             <SectionHeading eyebrow="Timeline" title="Một ngày của mẹ và bé" />
 
@@ -681,7 +681,7 @@ export default function EventPage() {
         </section>
 
         {/* ---------- Quà tặng ---------- */}
-        <section className="flex min-h-[100dvh] flex-col justify-center px-5 py-16">
+        <section className="px-5 py-14 sm:py-16">
           <div className="mx-auto max-w-6xl">
             <SectionHeading eyebrow="Quà tặng" title="Mẹ về tay không? Không có đâu.">
               Hàng ngàn phần quà từ các thương hiệu mẹ và bé uy tín.
@@ -723,7 +723,7 @@ export default function EventPage() {
         </section>
 
         {/* ---------- Đối tác ---------- */}
-        <section className="flex min-h-[100dvh] flex-col justify-center px-5 py-16">
+        <section className="px-5 py-14 sm:py-16">
           <div className="mx-auto max-w-6xl">
             <SectionHeading eyebrow="Đối tác" title="Đồng hành cùng Mama Ơi" />
             {/*
@@ -753,7 +753,7 @@ export default function EventPage() {
         </section>
 
         {/* ---------- FAQ ---------- */}
-        <section className="flex min-h-[100dvh] flex-col justify-center px-5 py-16">
+        <section className="px-5 py-14 sm:py-16">
           <div className="mx-auto w-full max-w-3xl">
             <SectionHeading eyebrow="FAQ" title="Mẹ đang thắc mắc?" />
             <div className="mt-12 space-y-3">
@@ -781,7 +781,7 @@ export default function EventPage() {
         {/* ---------- Form đăng ký — CTA #3 (bottom) ---------- */}
         <section
           id="dang-ky"
-          className="flex min-h-[100dvh] scroll-mt-20 flex-col justify-center px-5 py-16"
+          className="scroll-mt-20 px-5 py-14 sm:py-16"
         >
           <div className="mx-auto max-w-2xl">
             <SectionHeading eyebrow="Đăng ký" title="Giữ chỗ cho mẹ và bé">

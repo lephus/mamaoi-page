@@ -1,5 +1,5 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
-import type { Registration } from "./validation";
+import { thangTuoiTuNgaySinh, type Registration } from "./validation";
 
 /**
  * Structured registration store + check-in ledger. Brevo remains the source of
@@ -17,13 +17,36 @@ export type RegistrationRow = {
   facebook: string | null;
   tinh_thanh: string;
   trang_thai: "mang_thai" | "da_sinh";
+  thai_tuan: number | null;
+  ten_be: string | null;
+  /** Dạng "YYYY-MM-DD" — cột `date` của Postgres, không có phần giờ. */
+  be_ngay_sinh: string | null;
+  be_gioi_tinh: "nam" | "nu" | null;
+  /** DẪN XUẤT từ be_ngay_sinh lúc ghi. Nguồn sự thật là be_ngay_sinh. */
   be_thang_tuoi: number | null;
+  chu_de_quan_tam: string[];
+  /** Ô tự do kèm `chu_de_quan_tam`. Null khi mẹ để trống. */
+  chu_de_khac: string | null;
+  /**
+   * Nullable vì migration `add column` không đặt được NOT NULL trên bảng đã có
+   * dòng test. Mọi lượt ghi MỚI luôn có giá trị (schema bắt buộc); null chỉ có
+   * thể là dòng test cũ trước migration. Chỗ hiển thị phải tự phòng.
+   */
+  nguon_biet_den: string | null;
   di_cung_chong: boolean;
   dong_y_nhan_tin: boolean;
   nguon: string;
   checked_in: boolean;
   checked_in_at: string | null;
   checked_in_source: "qr" | "admin" | null;
+};
+
+/** Waitlist app: chỉ email + consent. Không có gì để check-in. */
+export type WaitlistRow = {
+  id: string;
+  created_at: string;
+  email: string;
+  dong_y_nhan_tin: boolean;
 };
 
 let client: SupabaseClient | null = null;
@@ -43,33 +66,54 @@ export function supabaseConfigured(): boolean {
 }
 
 /**
- * Upsert on email so a mother who submits the form twice stays ONE row. The
- * check-in columns are deliberately omitted from the payload: on conflict,
- * Postgres only updates the columns provided, so an existing check-in is never
- * wiped by a later re-submission.
+ * Registration → hàng DB. Tách khỏi `insertRegistration` để test được toàn bộ
+ * phép ánh xạ mà không cần Supabase thật.
+ *
+ * `moc` truyền vào chứ không gọi `new Date()` bên trong — test cần mốc cố định,
+ * và `be_thang_tuoi` phải là ảnh chụp tại thời điểm đăng ký.
+ *
+ * Không trả về cột check-in (checked_in / checked_in_at / checked_in_source):
+ * `insertRegistration` upsert nguyên payload của hàm này, và upsert chỉ update
+ * cột được gửi — nếu hàm này trả kèm cột check-in, một lần submit lại sẽ xoá
+ * mất check-in đã ghi trước đó.
+ */
+export function registrationToRow(
+  data: Registration,
+  code: string,
+  moc: Date,
+): Omit<RegistrationRow, "id" | "created_at" | "checked_in" | "checked_in_at" | "checked_in_source"> {
+  const daSinh = data.trangThai === "da_sinh";
+  return {
+    checkin_code: code,
+    ho_ten: data.hoTen,
+    email: data.email,
+    sdt: data.sdt,
+    facebook: data.facebook || null,
+    tinh_thanh: data.tinhThanh,
+    trang_thai: data.trangThai,
+    thai_tuan: data.trangThai === "mang_thai" ? data.thaiTuan : null,
+    ten_be: daSinh ? data.tenBe : null,
+    // toISOString rồi cắt 10 ký tự: cột Postgres là `date`, gửi kèm giờ sẽ bị
+    // ép kiểu theo múi giờ server và có thể lùi một ngày.
+    be_ngay_sinh: daSinh ? data.beNgaySinh.toISOString().slice(0, 10) : null,
+    be_gioi_tinh: daSinh ? data.beGioiTinh : null,
+    be_thang_tuoi: daSinh ? thangTuoiTuNgaySinh(data.beNgaySinh, moc) : null,
+    chu_de_quan_tam: data.chuDeQuanTam,
+    chu_de_khac: data.chuDeKhac || null,
+    nguon_biet_den: data.nguonBietDen,
+    di_cung_chong: data.diCungChong,
+    dong_y_nhan_tin: data.dongYNhanTin,
+    nguon: data.nguon,
+  };
+}
+
+/**
+ * Upsert on email so a mother who submits the form twice stays ONE row.
  */
 export async function insertRegistration(data: Registration, code: string): Promise<void> {
   const { error } = await db()
     .from("registrations")
-    .upsert(
-      {
-        checkin_code: code,
-        ho_ten: data.hoTen,
-        email: data.email,
-        sdt: data.sdt,
-        facebook: data.facebook || null,
-        tinh_thanh: data.tinhThanh,
-        trang_thai: data.trangThai,
-        be_thang_tuoi:
-          data.trangThai === "da_sinh" && data.beThangTuoi !== undefined
-            ? data.beThangTuoi
-            : null,
-        di_cung_chong: data.diCungChong,
-        dong_y_nhan_tin: data.dongYNhanTin,
-        nguon: data.nguon,
-      },
-      { onConflict: "email" },
-    );
+    .upsert(registrationToRow(data, code, new Date()), { onConflict: "email" });
   if (error) throw new Error(`Supabase insert failed: ${error.message}`);
 }
 
@@ -142,4 +186,24 @@ export async function adminUpdateCheckin(
     .single();
   if (error) throw new Error(`Supabase adminUpdateCheckin failed: ${error.message}`);
   return data as RegistrationRow;
+}
+
+/**
+ * Upsert theo email: mẹ bấm "Nhận tin" hai lần vẫn là MỘT dòng, khớp cách
+ * `insertRegistration` xử lý trùng.
+ */
+export async function insertWaitlist(email: string, dongY: boolean): Promise<void> {
+  const { error } = await db()
+    .from("waitlist")
+    .upsert({ email, dong_y_nhan_tin: dongY }, { onConflict: "email" });
+  if (error) throw new Error(`Supabase waitlist insert failed: ${error.message}`);
+}
+
+export async function listWaitlist(): Promise<WaitlistRow[]> {
+  const { data, error } = await db()
+    .from("waitlist")
+    .select("*")
+    .order("created_at", { ascending: true });
+  if (error) throw new Error(`Supabase waitlist list failed: ${error.message}`);
+  return (data as WaitlistRow[]) ?? [];
 }
