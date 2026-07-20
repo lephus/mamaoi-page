@@ -67,3 +67,22 @@ Nếu lệch: bỏ dòng ghi chú, hoặc đổi neo sang A2, hoặc pad dòng g
 ## Minor bổ sung sau review Task 3
 - `console.error` log email của người đăng ký vào server log. Plan-mandated, và
   khối Supabase ngay trên đã log y hệt từ trước. Nếu sửa thì sửa cả ba chỗ.
+
+## Final whole-branch review (2026-07-20) — xong
+Verdict: Changes needed → đã sửa ở commit 4e554b1.
+- [Important, ĐÃ SỬA] Không có maxDuration. Nhánh Sheets cold-start có thể tốn
+  40s timeout xếp chồng lên Brevo + nodemailer (cả hai không có timeout nào).
+  Vercel giết hàm → mẹ nhận 504 dù ĐÃ đăng ký thành công trong Brevo — đúng
+  cái mà bất biến "Nothing below may fail her request" tồn tại để chặn.
+  Sửa: TIMEOUT_MS 10_000 → 5_000, và `export const maxDuration = 60` ở route.
+- [Minor, ĐÃ SỬA] Không gì chặn regression về USER_ENTERED. Sửa: export
+  VALUE_INPUT_OPTION rồi assert trong test. Đã chứng minh test không pass suông
+  (lật sang USER_ENTERED → test đỏ).
+- Các Minor còn lại: reviewer kết luận SHIP hết (xem mục Minor bên trên).
+- Reviewer BÁC BỎ rủi ro "dữ liệu dồn vào cột A" mà ledger lo: values:append ghi
+  sang phải từ cột trái nhất của table, không cắt theo bề rộng table. Rủi ro
+  thật là neo DÒNG, không phải cột. Vẫn phải nhìn Sheet thật để chắc.
+
+## Trạng thái cuối
+tsc sạch, lint sạch, 30/30 test, `npm run build` thành công.
+CHƯA CHỨNG MINH: toàn bộ đường mạng Google. User tự submit trên trình duyệt.
