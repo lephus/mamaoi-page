@@ -122,7 +122,7 @@ export const registrationSchema = z.discriminatedUnion("trangThai", [
     ...chungFields,
     trangThai: z.literal("mang_thai"),
     thaiTuan: z.coerce
-      .number()
+      .number({ error: "Số tuần thai không hợp lệ" })
       .int("Số tuần phải là số nguyên")
       .min(1, "Số tuần thai không hợp lệ")
       .max(42, "Số tuần thai không hợp lệ"),
@@ -131,7 +131,7 @@ export const registrationSchema = z.discriminatedUnion("trangThai", [
     ...chungFields,
     trangThai: z.literal("da_sinh"),
     tenBe: z
-      .string()
+      .string({ error: "Vui lòng nhập tên bé" })
       .trim()
       .min(1, "Vui lòng nhập tên bé")
       .max(80, "Tên bé không được vượt quá 80 ký tự"),

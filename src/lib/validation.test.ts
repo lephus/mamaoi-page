@@ -84,6 +84,15 @@ describe("registrationSchema — nhánh mang_thai", () => {
     expect(registrationSchema.safeParse(thieu).success).toBe(false);
   });
 
+  it("thiếu thaiTuan báo đúng nguyên văn chuỗi khách duyệt, không phải chuỗi Zod tiếng Anh", () => {
+    const { thaiTuan, ...thieu } = mangThai;
+    const r = registrationSchema.safeParse(thieu);
+    expect(r.success).toBe(false);
+    expect(r.error?.issues.find((i) => i.path[0] === "thaiTuan")?.message).toBe(
+      "Số tuần thai không hợp lệ",
+    );
+  });
+
   it("thaiTuan 0 hoặc 43 đều lỗi", () => {
     expect(registrationSchema.safeParse({ ...mangThai, thaiTuan: 0 }).success).toBe(false);
     expect(registrationSchema.safeParse({ ...mangThai, thaiTuan: 43 }).success).toBe(false);
@@ -109,6 +118,15 @@ describe("registrationSchema — nhánh da_sinh", () => {
   it("thiếu tenBe thì lỗi", () => {
     const { tenBe, ...thieu } = daSinh;
     expect(registrationSchema.safeParse(thieu).success).toBe(false);
+  });
+
+  it("thiếu tenBe báo đúng nguyên văn chuỗi khách duyệt, không phải chuỗi Zod tiếng Anh", () => {
+    const { tenBe, ...thieu } = daSinh;
+    const r = registrationSchema.safeParse(thieu);
+    expect(r.success).toBe(false);
+    expect(r.error?.issues.find((i) => i.path[0] === "tenBe")?.message).toBe(
+      "Vui lòng nhập tên bé",
+    );
   });
 
   it("giới tính lạ thì lỗi", () => {
