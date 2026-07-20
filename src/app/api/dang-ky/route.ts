@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { sendEventEmail, sendWaitlistEmail, upsertContact } from "@/lib/brevo";
+import { appendRegistration, sheetsConfigured } from "@/lib/sheets";
 import { insertRegistration, supabaseConfigured } from "@/lib/supabase";
 import {
   generateCheckinCode,
@@ -105,6 +106,18 @@ export async function POST(request: Request) {
     } catch (err) {
       console.error("[dang-ky] Supabase insert failed:", data.email, err);
       warnings.push("supabase");
+    }
+  }
+
+  // Bản mirror thô cho ops. Cố tình KHÔNG phụ thuộc kết quả của Supabase ở
+  // trên: lý do tồn tại của bản sao thứ hai là dự phòng, nối tiếp thì Supabase
+  // sập sẽ kéo mất luôn dòng Sheet, đúng lúc nó có giá trị nhất.
+  if (isRegistration(data) && sheetsConfigured()) {
+    try {
+      await appendRegistration(data, checkinCode!);
+    } catch (err) {
+      console.error("[dang-ky] Sheets append failed:", data.email, err);
+      warnings.push("sheets");
     }
   }
 
