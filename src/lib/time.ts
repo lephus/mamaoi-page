@@ -19,3 +19,14 @@ export function isoToVNLocalInput(iso: string): string {
 export function vnLocalInputToISO(local: string): string {
   return new Date(`${local}:00+07:00`).toISOString();
 }
+
+/**
+ * "2026-01-20" → "20/01/2026". Nhận thẳng chuỗi của cột `date` Postgres, KHÔNG
+ * đi qua `new Date()`: parse "2026-01-20" ra Date rồi format theo múi giờ sẽ
+ * lùi một ngày ở mọi múi giờ âm. Cắt chuỗi là phép biến đổi duy nhất đúng ở đây.
+ */
+export function ngayVN(iso: string | null): string {
+  if (!iso) return "";
+  const [y, m, d] = iso.split("-");
+  return `${d}/${m}/${y}`;
+}
