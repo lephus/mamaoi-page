@@ -51,11 +51,6 @@ export function Footer() {
                 {SITE.email}
               </a>
             </li>
-            <li>
-              <a href={`tel:${SITE.phone}`} className="hover:text-primary">
-                {SITE.phone}
-              </a>
-            </li>
           </ul>
         </div>
       </div>

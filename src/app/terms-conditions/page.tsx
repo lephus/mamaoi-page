@@ -139,8 +139,7 @@ export default function TermsPage() {
           tiên giải quyết thông qua thương lượng.
         </p>
         <p>
-          Mọi câu hỏi, mẹ liên hệ <a href={`mailto:${SITE.email}`}>{SITE.email}</a> hoặc{" "}
-          <a href={`tel:${SITE.phone}`}>{SITE.phone}</a>.
+          Mọi câu hỏi, mẹ liên hệ <a href={`mailto:${SITE.email}`}>{SITE.email}</a>.
         </p>
       </LegalSection>
     </LegalPage>
