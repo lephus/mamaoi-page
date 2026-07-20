@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
-import { rowsToSheet } from "@/lib/export-rows";
-import type { RegistrationRow } from "@/lib/supabase";
+import { rowsToSheet, waitlistToSheet } from "@/lib/export-rows";
+import type { RegistrationRow, WaitlistRow } from "@/lib/supabase";
 
 const base: RegistrationRow = {
   id: "uuid-1",
@@ -164,5 +164,47 @@ describe("rowsToSheet", () => {
   it("chu_de_khac null thành chuỗi rỗng, không phải chữ 'null'", () => {
     const { headers, rows } = rowsToSheet([{ ...base, chu_de_khac: null }]);
     expect(rows[0][headers.indexOf("Chủ đề khác")]).toBe("");
+  });
+});
+
+const waitlistBase: WaitlistRow = {
+  id: "uuid-w1",
+  created_at: "2026-07-20T03:00:00.000Z", // 10:00 20/07/2026 giờ VN
+  email: "cho-doi@example.com",
+  dong_y_nhan_tin: true,
+};
+
+describe("waitlistToSheet", () => {
+  it("có đúng 3 cột và không lộ id", () => {
+    const { headers } = waitlistToSheet([waitlistBase]);
+    expect(headers).toEqual(["Email", "Đồng ý nhận tin", "Thời điểm đăng ký"]);
+  });
+
+  it("mỗi dòng dữ liệu khớp số cột của header", () => {
+    const { headers, rows } = waitlistToSheet([waitlistBase]);
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toHaveLength(headers.length);
+  });
+
+  // Đọc giá trị THEO VỊ TRÍ CỦA NHÃN — cùng lý do với bảng đăng ký sự kiện:
+  // `toContain` không phân biệt được cột đúng với cột hoán đổi.
+  it("các cột nằm đúng vị trí: Email, Đồng ý nhận tin, Thời điểm đăng ký", () => {
+    const { headers, rows } = waitlistToSheet([waitlistBase]);
+    expect(rows[0][headers.indexOf("Email")]).toBe("cho-doi@example.com");
+    expect(rows[0][headers.indexOf("Đồng ý nhận tin")]).toBe("Có");
+    expect(rows[0][headers.indexOf("Thời điểm đăng ký")]).toBe("10:00 20/07/2026");
+  });
+
+  it("chưa đồng ý nhận tin thành dấu gạch", () => {
+    const { headers, rows } = waitlistToSheet([
+      { ...waitlistBase, dong_y_nhan_tin: false },
+    ]);
+    expect(rows[0][headers.indexOf("Đồng ý nhận tin")]).toBe("—");
+  });
+
+  it("danh sách rỗng vẫn trả header, không có dòng dữ liệu", () => {
+    const { headers, rows } = waitlistToSheet([]);
+    expect(headers).toHaveLength(3);
+    expect(rows).toEqual([]);
   });
 });
