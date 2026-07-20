@@ -1,7 +1,7 @@
 import nodemailer, { type Transporter } from "nodemailer";
 import QRCode from "qrcode";
-import { EVENT, SITE } from "./constants";
-import { isRegistration, type Submission } from "./validation";
+import { chuDeLabel, EVENT, SITE } from "./constants";
+import { isRegistration, thangTuoiTuNgaySinh, type Submission } from "./validation";
 import { checkinUrl } from "./checkin-url";
 
 const BREVO_API = "https://api.brevo.com/v3";
@@ -73,12 +73,21 @@ export async function upsertContact(
     attributes.TINH_THANH = data.tinhThanh;
     attributes.TRANG_THAI = data.trangThai;
     attributes.DI_CUNG_CHONG = data.diCungChong;
+    attributes.NGUON_BIET_DEN = data.nguonBietDen;
+    attributes.CHU_DE_QUAN_TAM = data.chuDeQuanTam.map(chuDeLabel).join(", ");
     if (data.facebook) attributes.FACEBOOK = data.facebook;
     if (checkinCode) attributes.MA_CHECKIN = checkinCode;
-    // Sent only when it means something. A 0 here would read as "newborn"
-    // rather than "not applicable — she is still pregnant".
-    if (data.trangThai === "da_sinh" && data.beThangTuoi !== undefined) {
-      attributes.BE_THANG_TUOI = data.beThangTuoi;
+
+    // Mỗi nhánh chỉ gửi attribute của CHÍNH nó. `updateEnabled: true` nghĩa là
+    // gửi chuỗi rỗng sẽ XOÁ TRẮNG giá trị cũ — một mẹ đăng ký lần hai sau khi
+    // sinh sẽ mất sạch thông tin bé nếu ta gửi "" cho nhánh không áp dụng.
+    if (data.trangThai === "mang_thai") {
+      attributes.THAI_TUAN = data.thaiTuan;
+    } else {
+      attributes.TEN_BE = data.tenBe;
+      attributes.BE_NGAY_SINH = data.beNgaySinh.toISOString().slice(0, 10);
+      attributes.BE_GIOI_TINH = data.beGioiTinh;
+      attributes.BE_THANG_TUOI = thangTuoiTuNgaySinh(data.beNgaySinh, new Date());
     }
   }
 
