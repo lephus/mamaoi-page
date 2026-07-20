@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { rowsToSheet } from "@/lib/export-rows";
-import { registrationToSheetRow } from "@/lib/sheets";
+import { registrationToSheetRow, VALUE_INPUT_OPTION } from "@/lib/sheets";
 import type { Registration } from "@/lib/validation";
 
 const HEADERS = rowsToSheet([]).headers;
@@ -65,5 +65,16 @@ describe("registrationToSheetRow", () => {
     expect(at(row, "Đã check-in")).toBe("—");
     expect(at(row, "Giờ check-in")).toBe("");
     expect(at(row, "Nguồn check-in")).toBe("");
+  });
+});
+
+describe("VALUE_INPUT_OPTION", () => {
+  // Không mock fetch/crypto.subtle — chỉ khẳng định hằng số dùng để append.
+  // RAW bắt buộc vì hai lý do: (1) chặn injection công thức từ họ tên nhập
+  // tự do (vd. "=IMPORTXML(...)" sẽ CHẠY nếu dùng USER_ENTERED), và (2) giữ
+  // số 0 đầu của số điện thoại Việt Nam ("0901234567" không bị rụng số 0).
+  it("phải là RAW để chặn injection công thức và giữ số 0 đầu SĐT, không được là USER_ENTERED", () => {
+    expect(VALUE_INPUT_OPTION).toBe("RAW");
+    expect(VALUE_INPUT_OPTION).not.toBe("USER_ENTERED");
   });
 });

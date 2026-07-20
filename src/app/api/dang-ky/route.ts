@@ -10,6 +10,11 @@ import {
   type Submission,
 } from "@/lib/validation";
 
+// Bốn dịch vụ ngoài chạy tuần tự trong request này — Brevo, SMTP, Supabase,
+// Sheets — cùng chia sẻ ngân sách thời gian dưới đây. Bị nền tảng giết giữa
+// chừng sẽ báo thất bại cho một lượt đăng ký thực ra đã thành công.
+export const maxDuration = 60;
+
 /** Verify the reCAPTCHA token. Skipped entirely when no secret is configured. */
 async function passesRecaptcha(token: string | undefined): Promise<boolean> {
   const secret = process.env.RECAPTCHA_SECRET_KEY;

@@ -17,8 +17,13 @@ const TOKEN_URL = "https://oauth2.googleapis.com/token";
 const SHEETS_API = "https://sheets.googleapis.com/v4/spreadsheets";
 /** Không kèm tên sheet → trỏ sheet đầu tiên, khỏi phải encode tên tiếng Việt. */
 const RANGE = "A1";
-/** Mẹ đang chờ response — một cuộc gọi Google treo không được giữ hàm serverless. */
-const TIMEOUT_MS = 10_000;
+/**
+ * Có tới bốn lượt gọi Google tuần tự trong một lượt đăng ký (token, đọc A1,
+ * append header, append dòng), tất cả cộng dồn vào thời gian mẹ đang chờ —
+ * ngay sau Brevo và email. Mỗi cuộc gọi phải giữ ngân sách nhỏ để tổng thời
+ * gian còn nằm trong maxDuration của route, không phải để "đủ thời gian".
+ */
+const TIMEOUT_MS = 5_000;
 
 /** Dòng đầu Sheet: append thuần tuý có thể đếm ra số sai, phải nói rõ ngay đó. */
 const NOTE =
@@ -157,10 +162,13 @@ async function sheetsFetch(path: string, init?: RequestInit): Promise<Response> 
  *  1. Họ tên là ô nhập tự do từ internet công cộng. USER_ENTERED sẽ CHẠY một
  *     giá trị dạng `=IMPORTXML(...)` như công thức.
  *  2. USER_ENTERED biến "0901234567" thành số 901234567, mất số 0 đầu.
+ * Export hằng số này để test khẳng định được giá trị mà không cần mock fetch.
  */
+export const VALUE_INPUT_OPTION = "RAW";
+
 async function appendValues(values: (string | number)[][]): Promise<void> {
   await sheetsFetch(
-    `/values/${RANGE}:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS`,
+    `/values/${RANGE}:append?valueInputOption=${VALUE_INPUT_OPTION}&insertDataOption=INSERT_ROWS`,
     { method: "POST", body: JSON.stringify({ values }) },
   );
 }
