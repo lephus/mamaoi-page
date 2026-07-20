@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { CHU_DE_VALUES, NGUON_VALUES } from "./constants";
 
 /**
  * Two entry points, two shapes.
@@ -12,6 +13,10 @@ import { z } from "zod";
  * event schema — padding the missing fields with placeholders would write
  * fake phone numbers and fake baby ages into the CRM, which is worse than
  * having no data at all.
+ *
+ * `registrationSchema` là discriminated union: mẹ đang mang thai và mẹ đã sinh
+ * mang hai bộ field khác nhau, và schema — chứ không phải UI — là nơi quyết
+ * định điều đó. Ẩn field ở form chỉ là phép lịch sự; đây mới là hàng rào.
  */
 
 const VN_PHONE = /^(0|\+84)[1-9]\d{8}$/;
@@ -40,54 +45,83 @@ export function thangTuoiTuNgaySinh(ngaySinh: Date, moc: Date): number {
  */
 const honeypot = z.string().optional();
 
-export const registrationSchema = z
-  .object({
-    nguon: z.literal("su-kien"),
+const GIOI_HAN_THANG_TUOI = 36;
 
-    hoTen: z
+/** Field có ở CẢ hai nhánh. Nhánh nào cũng spread khối này vào. */
+const chungFields = {
+  nguon: z.literal("su-kien"),
+
+  hoTen: z
+    .string()
+    .trim()
+    .min(2, "Vui lòng nhập họ tên")
+    .max(80, "Họ tên không được vượt quá 80 ký tự"),
+
+  email: z.email("Email không hợp lệ").trim().toLowerCase(),
+
+  sdt: z.string().trim().regex(VN_PHONE, "Số điện thoại không hợp lệ"),
+
+  facebook: z.string().trim().max(200).optional().or(z.literal("")),
+
+  tinhThanh: z.string().trim().min(1, "Vui lòng chọn tỉnh/thành"),
+
+  chuDeQuanTam: z
+    .array(z.enum(CHU_DE_VALUES as [string, ...string[]]))
+    .min(1, "Vui lòng chọn ít nhất một chủ đề"),
+
+  nguonBietDen: z.enum(NGUON_VALUES as [string, ...string[]], {
+    message: "Vui lòng cho biết mẹ biết đến chương trình từ đâu",
+  }),
+
+  diCungChong: z.boolean().default(false),
+
+  /**
+   * Unticked by default and required. The brief makes consent govern every
+   * downstream use of the data, so it is a gate — not a nudge.
+   */
+  dongYNhanTin: z.literal(true, {
+    message: "Vui lòng đồng ý để hoàn tất đăng ký",
+  }),
+
+  recaptchaToken: z.string().optional(),
+  website: honeypot,
+};
+
+/**
+ * Union phân biệt theo `trangThai`. Đây là chỗ ép quy tắc "mang thai thì không
+ * khai thông tin bé" — không phụ thuộc UI ẩn/hiện. Zod CẮT BỎ key lạ, nên field
+ * của nhánh kia lọt lên cũng không bao giờ tới được DB.
+ */
+export const registrationSchema = z.discriminatedUnion("trangThai", [
+  z.object({
+    ...chungFields,
+    trangThai: z.literal("mang_thai"),
+    thaiTuan: z.coerce
+      .number()
+      .int("Số tuần phải là số nguyên")
+      .min(1, "Số tuần thai không hợp lệ")
+      .max(42, "Số tuần thai không hợp lệ"),
+  }),
+  z.object({
+    ...chungFields,
+    trangThai: z.literal("da_sinh"),
+    tenBe: z
       .string()
       .trim()
-      .min(2, "Vui lòng nhập họ tên")
-      .max(80, "Họ tên không được vượt quá 80 ký tự"),
-
-    email: z.email("Email không hợp lệ").trim().toLowerCase(),
-
-    sdt: z.string().trim().regex(VN_PHONE, "Số điện thoại không hợp lệ"),
-
-    facebook: z.string().trim().max(200).optional().or(z.literal("")),
-
-    tinhThanh: z.string().trim().min(1, "Vui lòng chọn tỉnh/thành"),
-
-    /** The segmentation axis: expecting, or already has a baby. */
-    trangThai: z.enum(["mang_thai", "da_sinh"], {
-      message: "Vui lòng chọn tình trạng hiện tại",
+      .min(1, "Vui lòng nhập tên bé")
+      .max(80, "Tên bé không được vượt quá 80 ký tự"),
+    beNgaySinh: z.coerce
+      .date({ message: "Vui lòng chọn ngày sinh của bé" })
+      .refine((d) => d <= new Date(), "Ngày sinh không thể ở tương lai")
+      .refine(
+        (d) => thangTuoiTuNgaySinh(d, new Date()) <= GIOI_HAN_THANG_TUOI,
+        `Bé trên ${GIOI_HAN_THANG_TUOI} tháng nằm ngoài phạm vi sự kiện`,
+      ),
+    beGioiTinh: z.enum(["nam", "nu"], {
+      message: "Vui lòng chọn giới tính của bé",
     }),
-
-    /** Months. Only meaningful when trangThai === "da_sinh". */
-    beThangTuoi: z.coerce
-      .number()
-      .int("Số tháng phải là số nguyên")
-      .min(0, "Số tháng không hợp lệ")
-      .max(36, "Bé trên 36 tháng nằm ngoài phạm vi sự kiện")
-      .optional(),
-
-    diCungChong: z.boolean().default(false),
-
-    /**
-     * Unticked by default and required. The brief makes consent govern every
-     * downstream use of the data, so it is a gate — not a nudge.
-     */
-    dongYNhanTin: z.literal(true, {
-      message: "Vui lòng đồng ý nhận thông tin để hoàn tất đăng ký",
-    }),
-
-    recaptchaToken: z.string().optional(),
-    website: honeypot,
-  })
-  .refine((d) => d.trangThai !== "da_sinh" || d.beThangTuoi !== undefined, {
-    message: "Vui lòng cho biết bé được bao nhiêu tháng",
-    path: ["beThangTuoi"],
-  });
+  }),
+]);
 
 export const waitlistSchema = z.object({
   nguon: z.literal("app-waitlist"),
