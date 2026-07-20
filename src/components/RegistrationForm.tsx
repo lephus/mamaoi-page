@@ -54,6 +54,88 @@ function Nhom({ title, children }: { title: string; children: React.ReactNode })
   );
 }
 
+type LuaChon = { readonly value: string; readonly label: string };
+
+/**
+ * Nhóm lựa chọn dùng `<fieldset>`/`<legend>` chứ không `<label htmlFor>`: một
+ * label chỉ trỏ được vào MỘT input, nên với nhóm 9 checkbox thì 8 cái còn lại
+ * mất hẳn ngữ cảnh khi mẹ dùng trình đọc màn hình.
+ *
+ * `role="alert"` giữ nguyên trên thông báo lỗi — hàm cuộn-tới-lỗi-đầu-tiên
+ * trong `onSubmit` bắt theo selector đó.
+ */
+function NhomChon({
+  legend,
+  error,
+  required,
+  luoi,
+  children,
+}: {
+  legend: string;
+  error?: string;
+  required?: boolean;
+  luoi: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <fieldset aria-invalid={error ? true : undefined}>
+      <legend className="mb-1.5 block text-sm font-semibold text-ink">
+        {legend}
+        {required && <span className="ml-0.5 text-danger">*</span>}
+      </legend>
+      <div className={`grid ${luoi}`}>{children}</div>
+      {error && (
+        <p role="alert" className="mt-1.5 text-sm text-danger">
+          {error}
+        </p>
+      )}
+    </fieldset>
+  );
+}
+
+/** Một hàng lựa chọn. Cả hàng là vùng chạm — mẹ bấm một tay, không nhắm ô nhỏ. */
+function HangChon({
+  id,
+  type,
+  name,
+  value,
+  checked,
+  onChange,
+  label,
+  nhanManh,
+}: {
+  id: string;
+  type: "radio" | "checkbox";
+  name?: string;
+  value: string;
+  checked?: boolean;
+  onChange?: () => void;
+  label: string;
+  nhanManh?: boolean;
+}) {
+  return (
+    <label
+      htmlFor={id}
+      className="flex cursor-pointer items-center gap-3 rounded-xl border border-line bg-white px-4 py-3 transition-colors hover:bg-primary-faded-hover has-checked:border-primary has-checked:bg-primary-faded"
+    >
+      <input
+        id={id}
+        type={type}
+        name={name}
+        value={value}
+        checked={checked}
+        onChange={onChange}
+        className={`h-5 w-5 shrink-0 cursor-pointer accent-primary ${
+          type === "checkbox" ? "rounded" : ""
+        }`}
+      />
+      <span className={`text-base text-ink ${nhanManh ? "font-medium" : ""}`}>
+        {label}
+      </span>
+    </label>
+  );
+}
+
 export function RegistrationForm() {
   const router = useRouter();
   const [errors, setErrors] = useState<Errors>({});
@@ -191,42 +273,31 @@ export function RegistrationForm() {
 
       {/* The segmentation question. Radio rather than a dropdown: two options,
           both worth seeing at a glance, and one tap instead of two. */}
-      <Field
-        label="Tình trạng hiện tại"
-        htmlFor="trangThai-mang_thai"
+      <NhomChon
+        legend="Tình trạng hiện tại"
         error={errors.trangThai}
         required
+        luoi="gap-3 sm:grid-cols-2"
       >
-        <div className="grid gap-3 sm:grid-cols-2">
-          {(
-            [
-              { value: "mang_thai", label: "Đang mang thai" },
-              { value: "da_sinh", label: "Bé đã chào đời" },
-            ] as const
-          ).map((opt) => (
-            <label
-              key={opt.value}
-              htmlFor={`trangThai-${opt.value}`}
-              className={`flex cursor-pointer items-center gap-3 rounded-xl border px-4 py-3 transition-colors ${
-                trangThai === opt.value
-                  ? "border-primary bg-primary-faded"
-                  : "border-line bg-white hover:bg-primary-faded-hover"
-              }`}
-            >
-              <input
-                id={`trangThai-${opt.value}`}
-                type="radio"
-                name="trangThai"
-                value={opt.value}
-                checked={trangThai === opt.value}
-                onChange={() => setTrangThai(opt.value)}
-                className="h-4 w-4 cursor-pointer accent-[#f08f8c]"
-              />
-              <span className="text-base font-medium text-ink">{opt.label}</span>
-            </label>
-          ))}
-        </div>
-      </Field>
+        {(
+          [
+            { value: "mang_thai", label: "Đang mang thai" },
+            { value: "da_sinh", label: "Bé đã chào đời" },
+          ] as const
+        ).map((opt) => (
+          <HangChon
+            key={opt.value}
+            id={`trangThai-${opt.value}`}
+            type="radio"
+            name="trangThai"
+            value={opt.value}
+            checked={trangThai === opt.value}
+            onChange={() => setTrangThai(opt.value)}
+            label={opt.label}
+            nhanManh
+          />
+        ))}
+      </NhomChon>
 
       {/* Hiện đúng nhánh đang chọn. Mẹ mang thai không bao giờ bị hỏi ngày sinh
           của bé chưa chào đời; mẹ đã sinh không bị hỏi tuần thai. Schema phía
@@ -281,69 +352,51 @@ export function RegistrationForm() {
               />
             </Field>
 
-            <Field
-              label="Giới tính"
-              htmlFor="beGioiTinh-nam"
+            <NhomChon
+              legend="Giới tính"
               error={errors.beGioiTinh}
               required
+              luoi="grid-cols-2 gap-3"
             >
-              <div className="grid grid-cols-2 gap-3">
-                {(
-                  [
-                    { value: "nam", label: "Bé trai" },
-                    { value: "nu", label: "Bé gái" },
-                  ] as const
-                ).map((opt) => (
-                  <label
-                    key={opt.value}
-                    htmlFor={`beGioiTinh-${opt.value}`}
-                    className="flex cursor-pointer items-center gap-2.5 rounded-xl border border-line bg-white px-4 py-3 transition-colors hover:bg-primary-faded-hover has-checked:border-primary has-checked:bg-primary-faded"
-                  >
-                    <input
-                      id={`beGioiTinh-${opt.value}`}
-                      type="radio"
-                      name="beGioiTinh"
-                      value={opt.value}
-                      className="h-4 w-4 cursor-pointer accent-[#f08f8c]"
-                    />
-                    <span className="text-base font-medium text-ink">{opt.label}</span>
-                  </label>
-                ))}
-              </div>
-            </Field>
+              {(
+                [
+                  { value: "nam", label: "Bé trai" },
+                  { value: "nu", label: "Bé gái" },
+                ] as const
+              ).map((opt) => (
+                <HangChon
+                  key={opt.value}
+                  id={`beGioiTinh-${opt.value}`}
+                  type="radio"
+                  name="beGioiTinh"
+                  value={opt.value}
+                  label={opt.label}
+                  nhanManh
+                />
+              ))}
+            </NhomChon>
           </div>
         </Nhom>
       )}
 
-      <Field
-        label="Chủ đề mẹ quan tâm"
-        htmlFor="chuDe-thai_ky"
+      <NhomChon
+        legend="Chủ đề mẹ quan tâm"
         error={errors.chuDeQuanTam}
         required
+        luoi="gap-3 sm:grid-cols-2"
       >
-        <div className="grid gap-2.5 sm:grid-cols-2">
-          {CHU_DE_QUAN_TAM.map((c) => (
-            <label
-              key={c.value}
-              htmlFor={`chuDe-${c.value}`}
-              className={`flex cursor-pointer items-center gap-2.5 rounded-xl border px-4 py-2.5 transition-colors ${
-                chuDe.includes(c.value)
-                  ? "border-primary bg-primary-faded"
-                  : "border-line bg-white hover:bg-primary-faded-hover"
-              }`}
-            >
-              <input
-                id={`chuDe-${c.value}`}
-                type="checkbox"
-                checked={chuDe.includes(c.value)}
-                onChange={() => toggleChuDe(c.value)}
-                className="h-[18px] w-[18px] shrink-0 cursor-pointer rounded accent-[#f08f8c]"
-              />
-              <span className="text-base text-ink">{c.label}</span>
-            </label>
-          ))}
-        </div>
-      </Field>
+        {CHU_DE_QUAN_TAM.map((c: LuaChon) => (
+          <HangChon
+            key={c.value}
+            id={`chuDe-${c.value}`}
+            type="checkbox"
+            value={c.value}
+            checked={chuDe.includes(c.value)}
+            onChange={() => toggleChuDe(c.value)}
+            label={c.label}
+          />
+        ))}
+      </NhomChon>
 
       <Field label="Chủ đề khác (nếu có)" htmlFor="chuDeKhac" error={errors.chuDeKhac}>
         <input
@@ -357,37 +410,29 @@ export function RegistrationForm() {
         />
       </Field>
 
-      <Field
-        label="Mẹ biết đến chương trình từ đâu?"
-        htmlFor="nguonBietDen-facebook"
+      <NhomChon
+        legend="Mẹ biết đến chương trình từ đâu?"
         error={errors.nguonBietDen}
         required
+        luoi="gap-3 sm:grid-cols-3"
       >
-        <div className="grid gap-2.5 sm:grid-cols-3">
-          {NGUON_BIET_DEN.map((n) => (
-            <label
-              key={n.value}
-              htmlFor={`nguonBietDen-${n.value}`}
-              className="flex cursor-pointer items-center gap-2.5 rounded-xl border border-line bg-white px-4 py-2.5 transition-colors hover:bg-primary-faded-hover has-checked:border-primary has-checked:bg-primary-faded"
-            >
-              <input
-                id={`nguonBietDen-${n.value}`}
-                type="radio"
-                name="nguonBietDen"
-                value={n.value}
-                className="h-4 w-4 shrink-0 cursor-pointer accent-[#f08f8c]"
-              />
-              <span className="text-base text-ink">{n.label}</span>
-            </label>
-          ))}
-        </div>
-      </Field>
+        {NGUON_BIET_DEN.map((n: LuaChon) => (
+          <HangChon
+            key={n.value}
+            id={`nguonBietDen-${n.value}`}
+            type="radio"
+            name="nguonBietDen"
+            value={n.value}
+            label={n.label}
+          />
+        ))}
+      </NhomChon>
 
       <label className="flex cursor-pointer items-center gap-3">
         <input
           type="checkbox"
           name="diCungChong"
-          className="h-5 w-5 cursor-pointer rounded accent-[#f08f8c]"
+          className="h-5 w-5 cursor-pointer rounded accent-primary"
         />
         <span className="text-base text-ink">Tôi đi cùng chồng</span>
       </label>
@@ -397,7 +442,7 @@ export function RegistrationForm() {
           <input
             type="checkbox"
             name="dongYNhanTin"
-            className="mt-0.5 h-5 w-5 shrink-0 cursor-pointer rounded accent-[#f08f8c]"
+            className="mt-0.5 h-5 w-5 shrink-0 cursor-pointer rounded accent-primary"
             {...err("dongYNhanTin")}
           />
           <span className="text-sm leading-5 text-ink-faded">
