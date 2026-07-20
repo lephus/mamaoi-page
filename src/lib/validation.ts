@@ -47,26 +47,43 @@ const honeypot = z.string().optional();
 
 const GIOI_HAN_THANG_TUOI = 36;
 
-/** Field có ở CẢ hai nhánh. Nhánh nào cũng spread khối này vào. */
+/**
+ * Field có ở CẢ hai nhánh. Nhánh nào cũng spread khối này vào.
+ *
+ * `hoTen`/`sdt`/`tinhThanh`/`chuDeQuanTam` truyền `{ error }` ngay ở constructor
+ * kiểu gốc (không chỉ ở `.min()`/`.regex()`): khi key bị bỏ hoàn toàn khỏi
+ * payload, Zod fail ở bước kiểm KIỂU trước khi tới các check trên, nên message
+ * của `.min()`/`.regex()` không bao giờ chạy tới — mẹ sẽ thấy chuỗi mặc định
+ * tiếng Anh của Zod thay vì tiếng Việt. `email`/`nguonBietDen`/`dongYNhanTin`
+ * bên dưới đã theo đúng mẫu này từ trước.
+ */
 const chungFields = {
   nguon: z.literal("su-kien"),
 
   hoTen: z
-    .string()
+    .string({ error: "Vui lòng nhập họ tên" })
     .trim()
     .min(2, "Vui lòng nhập họ tên")
     .max(80, "Họ tên không được vượt quá 80 ký tự"),
 
   email: z.email("Email không hợp lệ").trim().toLowerCase(),
 
-  sdt: z.string().trim().regex(VN_PHONE, "Số điện thoại không hợp lệ"),
+  sdt: z
+    .string({ error: "Số điện thoại không hợp lệ" })
+    .trim()
+    .regex(VN_PHONE, "Số điện thoại không hợp lệ"),
 
   facebook: z.string().trim().max(200).optional().or(z.literal("")),
 
-  tinhThanh: z.string().trim().min(1, "Vui lòng chọn thành phố"),
+  tinhThanh: z
+    .string({ error: "Vui lòng chọn thành phố" })
+    .trim()
+    .min(1, "Vui lòng chọn thành phố"),
 
   chuDeQuanTam: z
-    .array(z.enum(CHU_DE_VALUES as [string, ...string[]]))
+    .array(z.enum(CHU_DE_VALUES as [string, ...string[]]), {
+      error: "Vui lòng chọn ít nhất một chủ đề",
+    })
     .min(1, "Vui lòng chọn ít nhất một chủ đề"),
 
   nguonBietDen: z.enum(NGUON_VALUES as [string, ...string[]], {
@@ -86,6 +103,14 @@ const chungFields = {
   recaptchaToken: z.string().optional(),
   website: honeypot,
 };
+
+/**
+ * Chỉ field chung, không có nhánh. Route dùng khối này để BỔ SUNG lỗi khi union
+ * short-circuit: Zod bỏ qua toàn bộ field chung ngay khi `trangThai` sai, nên
+ * mẹ bỏ trống "Tình trạng hiện tại" sẽ chỉ thấy đúng một lỗi rồi phải submit
+ * lần hai mới biết còn thiếu email, SĐT, thành phố, chủ đề...
+ */
+export const chungSchema = z.object(chungFields);
 
 /**
  * Union phân biệt theo `trangThai`. Đây là chỗ ép quy tắc "mang thai thì không
@@ -121,7 +146,9 @@ export const registrationSchema = z.discriminatedUnion("trangThai", [
       message: "Vui lòng chọn giới tính của bé",
     }),
   }),
-]);
+  ],
+  { error: "Vui lòng chọn tình trạng hiện tại" },
+);
 
 export const waitlistSchema = z.object({
   nguon: z.literal("app-waitlist"),

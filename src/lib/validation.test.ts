@@ -176,3 +176,20 @@ describe("registrationSchema — field chung", () => {
     );
   });
 });
+
+describe("discriminator trangThai", () => {
+  it("bỏ trống trangThai trả message tiếng Việt, không phải chuỗi Zod tiếng Anh", () => {
+    const r = registrationSchema.safeParse({ nguon: "su-kien", trangThai: null });
+    expect(r.success).toBe(false);
+    const issue = r.error!.issues.find((i) => i.path[0] === "trangThai");
+    expect(issue?.message).toBe("Vui lòng chọn tình trạng hiện tại");
+  });
+
+  it("không lọt chuỗi tiếng Anh nào ra ngoài", () => {
+    const r = registrationSchema.safeParse({});
+    expect(r.success).toBe(false);
+    for (const i of r.error!.issues) {
+      expect(i.message).not.toMatch(/Invalid discriminator/);
+    }
+  });
+});

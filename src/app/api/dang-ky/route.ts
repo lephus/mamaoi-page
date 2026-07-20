@@ -3,6 +3,7 @@ import { sendEventEmail, sendWaitlistEmail, upsertContact } from "@/lib/brevo";
 import { appendRegistration, sheetsConfigured } from "@/lib/sheets";
 import { insertRegistration, insertWaitlist, supabaseConfigured } from "@/lib/supabase";
 import {
+  chungSchema,
   generateCheckinCode,
   isRegistration,
   registrationSchema,
@@ -47,10 +48,22 @@ export async function POST(request: Request) {
 
   if (!parsed.success) {
     const fieldErrors: Record<string, string> = {};
-    for (const issue of parsed.error.issues) {
-      const key = String(issue.path[0] ?? "form");
-      fieldErrors[key] ??= issue.message;
+    const thu = (issues: { path: PropertyKey[]; message: string }[]) => {
+      for (const issue of issues) {
+        const key = String(issue.path[0] ?? "form");
+        fieldErrors[key] ??= issue.message;
+      }
+    };
+    thu(parsed.error.issues);
+
+    // Union short-circuit ở discriminator: khi `trangThai` sai, Zod KHÔNG kiểm
+    // một field chung nào. Chạy thêm schema field chung để mẹ thấy hết chỗ
+    // thiếu trong MỘT lần, thay vì sửa một lỗi rồi submit lại mới lộ ra sáu.
+    if (schema === registrationSchema) {
+      const chung = chungSchema.safeParse(body);
+      if (!chung.success) thu(chung.error.issues);
     }
+
     return NextResponse.json(
       { error: "Vui lòng kiểm tra lại thông tin", fieldErrors },
       { status: 400 },
