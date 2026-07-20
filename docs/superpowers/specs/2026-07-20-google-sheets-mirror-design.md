@@ -1,7 +1,7 @@
 # Mirror đăng ký sự kiện sang Google Sheets — Design
 
 **Ngày:** 2026-07-20
-**Trạng thái:** chờ user duyệt
+**Trạng thái:** đã duyệt (user duyệt 2026-07-20)
 **Nền tảng:** tiếp nối `2026-07-16-checkin-qr-admin-design.md` và `2026-07-16-admin-export-popup-poll-design.md` (đã merge `main`)
 
 ## Mục tiêu
