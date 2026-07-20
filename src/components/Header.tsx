@@ -7,10 +7,7 @@ import { useEffect, useState } from "react";
 import { ButtonLink } from "./ui/Button";
 
 const NAV = [
-  // TẠM ẨN: trang chủ `/` đang bị redirect sang /su-kien (xem next.config.ts),
-  // để lại link này thì bấm vào chỉ đi lòng vòng. Bỏ comment để hiện lại,
-  // cùng lúc với việc mở lại trang chủ.
-  // { href: "/", label: "Ứng dụng" },
+  { href: "/", label: "Ứng dụng" },
   { href: "/su-kien", label: "Mama Ơi Day" },
 ];
 
