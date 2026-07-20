@@ -60,3 +60,10 @@ Google `values:append` neo ở range A1. Dòng ghi chú là 1 ô, dòng header l
 Chưa rõ Google nhận diện "table" là A1:O2 hay chỉ cột A. Nếu nhận nhầm, dữ liệu
 sẽ dồn vào cột A thay vì trải A3:O3. PHẢI nhìn Sheet thật mới biết.
 Nếu lệch: bỏ dòng ghi chú, hoặc đổi neo sang A2, hoặc pad dòng ghi chú đủ 15 ô.
+- Task 3: complete (commit 3ca6092..b25083c, review clean — spec ✅, quality Approved)
+      SCOPE THU HẸP: Step 4-6 (xác minh thật) KHÔNG chạy — user tự submit trên
+      trình duyệt, vì submit thật tạo contact Brevo thật + gửi email thật.
+
+## Minor bổ sung sau review Task 3
+- `console.error` log email của người đăng ký vào server log. Plan-mandated, và
+  khối Supabase ngay trên đã log y hệt từ trước. Nếu sửa thì sửa cả ba chỗ.
