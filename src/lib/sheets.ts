@@ -134,10 +134,12 @@ async function accessToken(): Promise<string> {
 }
 
 async function sheetsFetch(path: string, init?: RequestInit): Promise<Response> {
+  // Không caller nào tự set header — bỏ hẳn việc "forward" `init?.headers`: object-spread
+  // một HeadersInit ra {} khi đó là Headers hoặc mảng entry, nên trước đây nó im lặng
+  // không làm gì. Authorization và Content-Type dưới đây luôn là header duy nhất được gửi.
   const res = await fetch(`${SHEETS_API}/${process.env.GOOGLE_SHEET_ID}${path}`, {
     ...init,
     headers: {
-      ...init?.headers,
       Authorization: `Bearer ${await accessToken()}`,
       "Content-Type": "application/json",
     },
@@ -163,18 +165,26 @@ async function appendValues(values: (string | number)[][]): Promise<void> {
   );
 }
 
-// Một lần cho mỗi tiến trình server, không phải mỗi lượt đăng ký.
-let headerEnsured = false;
+// Một lần cho mỗi tiến trình server, không phải mỗi lượt đăng ký. Giữ chính
+// promise (không phải cờ boolean) để hai đăng ký đồng thời trên cùng một
+// instance cùng chờ một lần kiểm tra, thay vì cùng ghi header hai lần.
+let headerPromise: Promise<void> | null = null;
 
 async function ensureHeader(): Promise<void> {
-  if (headerEnsured) return;
+  // Lỗi thì xoá promise đã nhớ để lần sau thử lại, không nhớ luôn thất bại.
+  headerPromise ??= doEnsureHeader().catch((err) => {
+    headerPromise = null;
+    throw err;
+  });
+  return headerPromise;
+}
+
+async function doEnsureHeader(): Promise<void> {
   const res = await sheetsFetch(`/values/${RANGE}`);
   const data = (await res.json()) as { values?: string[][] };
   if (!data.values || data.values.length === 0) {
     await appendValues([[NOTE], rowsToSheet([]).headers]);
   }
-  // Chỉ đặt cờ khi đã chắc chắn — lỗi ở trên ném ra trước, lần sau thử lại.
-  headerEnsured = true;
 }
 
 export async function appendRegistration(
