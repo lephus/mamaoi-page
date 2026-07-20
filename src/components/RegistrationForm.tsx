@@ -5,6 +5,7 @@ import { useState } from "react";
 import { CHU_DE_QUAN_TAM, NGUON_BIET_DEN, PROVINCES } from "@/lib/constants";
 import { buildRegistrationPayload } from "@/lib/registration-payload";
 import { trackRegistration } from "@/lib/analytics";
+import { homNayVN } from "@/lib/time";
 import { Button } from "./ui/Button";
 
 type Errors = Record<string, string>;
@@ -296,7 +297,13 @@ export function RegistrationForm() {
             name="trangThai"
             value={opt.value}
             checked={trangThai === opt.value}
-            onChange={() => setTrangThai(opt.value)}
+            onChange={() => {
+              setTrangThai(opt.value);
+              // Đổi nhánh là unmount field của nhánh cũ. Không xoá lỗi ở đây
+              // thì field vừa remount rỗng vẫn đeo thông báo đỏ của lần
+              // submit trước — mẹ thấy lỗi cho ô mình chưa hề chạm tới.
+              setErrors({});
+            }}
             label={opt.label}
             nhanManh
           />
@@ -350,7 +357,7 @@ export function RegistrationForm() {
                 id="beNgaySinh"
                 name="beNgaySinh"
                 type="date"
-                max={new Date().toISOString().slice(0, 10)}
+                max={homNayVN()}
                 className={`${inputBase} ${ring("beNgaySinh")}`}
                 {...err("beNgaySinh")}
               />

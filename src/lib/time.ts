@@ -30,3 +30,12 @@ export function ngayVN(iso: string | null): string {
   const [y, m, d] = iso.split("-");
   return `${d}/${m}/${y}`;
 }
+
+/**
+ * Hôm nay theo giờ VN, dạng "YYYY-MM-DD" — cho thuộc tính `max` của input date.
+ * `new Date().toISOString()` là UTC: từ 00:00 tới 07:00 giờ VN nó trả về hôm
+ * qua, chặn mất mẹ có bé sinh đúng hôm nay.
+ */
+export function homNayVN(): string {
+  return new Date(Date.now() + VN_OFFSET_MS).toISOString().slice(0, 10);
+}

@@ -1,5 +1,11 @@
-import { describe, it, expect } from "vitest";
-import { formatCheckinTime, isoToVNLocalInput, vnLocalInputToISO, ngayVN } from "@/lib/time";
+import { describe, it, expect, afterEach, vi } from "vitest";
+import {
+  formatCheckinTime,
+  isoToVNLocalInput,
+  vnLocalInputToISO,
+  ngayVN,
+  homNayVN,
+} from "@/lib/time";
 
 describe("time (giờ VN, UTC+7)", () => {
   it("formatCheckinTime: ISO → HH:MM DD/MM/YYYY", () => {
@@ -38,5 +44,22 @@ describe("ngayVN", () => {
   // múi giờ âm sẽ ra 19/01. Test này khoá việc KHÔNG đi qua Date.
   it("không lùi ngày do múi giờ", () => {
     expect(ngayVN("2026-01-01")).toBe("01/01/2026");
+  });
+});
+
+describe("homNayVN", () => {
+  afterEach(() => vi.useRealTimers());
+
+  it("trả hôm nay theo giờ VN, không phải UTC", () => {
+    vi.useFakeTimers();
+    // 2026-07-20T23:30Z = 06:30 sáng 21/07 giờ VN. UTC nói 20, VN nói 21.
+    vi.setSystemTime(new Date("2026-07-20T23:30:00Z"));
+    expect(homNayVN()).toBe("2026-07-21");
+  });
+
+  it("không nhảy ngày ở giữa trưa VN", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-07-20T05:00:00Z")); // 12:00 trưa VN
+    expect(homNayVN()).toBe("2026-07-20");
   });
 });
