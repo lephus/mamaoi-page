@@ -93,6 +93,19 @@ function NhomChon({
   );
 }
 
+/**
+ * Union thay vì object phẳng: chặn 3 lỗi mà `tsc`/lint/build đều lọt qua, và
+ * repo này không có hạ tầng test component React nào bắt được chúng ở runtime
+ * — radio thiếu `name` chung (mỗi ô tự chọn độc lập, FormData vô nghĩa),
+ * `checked` không kèm `onChange` (input chỉ đọc + warning), và checkbox bị
+ * gán `name` dù state React đã là nguồn sự thật duy nhất (chủ đề quan tâm).
+ */
+type HangChonProps = { id: string; value: string; label: string; nhanManh?: boolean } & (
+  | { type: "radio"; name: string; checked?: undefined; onChange?: undefined }
+  | { type: "radio"; name: string; checked: boolean; onChange: () => void }
+  | { type: "checkbox"; name?: never; checked: boolean; onChange: () => void }
+);
+
 /** Một hàng lựa chọn. Cả hàng là vùng chạm — mẹ bấm một tay, không nhắm ô nhỏ. */
 function HangChon({
   id,
@@ -103,16 +116,7 @@ function HangChon({
   onChange,
   label,
   nhanManh,
-}: {
-  id: string;
-  type: "radio" | "checkbox";
-  name?: string;
-  value: string;
-  checked?: boolean;
-  onChange?: () => void;
-  label: string;
-  nhanManh?: boolean;
-}) {
+}: HangChonProps) {
   return (
     <label
       htmlFor={id}
