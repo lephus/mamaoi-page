@@ -10,6 +10,15 @@ import { Button } from "./ui/Button";
 
 type Errors = Record<string, string>;
 
+/** Field chỉ tồn tại tuỳ nhánh `trangThai` — xem comment tại onChange bên dưới. */
+const BRANCH_ERROR_KEYS = [
+  "trangThai",
+  "thaiTuan",
+  "tenBe",
+  "beNgaySinh",
+  "beGioiTinh",
+] as const;
+
 const inputBase =
   "w-full rounded-xl border bg-white px-4 py-3 text-base text-ink " +
   "placeholder:text-ink-placeholder transition-colors " +
@@ -249,6 +258,7 @@ export function RegistrationForm() {
             <input
               id="facebook"
               name="facebook"
+              maxLength={200}
               placeholder="Link hoặc tên Facebook"
               className={`${inputBase} ${ring("facebook")}`}
               {...err("facebook")}
@@ -302,7 +312,16 @@ export function RegistrationForm() {
               // Đổi nhánh là unmount field của nhánh cũ. Không xoá lỗi ở đây
               // thì field vừa remount rỗng vẫn đeo thông báo đỏ của lần
               // submit trước — mẹ thấy lỗi cho ô mình chưa hề chạm tới.
-              setErrors({});
+              //
+              // Chỉ xoá đúng các key thuộc nhánh (trangThai + field của cả hai
+              // nhánh con), KHÔNG phải toàn bộ `errors`: xoá sạch sẽ giấu mất
+              // lỗi thật ở field chung (vd. email sai) nếu mẹ đổi nhánh trước
+              // khi sửa nó — lỗi biến mất nhưng field vẫn sai.
+              setErrors((prev) => {
+                const next = { ...prev };
+                for (const k of BRANCH_ERROR_KEYS) delete next[k];
+                return next;
+              });
             }}
             label={opt.label}
             nhanManh
