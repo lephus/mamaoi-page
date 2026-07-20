@@ -8,7 +8,21 @@
 
 Mỗi lượt đăng ký `/su-kien` ("Giữ chỗ cho mẹ và bé") append thêm một dòng vào Google Sheet, **đồng thời** với việc ghi vào Supabase. Ops mở link Sheet là thấy dữ liệu mới nhất, không cần đăng nhập `/admin`.
 
-`CLAUDE.md` đã mô tả luồng này ("Google Sheets — append a mirror row for the ops team") và `.env.local` đã có sẵn `GOOGLE_SHEET_ID` / `GOOGLE_CLIENT_EMAIL` / `GOOGLE_PRIVATE_KEY`, nhưng **code chưa từng được viết**. Spec này lấp đúng khoảng trống đó.
+`CLAUDE.md` đã mô tả luồng này ("Google Sheets — append a mirror row for the ops team") và `.env.local` đã có sẵn `GOOGLE_SHEET_ID` / `GOOGLE_CLIENT_EMAIL` / `GOOGLE_PRIVATE_KEY`.
+
+### Lịch sử: bản Sheets cũ đã bị gỡ, đây là lần dựng lại
+
+`src/lib/sheets.ts` **đã từng tồn tại** và bị xoá có chủ đích ở commit `50d2b34` (16/07/2026, *"refactor: đăng ký ghi Supabase thay Google Sheets, gỡ sheets"*), cùng lúc gỡ dependency `google-auth-library`. Khi đó Supabase được chọn để **thay thế** Sheets, không phải vì Sheets hỏng. Nay user muốn có **cả hai**, nên spec này dựng lại nhánh Sheets — không mâu thuẫn với quyết định cũ, mà mở rộng nó.
+
+Bản dựng lại khác bản cũ ở ba điểm, cả ba đều có lý do:
+
+| | Bản cũ (`dbdd7b4`, đã xoá) | Bản này |
+|---|---|---|
+| Xác thực | `google-auth-library` | Tự ký JWT, 0 dependency (Quyết định 3) |
+| Ghi giá trị | `USER_ENTERED`, chèn dấu `'` vào đầu SĐT để giữ số 0 | `RAW` — giữ số 0 sẵn, **và bịt lỗ formula injection mà bản cũ có** |
+| Cột | 12 cột (`Sheet1!A:L`), gộp cả waitlist vào ô trống | 15 cột khớp file `.xlsx`, chỉ `su-kien` |
+
+**Google Sheet đích hiện hoàn toàn trống** (user xác nhận 2026-07-20), nên không có header 12 cột cũ nào để đụng độ với 15 cột mới.
 
 ## Hiện trạng (đã kiểm tra 2026-07-20)
 
