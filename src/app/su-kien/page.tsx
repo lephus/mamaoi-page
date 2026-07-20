@@ -753,7 +753,7 @@ export default function EventPage() {
           <div className="mx-auto max-w-6xl">
             <SectionHeading
               eyebrow="Quà tặng"
-              title="Mẹ về tay không? Không có đâu."
+              title="Không chỉ là một ngày vui"
             >
               1.000 phần quà cho 500 mẹ — nghĩa là mẹ nào cũng có phần, và
               thường là nhiều hơn một.
