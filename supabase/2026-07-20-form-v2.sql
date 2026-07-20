@@ -25,6 +25,7 @@ alter table registrations
 -- Cố ý KHÔNG ràng buộc giá trị của chu_de_quan_tam: danh sách 9 chủ đề chưa
 -- được khách chốt, và constraint ở đây sẽ phải sửa lockstep với constants.ts
 -- mỗi lần danh sách đổi — quên một bên là đăng ký chết. Zod chặn ở đường ghi.
+
 alter table registrations
   drop constraint if exists registrations_nguon_biet_den_check,
   add  constraint registrations_nguon_biet_den_check

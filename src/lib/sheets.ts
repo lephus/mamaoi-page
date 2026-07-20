@@ -38,7 +38,7 @@ export function sheetsConfigured(): boolean {
 }
 
 /**
- * Dựng RegistrationRow rồi đưa qua `rowsToSheet` để lấy đúng 21 ô theo đúng
+ * Dựng RegistrationRow rồi đưa qua `rowsToSheet` để lấy đúng 22 ô theo đúng
  * thứ tự cột của file .xlsx. Không tự viết mảng cột ở đây: thứ tự cột chỉ được
  * phép tồn tại một chỗ, là HEADERS trong export-rows.ts.
  *
