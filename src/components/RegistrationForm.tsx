@@ -345,6 +345,18 @@ export function RegistrationForm() {
         </div>
       </Field>
 
+      <Field label="Chủ đề khác (nếu có)" htmlFor="chuDeKhac" error={errors.chuDeKhac}>
+        <input
+          id="chuDeKhac"
+          name="chuDeKhac"
+          type="text"
+          maxLength={200}
+          placeholder="Mẹ còn quan tâm điều gì khác không?"
+          className={`${inputBase} ${ring("chuDeKhac")}`}
+          {...err("chuDeKhac")}
+        />
+      </Field>
+
       <Field
         label="Mẹ biết đến chương trình từ đâu?"
         htmlFor="nguonBietDen-facebook"

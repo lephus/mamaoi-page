@@ -25,6 +25,7 @@ export function buildRegistrationPayload(
     tinhThanh: String(fd.get("tinhThanh") ?? ""),
     trangThai: fd.get("trangThai"),
     chuDeQuanTam: chuDe,
+    chuDeKhac: String(fd.get("chuDeKhac") ?? ""),
     nguonBietDen: fd.get("nguonBietDen"),
     diCungChong: fd.get("diCungChong") === "on",
     dongYNhanTin: fd.get("dongYNhanTin") === "on",

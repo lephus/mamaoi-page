@@ -107,4 +107,21 @@ describe("buildRegistrationPayload", () => {
     );
     expect(p.chuDeQuanTam).toEqual(["thai_ky", "ivf"]);
   });
+
+  it("gửi chuDeKhac khi mẹ có điền", () => {
+    const p = buildRegistrationPayload(
+      fd({ ...CHUNG, trangThai: "mang_thai", thaiTuan: "20", chuDeKhac: "Trầm cảm sau sinh" }),
+      ["thai_ky"],
+    );
+    expect(p.chuDeKhac).toBe("Trầm cảm sau sinh");
+  });
+
+  it("chuDeKhac bỏ trống thành chuỗi rỗng, vẫn parse sạch", () => {
+    const p = buildRegistrationPayload(
+      fd({ ...CHUNG, trangThai: "mang_thai", thaiTuan: "20" }),
+      ["thai_ky"],
+    );
+    expect(p.chuDeKhac).toBe("");
+    expect(registrationSchema.safeParse(p).success).toBe(true);
+  });
 });
