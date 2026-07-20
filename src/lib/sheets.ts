@@ -12,9 +12,29 @@ import type { Registration } from "./validation";
  * Số liệu chính thức lấy ở /admin → Xuất Excel.
  */
 
+const SCOPE = "https://www.googleapis.com/auth/spreadsheets";
+const TOKEN_URL = "https://oauth2.googleapis.com/token";
+const SHEETS_API = "https://sheets.googleapis.com/v4/spreadsheets";
+/** Không kèm tên sheet → trỏ sheet đầu tiên, khỏi phải encode tên tiếng Việt. */
+const RANGE = "A1";
+/** Mẹ đang chờ response — một cuộc gọi Google treo không được giữ hàm serverless. */
+const TIMEOUT_MS = 10_000;
+
+/** Dòng đầu Sheet: append thuần tuý có thể đếm ra số sai, phải nói rõ ngay đó. */
+const NOTE =
+  "⚠ Bản ghi thô, tự động — có thể có dòng trùng và KHÔNG có trạng thái check-in. Số liệu chính thức: /admin → Xuất Excel.";
+
+export function sheetsConfigured(): boolean {
+  return Boolean(
+    process.env.GOOGLE_SHEET_ID &&
+      process.env.GOOGLE_CLIENT_EMAIL &&
+      process.env.GOOGLE_PRIVATE_KEY,
+  );
+}
+
 /**
  * Dựng RegistrationRow rồi đưa qua `rowsToSheet` để lấy đúng 15 ô theo đúng
- * thứ tự cột của file .xlsx. Không tự viết mảy cột ở đây: thứ tự cột chỉ được
+ * thứ tự cột của file .xlsx. Không tự viết mảng cột ở đây: thứ tự cột chỉ được
  * phép tồn tại một chỗ, là HEADERS trong export-rows.ts.
  */
 export function registrationToSheetRow(
@@ -44,4 +64,123 @@ export function registrationToSheetRow(
     checked_in_source: null,
   };
   return rowsToSheet([row]).rows[0];
+}
+
+/** base64url không đệm — định dạng bắt buộc của JWT. */
+function b64url(input: ArrayBuffer | string): string {
+  const bytes =
+    typeof input === "string" ? new TextEncoder().encode(input) : new Uint8Array(input);
+  let bin = "";
+  for (const b of bytes) bin += String.fromCharCode(b);
+  return btoa(bin).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+}
+
+async function importKey(): Promise<CryptoKey> {
+  // Vercel lưu xuống dòng thành hai ký tự `\n`. Không thay thế thì importKey ném lỗi.
+  const pem = (process.env.GOOGLE_PRIVATE_KEY ?? "").replace(/\\n/g, "\n");
+  const der = pem
+    .replace(/-----BEGIN PRIVATE KEY-----/, "")
+    .replace(/-----END PRIVATE KEY-----/, "")
+    .replace(/\s/g, "");
+  if (!der) throw new Error("GOOGLE_PRIVATE_KEY chưa được cấu hình");
+  return crypto.subtle.importKey(
+    "pkcs8",
+    Uint8Array.from(atob(der), (c) => c.charCodeAt(0)),
+    { name: "RSASSA-PKCS1-v1_5", hash: "SHA-256" },
+    false,
+    ["sign"],
+  );
+}
+
+// Token sống 1 tiếng. Không cache thì mỗi lượt đăng ký tốn hai request thay vì một.
+let cachedToken: { token: string; expiresAt: number } | null = null;
+
+async function accessToken(): Promise<string> {
+  const now = Math.floor(Date.now() / 1000);
+  if (cachedToken && cachedToken.expiresAt > now) return cachedToken.token;
+
+  const header = b64url(JSON.stringify({ alg: "RS256", typ: "JWT" }));
+  const claims = b64url(
+    JSON.stringify({
+      iss: process.env.GOOGLE_CLIENT_EMAIL,
+      scope: SCOPE,
+      aud: TOKEN_URL,
+      iat: now,
+      exp: now + 3600,
+    }),
+  );
+  const signed = `${header}.${claims}`;
+  const sig = await crypto.subtle.sign(
+    "RSASSA-PKCS1-v1_5",
+    await importKey(),
+    new TextEncoder().encode(signed),
+  );
+
+  const res = await fetch(TOKEN_URL, {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: new URLSearchParams({
+      grant_type: "urn:ietf:params:oauth:grant-type:jwt-bearer",
+      assertion: `${signed}.${b64url(sig)}`,
+    }),
+    signal: AbortSignal.timeout(TIMEOUT_MS),
+  });
+  if (!res.ok) {
+    throw new Error(`Google token ${res.status}: ${(await res.text()).slice(0, 200)}`);
+  }
+  const data = (await res.json()) as { access_token: string; expires_in: number };
+  cachedToken = { token: data.access_token, expiresAt: now + data.expires_in - 60 };
+  return data.access_token;
+}
+
+async function sheetsFetch(path: string, init?: RequestInit): Promise<Response> {
+  const res = await fetch(`${SHEETS_API}/${process.env.GOOGLE_SHEET_ID}${path}`, {
+    ...init,
+    headers: {
+      ...init?.headers,
+      Authorization: `Bearer ${await accessToken()}`,
+      "Content-Type": "application/json",
+    },
+    signal: AbortSignal.timeout(TIMEOUT_MS),
+  });
+  // 403 ở đây gần như luôn là: Sheet chưa share Editor cho GOOGLE_CLIENT_EMAIL.
+  if (!res.ok) {
+    throw new Error(`Google Sheets ${res.status}: ${(await res.text()).slice(0, 200)}`);
+  }
+  return res;
+}
+
+/**
+ * RAW, không phải USER_ENTERED. Hai lý do, cả hai đều bắt buộc:
+ *  1. Họ tên là ô nhập tự do từ internet công cộng. USER_ENTERED sẽ CHẠY một
+ *     giá trị dạng `=IMPORTXML(...)` như công thức.
+ *  2. USER_ENTERED biến "0901234567" thành số 901234567, mất số 0 đầu.
+ */
+async function appendValues(values: (string | number)[][]): Promise<void> {
+  await sheetsFetch(
+    `/values/${RANGE}:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS`,
+    { method: "POST", body: JSON.stringify({ values }) },
+  );
+}
+
+// Một lần cho mỗi tiến trình server, không phải mỗi lượt đăng ký.
+let headerEnsured = false;
+
+async function ensureHeader(): Promise<void> {
+  if (headerEnsured) return;
+  const res = await sheetsFetch(`/values/${RANGE}`);
+  const data = (await res.json()) as { values?: string[][] };
+  if (!data.values || data.values.length === 0) {
+    await appendValues([[NOTE], rowsToSheet([]).headers]);
+  }
+  // Chỉ đặt cờ khi đã chắc chắn — lỗi ở trên ném ra trước, lần sau thử lại.
+  headerEnsured = true;
+}
+
+export async function appendRegistration(
+  data: Registration,
+  code: string,
+): Promise<void> {
+  await ensureHeader();
+  await appendValues([registrationToSheetRow(data, code)]);
 }
