@@ -170,7 +170,7 @@ export const EVENT_HIGHLIGHTS = [
     description: "Kết nối cùng cộng đồng mẹ bỉm và các chuyên gia.",
   },
   {
-    title: "Check-in sống ảo",
+    title: "Góc check-in xinh xắn",
     description: "Không gian đẹp lung linh — lưu giữ khoảnh khắc đáng nhớ.",
   },
 ] as const;

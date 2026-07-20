@@ -409,11 +409,15 @@ export function RegistrationForm() {
         </Nhom>
       )}
 
+      {/* Chín chủ đề xếp hai hàng, cuộn ngang: mỗi ô rộng theo nội dung
+          (auto-cols-max) và tràn ngang thay vì kéo dài form theo chiều dọc.
+          grid-flow-col + grid-rows-2 = điền xuống rồi mới sang phải. pb-2 chừa
+          chỗ cho thanh cuộn khỏi che ô. */}
       <NhomChon
         legend="Chủ đề mẹ quan tâm"
         error={errors.chuDeQuanTam}
         required
-        luoi="gap-3 sm:grid-cols-2"
+        luoi="grid-flow-col grid-rows-2 auto-cols-max gap-3 overflow-x-auto pb-2 pr-1"
       >
         {CHU_DE_QUAN_TAM.map((c: LuaChon) => (
           <HangChon
