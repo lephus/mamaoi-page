@@ -64,6 +64,18 @@ describe("rowsToSheet", () => {
     expect(r).toContain("—");
   });
 
+  // Đọc giá trị THEO VỊ TRÍ CỦA NHÃN, không phải toContain: `toContain` không
+  // phân biệt được cột đúng với cột bị hoán đổi (vd. email lọt vào ô "Họ
+  // tên"). Bốn cột này là cột định danh ops đọc trực tiếp — hoán đổi ở đây là
+  // sự cố nghiêm trọng nhất trong cả bảng.
+  it("các cột định danh nằm đúng vị trí: Họ tên, Email, SĐT, Nguồn đăng ký", () => {
+    const { headers, rows } = rowsToSheet([base]);
+    expect(rows[0][headers.indexOf("Họ tên")]).toBe("Nguyễn Thị Lan");
+    expect(rows[0][headers.indexOf("Email")]).toBe("lan@example.com");
+    expect(rows[0][headers.indexOf("SĐT")]).toBe("0901234567");
+    expect(rows[0][headers.indexOf("Nguồn đăng ký")]).toBe("su-kien");
+  });
+
   it("trường rỗng thành chuỗi rỗng, không phải null hay 'null'", () => {
     const r = rowsToSheet([base]).rows[0];
     expect(r).not.toContain(null);
