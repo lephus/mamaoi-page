@@ -1,6 +1,7 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
+import { useEffect, useMemo, useState } from "react";
 import type { WaitlistRow } from "@/lib/supabase";
 import { formatCheckinTime } from "@/lib/time";
 
@@ -9,7 +10,16 @@ import { formatCheckinTime } from "@/lib/time";
  * poll ở đó sinh ra cho lúc 500 mẹ check-in đồng thời tại quầy, còn đây là
  * danh sách email không đổi trong lúc ai đó đang nhìn nó.
  */
-export function WaitlistTab({ initialRows }: { initialRows: WaitlistRow[] }) {
+export function WaitlistTab({
+  initialRows,
+  onCountChange,
+}: {
+  initialRows: WaitlistRow[];
+  /** Báo cho AdminDashboard số dòng hiện tại, để badge trên tab khớp với
+   *  "Tổng: N email" trong panel này — kể cả sau khi refresh() lấy dữ liệu mới. */
+  onCountChange?: (count: number) => void;
+}) {
+  const router = useRouter();
   const [rows, setRows] = useState(initialRows);
   const [q, setQ] = useState("");
   const [exporting, setExporting] = useState(false);
@@ -21,11 +31,25 @@ export function WaitlistTab({ initialRows }: { initialRows: WaitlistRow[] }) {
     return s ? rows.filter((r) => r.email.toLowerCase().includes(s)) : rows;
   }, [rows, q]);
 
+  // Chạy trong effect (không gọi thẳng lúc render) — gọi setter của cha ngay
+  // trong lúc render component con sẽ ăn cảnh báo "Cannot update a component
+  // while rendering a different component". Effect này cũng tự bắt luôn giá
+  // trị ban đầu (initialRows) khi mount, không cần gọi riêng.
+  useEffect(() => {
+    onCountChange?.(rows.length);
+  }, [rows, onCountChange]);
+
   async function refresh() {
     setRefreshing(true);
     setError("");
     try {
       const res = await fetch("/api/admin/waitlist");
+      // Phiên hết hạn: quay lại trang login thay vì hiện lỗi chung chung —
+      // giống cách AdminDashboard.refresh() xử lý 401 ở tab Sự kiện.
+      if (res.status === 401) {
+        router.replace("/admin/login");
+        return;
+      }
       if (!res.ok) {
         setError("Không tải được danh sách");
         return;
@@ -48,6 +72,12 @@ export function WaitlistTab({ initialRows }: { initialRows: WaitlistRow[] }) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ loai: "waitlist", ids: filtered.map((r) => r.id) }),
       });
+      // Cùng gap 401 như refresh() ở trên — /api/admin/export cũng yêu cầu
+      // đăng nhập (xem src/app/api/admin/export/route.ts).
+      if (res.status === 401) {
+        router.replace("/admin/login");
+        return;
+      }
       if (!res.ok) {
         setError("Xuất file thất bại");
         return;

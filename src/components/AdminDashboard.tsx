@@ -21,6 +21,11 @@ export function AdminDashboard({
 }) {
   const router = useRouter();
   const [rows, setRows] = useState(initialRows);
+  // Badge tab đọc số này thay vì initialWaitlist.length (prop tĩnh từ server) —
+  // WaitlistTab tự refetch và báo lại số dòng mới qua onCountChange, để badge
+  // trên tab và "Tổng: N email" trong panel luôn khớp nhau, giống cách tab
+  // "Sự kiện" đã đọc rows.length trực tiếp.
+  const [waitlistCount, setWaitlistCount] = useState(initialWaitlist.length);
   const [tab, setTab] = useState<"su-kien" | "waitlist">("su-kien");
   const [q, setQ] = useState("");
   const [busy, setBusy] = useState<string | null>(null);
@@ -261,7 +266,7 @@ export function AdminDashboard({
           {(
             [
               { id: "su-kien", label: "Sự kiện", count: rows.length },
-              { id: "waitlist", label: "Waitlist app", count: initialWaitlist.length },
+              { id: "waitlist", label: "Waitlist app", count: waitlistCount },
             ] as const
           ).map((t) => (
             <button
@@ -282,7 +287,7 @@ export function AdminDashboard({
 
         <div className="mt-6">
           {tab === "waitlist" ? (
-            <WaitlistTab initialRows={initialWaitlist} />
+            <WaitlistTab initialRows={initialWaitlist} onCountChange={setWaitlistCount} />
           ) : (
             <>
               <div className="flex flex-wrap items-center justify-between gap-3">
