@@ -70,7 +70,11 @@ function SectionHeading({
         {title}
       </h2>
       {children && (
-        <p className="mt-4 text-lg leading-7 text-ink-faded">{children}</p>
+        // text-balance chia đều các dòng thay vì để một chữ rơi mồ côi xuống
+        // dòng cuối — mọi mô tả section căn giữa đều hưởng, không riêng chỗ này.
+        <p className="mt-4 text-lg leading-7 text-balance text-ink-faded">
+          {children}
+        </p>
       )}
     </Reveal>
   );
