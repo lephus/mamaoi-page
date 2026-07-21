@@ -16,7 +16,7 @@ export type RegistrationRow = {
   sdt: string;
   facebook: string | null;
   tinh_thanh: string;
-  trang_thai: "mang_thai" | "da_sinh";
+  trang_thai: "chuan_bi_mang_thai" | "ivf" | "mang_thai" | "da_sinh";
   thai_tuan: number | null;
   ten_be: string | null;
   /** Dạng "YYYY-MM-DD" — cột `date` của Postgres, không có phần giờ. */

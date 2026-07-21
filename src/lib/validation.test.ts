@@ -105,6 +105,32 @@ describe("registrationSchema — nhánh mang_thai", () => {
   });
 });
 
+describe("registrationSchema — nhánh tiền-thai-kỳ (chuan_bi_mang_thai, ivf)", () => {
+  it("chuan_bi_mang_thai hợp lệ chỉ với field chung, không cần thaiTuan/thông tin bé", () => {
+    const r = registrationSchema.safeParse({ ...chung, trangThai: "chuan_bi_mang_thai" });
+    expect(r.success).toBe(true);
+  });
+
+  it("ivf hợp lệ chỉ với field chung", () => {
+    const r = registrationSchema.safeParse({ ...chung, trangThai: "ivf" });
+    expect(r.success).toBe(true);
+  });
+
+  it("thaiTuan và thông tin bé gửi kèm đều bị CẮT BỎ", () => {
+    const r = registrationSchema.safeParse({
+      ...chung,
+      trangThai: "ivf",
+      thaiTuan: 20,
+      tenBe: "Gạo",
+      beNgaySinh: "2026-01-20",
+      beGioiTinh: "nu",
+    });
+    expect(r.success).toBe(true);
+    expect(r.data).not.toHaveProperty("thaiTuan");
+    expect(r.data).not.toHaveProperty("tenBe");
+  });
+});
+
 describe("registrationSchema — nhánh da_sinh", () => {
   it("hợp lệ khi đủ thông tin bé", () => {
     expect(registrationSchema.safeParse(daSinh).success).toBe(true);

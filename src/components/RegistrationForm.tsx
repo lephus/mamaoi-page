@@ -174,7 +174,9 @@ export function RegistrationForm() {
   const router = useRouter();
   const [errors, setErrors] = useState<Errors>({});
   const [submitting, setSubmitting] = useState(false);
-  const [trangThai, setTrangThai] = useState<"mang_thai" | "da_sinh" | "">("");
+  const [trangThai, setTrangThai] = useState<
+    "chuan_bi_mang_thai" | "ivf" | "mang_thai" | "da_sinh" | ""
+  >("");
   const [chuDe, setChuDe] = useState<string[]>([]);
 
   function toggleChuDe(value: string) {
@@ -320,6 +322,8 @@ export function RegistrationForm() {
       >
         {(
           [
+            { value: "chuan_bi_mang_thai", label: "Chuẩn bị mang thai" },
+            { value: "ivf", label: "IVF" },
             { value: "mang_thai", label: "Đang mang thai" },
             { value: "da_sinh", label: "Bé đã chào đời" },
           ] as const

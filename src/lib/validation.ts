@@ -135,6 +135,17 @@ export const chungSchema = z.object(chungFields);
  * của nhánh kia lọt lên cũng không bao giờ tới được DB.
  */
 export const registrationSchema = z.discriminatedUnion("trangThai", [
+  // Hai nhánh tiền-thai-kỳ chỉ mang đúng discriminator: chưa có bé, chưa có tuần
+  // thai để khai. Chúng vẫn là phân khúc thật (mẹ đang chuẩn bị / đang làm IVF),
+  // nên là literal riêng chứ không gộp vào "mang_thai".
+  z.object({
+    ...chungFields,
+    trangThai: z.literal("chuan_bi_mang_thai"),
+  }),
+  z.object({
+    ...chungFields,
+    trangThai: z.literal("ivf"),
+  }),
   z.object({
     ...chungFields,
     trangThai: z.literal("mang_thai"),

@@ -142,11 +142,10 @@ export const EVENT_EXPERTS = [
   },
   {
     name: "Dược sĩ Helen Nguyễn",
-    role: "Dược sĩ lâm sàng – CEO Fresh & Fit",
+    role: "Trưởng ban chăm sóc bà mẹ và trẻ em viện MCI - CEO Fresh and Fit",
     photo: "/images/speaker-ds-helen-nguyen.webp",
     bio: [
-      "Dược sĩ Helen Nguyễn là chuyên gia trong lĩnh vực chăm sóc sức khỏe mẹ và bé, đồng thời là Nhà sáng lập & CEO Fresh & Fit. Với nhiều năm đồng hành cùng hàng chục nghìn gia đình Việt, chị được biết đến qua những nội dung chia sẻ khoa học, dễ hiểu và mang tính ứng dụng cao.",
-      "Helen luôn theo đuổi sứ mệnh giúp các bậc cha mẹ tiếp cận kiến thức y khoa chính xác để chăm sóc con một cách chủ động và tự tin. Những chia sẻ tại chương trình sẽ tập trung vào các vấn đề mà hầu hết gia đình có con nhỏ đều gặp phải trong năm đầu đời, từ dinh dưỡng, chăm sóc đến xây dựng nền tảng sức khỏe lâu dài.",
+      "Dược sĩ Helen Nguyễn là chuyên gia nổi tiếng tại TP.HCM trong lĩnh vực chăm sóc sức khỏe mẹ và bé, được biết đến với phương pháp kích sữa bằng bấm huyệt kết hợp cân bằng dinh dưỡng. Chị là Nhà sáng lập & CEO Fresh & Fit, với nhiều năm đồng hành cùng hàng chục nghìn gia đình Việt qua những nội dung chia sẻ khoa học, dễ hiểu và mang tính ứng dụng cao.",
     ],
   },
 ] as const;
@@ -272,6 +271,7 @@ export const LEGAL_UPDATED = "15/07/2026";
 export const CHU_DE_QUAN_TAM = [
   { value: "thai_ky", label: "Thai kỳ" },
   { value: "ivf", label: "IVF" },
+  { value: "sinh_no", label: "Sinh nở" },
   { value: "an_dam", label: "Ăn dặm" },
   { value: "ngu", label: "Ngủ" },
   { value: "tiem_chung", label: "Tiêm chủng" },
@@ -290,6 +290,19 @@ export const NGUON_BIET_DEN = [
   { value: "khac", label: "Khác" },
 ] as const;
 
+/**
+ * Tình trạng hiện tại của mẹ — phân khúc chính, chọn một. `value` là thứ lưu
+ * xuống DB (`trang_thai`) và gửi Brevo (`TRANG_THAI`); `label` là nhãn NGẮN cho
+ * /admin và file Excel. Form đăng ký hiển thị nhãn DÀI riêng ("Đang mang thai",
+ * "Bé đã chào đời") nên không map từ đây — nhưng `value` phải khớp từng chữ.
+ */
+export const TRANG_THAI = [
+  { value: "chuan_bi_mang_thai", label: "Chuẩn bị mang thai" },
+  { value: "ivf", label: "IVF" },
+  { value: "mang_thai", label: "Mang thai" },
+  { value: "da_sinh", label: "Đã sinh" },
+] as const;
+
 export const CHU_DE_VALUES = CHU_DE_QUAN_TAM.map((c) => c.value) as readonly string[];
 export const NGUON_VALUES = NGUON_BIET_DEN.map((n) => n.value) as readonly string[];
 
@@ -299,6 +312,9 @@ const CHU_DE_MAP = new Map<string, string>(
 const NGUON_MAP = new Map<string, string>(
   NGUON_BIET_DEN.map((n) => [n.value, n.label]),
 );
+const TRANG_THAI_MAP = new Map<string, string>(
+  TRANG_THAI.map((t) => [t.value, t.label]),
+);
 
 /** Giá trị lạ trả về chính nó — export không bao giờ được nuốt mất dữ liệu. */
 export function chuDeLabel(value: string): string {
@@ -307,4 +323,9 @@ export function chuDeLabel(value: string): string {
 
 export function nguonBietDenLabel(value: string): string {
   return NGUON_MAP.get(value) ?? value;
+}
+
+/** Nhãn ngắn của tình trạng cho /admin và Excel. Giá trị lạ trả về chính nó. */
+export function trangThaiLabel(value: string): string {
+  return TRANG_THAI_MAP.get(value) ?? value;
 }

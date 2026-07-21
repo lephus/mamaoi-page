@@ -81,9 +81,13 @@ export async function upsertContact(
     // Mỗi nhánh chỉ gửi attribute của CHÍNH nó. `updateEnabled: true` nghĩa là
     // gửi chuỗi rỗng sẽ XOÁ TRẮNG giá trị cũ — một mẹ đăng ký lần hai sau khi
     // sinh sẽ mất sạch thông tin bé nếu ta gửi "" cho nhánh không áp dụng.
+    //
+    // Phải so === "da_sinh" tường minh, không dùng `else`: hai nhánh chuẩn bị /
+    // IVF không có field bé, và chỉ gửi TRANG_THAI. `else` sẽ đọc data.tenBe...
+    // vốn không tồn tại trên các nhánh đó.
     if (data.trangThai === "mang_thai") {
       attributes.THAI_TUAN = data.thaiTuan;
-    } else {
+    } else if (data.trangThai === "da_sinh") {
       attributes.TEN_BE = data.tenBe;
       attributes.BE_NGAY_SINH = data.beNgaySinh.toISOString().slice(0, 10);
       attributes.BE_GIOI_TINH = data.beGioiTinh;

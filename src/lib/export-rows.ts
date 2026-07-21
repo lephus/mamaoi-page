@@ -1,4 +1,4 @@
-import { chuDeLabel, nguonBietDenLabel } from "./constants";
+import { chuDeLabel, nguonBietDenLabel, trangThaiLabel } from "./constants";
 import type { RegistrationRow, WaitlistRow } from "./supabase";
 import { formatCheckinTime, ngayVN } from "./time";
 
@@ -52,7 +52,7 @@ export function rowsToSheet(rows: RegistrationRow[]): {
       r.sdt,
       r.facebook ?? "",
       r.tinh_thanh,
-      r.trang_thai === "mang_thai" ? "Mang thai" : "Đã sinh",
+      trangThaiLabel(r.trang_thai),
       r.thai_tuan ?? "",
       r.ten_be ?? "",
       ngayVN(r.be_ngay_sinh),

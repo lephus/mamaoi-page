@@ -15,7 +15,7 @@ export function buildRegistrationPayload(
   fd: FormData,
   chuDe: string[],
 ): Record<string, unknown> {
-  const daSinh = fd.get("trangThai") === "da_sinh";
+  const trangThai = fd.get("trangThai");
   return {
     nguon: "su-kien" as const,
     hoTen: String(fd.get("hoTen") ?? ""),
@@ -23,7 +23,7 @@ export function buildRegistrationPayload(
     sdt: String(fd.get("sdt") ?? ""),
     facebook: String(fd.get("facebook") ?? ""),
     tinhThanh: String(fd.get("tinhThanh") ?? ""),
-    trangThai: fd.get("trangThai"),
+    trangThai,
     chuDeQuanTam: chuDe,
     chuDeKhac: String(fd.get("chuDeKhac") ?? ""),
     nguonBietDen: fd.get("nguonBietDen"),
@@ -32,12 +32,15 @@ export function buildRegistrationPayload(
     website: String(fd.get("website") ?? ""),
     // Chỉ gửi field của nhánh ĐANG chọn. Nhánh kia để vắng mặt hẳn — schema
     // sẽ cắt bỏ, nhưng gửi đúng ngay từ đây thì thông báo lỗi cũng đúng chỗ.
-    ...(daSinh
+    // Hai nhánh tiền-thai-kỳ (chuẩn bị / IVF) không có field con nào cả.
+    ...(trangThai === "da_sinh"
       ? {
           tenBe: String(fd.get("tenBe") ?? ""),
           beNgaySinh: String(fd.get("beNgaySinh") ?? ""),
           beGioiTinh: fd.get("beGioiTinh"),
         }
-      : { thaiTuan: fd.get("thaiTuan") }),
+      : trangThai === "mang_thai"
+        ? { thaiTuan: fd.get("thaiTuan") }
+        : {}),
   };
 }

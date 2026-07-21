@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
-import { chuDeLabel, nguonBietDenLabel } from "@/lib/constants";
+import { chuDeLabel, nguonBietDenLabel, trangThaiLabel } from "@/lib/constants";
 import type { RegistrationRow } from "@/lib/supabase";
 import { formatCheckinTime, isoToVNLocalInput, ngayVN } from "@/lib/time";
 
@@ -89,7 +89,7 @@ export function AdminDetailModal({
             value={
               row.trang_thai === "mang_thai"
                 ? `Mang thai${row.thai_tuan != null ? ` · ${row.thai_tuan} tuần` : ""}`
-                : "Đã sinh"
+                : trangThaiLabel(row.trang_thai)
             }
           />
           {row.trang_thai === "da_sinh" && (

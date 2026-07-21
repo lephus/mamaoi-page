@@ -48,8 +48,9 @@ export default function PrivacyPolicyPage() {
           <li>Tài khoản Facebook (nếu mẹ cung cấp)</li>
           <li>Tỉnh/thành đang sinh sống</li>
           <li>
-            Tình trạng hiện tại: <strong>đang mang thai</strong> hoặc{" "}
-            <strong>bé đã chào đời</strong>, và số tháng tuổi của bé
+            Tình trạng hiện tại: <strong>chuẩn bị mang thai</strong>,{" "}
+            <strong>IVF</strong>, <strong>đang mang thai</strong> hoặc{" "}
+            <strong>bé đã chào đời</strong>, và số tháng tuổi của bé (nếu có)
           </li>
           <li>Việc mẹ có đi cùng chồng hay không</li>
         </ul>

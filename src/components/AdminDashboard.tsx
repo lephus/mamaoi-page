@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { trangThaiLabel } from "@/lib/constants";
 import type { RegistrationRow, WaitlistRow } from "@/lib/supabase";
 import { isoToVNLocalInput, vnLocalInputToISO } from "@/lib/time";
 import { AdminDetailModal } from "./AdminDetailModal";
@@ -361,7 +362,9 @@ export function AdminDashboard({
                         <td className="px-4 py-3 text-ink">
                           {r.trang_thai === "mang_thai"
                             ? `Mang thai${r.thai_tuan != null ? ` · ${r.thai_tuan} tuần` : ""}`
-                            : `Đã sinh${r.be_thang_tuoi != null ? ` · ${r.be_thang_tuoi}th` : ""}`}
+                            : r.trang_thai === "da_sinh"
+                              ? `Đã sinh${r.be_thang_tuoi != null ? ` · ${r.be_thang_tuoi}th` : ""}`
+                              : trangThaiLabel(r.trang_thai)}
                         </td>
                         <td className="px-4 py-3 text-ink">{r.di_cung_chong ? "Có" : "—"}</td>
                         <td className="px-4 py-3">

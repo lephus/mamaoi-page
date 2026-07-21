@@ -59,6 +59,15 @@ describe("rowsToSheet", () => {
     ).toContain("Đã sinh");
   });
 
+  it("dịch đúng nhánh tiền-thai-kỳ, không rơi về 'Đã sinh'", () => {
+    expect(
+      rowsToSheet([{ ...base, trang_thai: "chuan_bi_mang_thai", thai_tuan: null }]).rows[0],
+    ).toContain("Chuẩn bị mang thai");
+    expect(
+      rowsToSheet([{ ...base, trang_thai: "ivf", thai_tuan: null }]).rows[0],
+    ).toContain("IVF");
+  });
+
   it("boolean thành Có / dấu gạch", () => {
     const r = rowsToSheet([{ ...base, di_cung_chong: false }]).rows[0];
     expect(r).toContain("—");
