@@ -93,7 +93,9 @@ function NhomChon({
         {legend}
         {required && <span className="ml-0.5 text-danger">*</span>}
       </legend>
-      <div className={`grid ${luoi}`}>{children}</div>
+      {/* `luoi` mang cả lớp display: đa số nhóm là `grid ...`, riêng nhóm chủ
+          đề dùng `flex flex-wrap` để chip ôm sát nội dung thay vì bị grid kéo giãn. */}
+      <div className={luoi}>{children}</div>
       {error && (
         <p role="alert" className="mt-1.5 text-sm text-danger">
           {error}
@@ -292,7 +294,7 @@ export function RegistrationForm() {
         legend="Tình trạng hiện tại"
         error={errors.trangThai}
         required
-        luoi="gap-3 sm:grid-cols-2"
+        luoi="grid gap-3 sm:grid-cols-2"
       >
         {(
           [
@@ -386,7 +388,7 @@ export function RegistrationForm() {
               legend="Giới tính"
               error={errors.beGioiTinh}
               required
-              luoi="grid-cols-2 gap-3"
+              luoi="grid grid-cols-2 gap-3"
             >
               {(
                 [
@@ -409,15 +411,14 @@ export function RegistrationForm() {
         </Nhom>
       )}
 
-      {/* Chín chủ đề xếp hai hàng, cuộn ngang: mỗi ô rộng theo nội dung
-          (auto-cols-max) và tràn ngang thay vì kéo dài form theo chiều dọc.
-          grid-flow-col + grid-rows-2 = điền xuống rồi mới sang phải. pb-2 chừa
-          chỗ cho thanh cuộn khỏi che ô. */}
+      {/* Chip ôm sát nội dung, tự xuống hàng. KHÔNG dùng grid: nhãn chủ đề dài
+          ngắn rất khác nhau ("Nuôi con bằng sữa mẹ" vs "Ngủ"), grid sẽ kéo mọi ô
+          theo ô rộng nhất cột và trông vỡ. flex-wrap cho mỗi ô đúng bằng chữ. */}
       <NhomChon
         legend="Chủ đề mẹ quan tâm"
         error={errors.chuDeQuanTam}
         required
-        luoi="grid-flow-col grid-rows-2 auto-cols-max gap-3 overflow-x-auto pb-2 pr-1"
+        luoi="flex flex-wrap gap-3"
       >
         {CHU_DE_QUAN_TAM.map((c: LuaChon) => (
           <HangChon
@@ -448,7 +449,7 @@ export function RegistrationForm() {
         legend="Mẹ biết đến chương trình từ đâu?"
         error={errors.nguonBietDen}
         required
-        luoi="gap-3 sm:grid-cols-3"
+        luoi="grid gap-3 sm:grid-cols-3"
       >
         {NGUON_BIET_DEN.map((n: LuaChon) => (
           <HangChon
