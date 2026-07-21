@@ -146,6 +146,7 @@ export const EVENT_EXPERTS = [
     photo: "/images/speaker-ds-helen-nguyen.webp",
     bio: [
       "Dược sĩ Helen Nguyễn là chuyên gia nổi tiếng tại TP.HCM trong lĩnh vực chăm sóc sức khỏe mẹ và bé, được biết đến với phương pháp kích sữa bằng bấm huyệt kết hợp cân bằng dinh dưỡng. Chị là Nhà sáng lập & CEO Fresh & Fit, với nhiều năm đồng hành cùng hàng chục nghìn gia đình Việt qua những nội dung chia sẻ khoa học, dễ hiểu và mang tính ứng dụng cao.",
+      "Helen luôn theo đuổi sứ mệnh giúp các bậc cha mẹ tiếp cận kiến thức y khoa chính xác để chăm sóc con một cách chủ động và tự tin. Những chia sẻ tại chương trình sẽ tập trung vào các vấn đề mà hầu hết gia đình có con nhỏ đều gặp phải trong năm đầu đời, từ dinh dưỡng, chăm sóc đến xây dựng nền tảng sức khỏe lâu dài.",
     ],
   },
 ] as const;
