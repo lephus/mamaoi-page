@@ -7,8 +7,8 @@ import { useEffect, useState } from "react";
 import { ButtonLink } from "./ui/Button";
 
 const NAV = [
-  { href: "/", label: "Ứng dụng" },
-  { href: "/su-kien", label: "Mama Ơi Day" },
+  { href: "/", label: "Mama Ơi Day" },
+  { href: "/ung-dung", label: "Ứng dụng" },
 ];
 
 export function Header() {
@@ -23,12 +23,13 @@ export function Header() {
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
-  // The event page's CTA points at its own form; the app page sends you to the
-  // event. Sending a visitor to a page they are already on reads as broken.
+  // The event page is now the root: its CTA points at its own form; every other
+  // page sends you to the event. Sending a visitor to a page they are already
+  // on reads as broken.
   const cta =
-    pathname === "/su-kien"
+    pathname === "/"
       ? { href: "#dang-ky", label: "Đăng ký ngay" }
-      : { href: "/su-kien", label: "Mama Ơi Day" };
+      : { href: "/", label: "Mama Ơi Day" };
 
   return (
     <header

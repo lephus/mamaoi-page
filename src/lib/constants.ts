@@ -9,7 +9,7 @@ export const SITE = {
   name: "Mama Ơi",
   tagline: "Theo dõi hành trình lớn lên của bé mỗi ngày",
   url: "https://mamaoi.vn",
-  company: "MamaOi",
+  company: "Mama Ơi",
   email: "talentagent@bonggao.vn",
 } as const;
 

@@ -7,7 +7,7 @@ import { ButtonLink } from "@/components/ui/Button";
  * 404. Rendered with a real 404 status by Next's not-found convention.
  *
  * Keeps the header and footer so a lost visitor always has a way out, and
- * offers the two routes that actually matter — the app home and the event —
+ * offers the two routes that actually matter — the event (home) and the app —
  * rather than dead-ending them.
  */
 export default function NotFound() {
@@ -47,8 +47,8 @@ export default function NotFound() {
 
           <div className="relative mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
             <ButtonLink href="/">Về trang chủ</ButtonLink>
-            <ButtonLink href="/su-kien" variant="outline">
-              Khám phá Mama Ơi Day
+            <ButtonLink href="/ung-dung" variant="outline">
+              Khám phá ứng dụng Mama Ơi
             </ButtonLink>
           </div>
         </div>
