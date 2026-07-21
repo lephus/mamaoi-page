@@ -480,7 +480,7 @@ export function RegistrationForm() {
             className="mt-0.5 h-5 w-5 shrink-0 cursor-pointer rounded accent-primary"
             {...err("dongYNhanTin")}
           />
-          <span className="text-sm leading-5 text-ink-faded">
+          <span className="text-base leading-6 text-ink">
             Tôi đồng ý cho Mama Ơi lưu trữ thông tin để gửi email xác nhận, tài liệu
             chương trình và các thông tin hữu ích.
             <span className="ml-0.5 text-danger">*</span>
