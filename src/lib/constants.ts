@@ -175,6 +175,27 @@ export const EVENT_HIGHLIGHTS = [
   },
 ] as const;
 
+/**
+ * Cột mốc phát triển 12 tháng đầu — chép nguyên văn từ infographic "Hành trình
+ * 12 tháng đầu đời cùng Gạo". Desktop hiển thị chính tấm infographic; mảng này
+ * dựng lại bản native cho mobile (ảnh rộng đọc không nổi trên điện thoại).
+ */
+export const BABY_MILESTONES = [
+  { month: 0, title: "Sơ sinh", desc: "Làm quen với thế giới mới" },
+  { month: 1, title: "Nhìn & chú ý", desc: "Nhìn theo khuôn mặt, âm thanh" },
+  { month: 2, title: "Ngẩng đầu", desc: "Ngẩng đầu khi nằm sấp, giữ đầu chắc hơn" },
+  { month: 3, title: "Nâng ngực", desc: "Chống tay, nâng ngực khi nằm sấp" },
+  { month: 4, title: "Lật người", desc: "Bắt đầu lật từ ngửa sang sấp" },
+  { month: 5, title: "Bò trước", desc: "Bò trườn về phía trước, khám phá xung quanh" },
+  { month: 6, title: "Ngồi vững", desc: "Ngồi không cần hỗ trợ, tay với lấy đồ vật" },
+  { month: 7, title: "Tương tác", desc: "Vẫy tay, bập bẹ, hiểu cảm xúc hơn" },
+  { month: 8, title: "Bò khỏe", desc: "Bò nhanh hơn, tự tin khám phá" },
+  { month: 9, title: "Vin đứng", desc: "Vin đồ đứng lên, bước ngang" },
+  { month: 10, title: "Đứng vững", desc: "Đứng vững hơn, chuyển động linh hoạt" },
+  { month: 11, title: "Những bước đầu", desc: "Tập đi, bước đi những bước đầu tiên" },
+  { month: 12, title: "Tự tin bước đi", desc: "Đi vững, tự tin khám phá thế giới rộng lớn" },
+] as const;
+
 export const EVENT_TIMELINE = [
   { time: "08:00", title: "Check-in", description: "Nhận Welcome Kit và Passport Event." },
   { time: "09:00", title: "Talkshow", description: "Chia sẻ từ chị Vân và các chuyên gia." },

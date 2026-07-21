@@ -7,6 +7,7 @@ import { RegistrationForm } from "@/components/RegistrationForm";
 import { Reveal } from "@/components/Reveal";
 import { ButtonLink } from "@/components/ui/Button";
 import {
+  BABY_MILESTONES,
   EVENT,
   EVENT_EXPERTS,
   EVENT_FAQ,
@@ -447,6 +448,47 @@ export default function EventPage() {
                 );
               })}
             </ul>
+          </div>
+        </section>
+
+        {/* ---------- Hành trình 12 tháng đầu đời ---------- */}
+        <section className="bg-cream px-5 py-14 sm:py-16">
+          <div className="mx-auto max-w-6xl">
+            {/* Desktop: nguyên infographic đã duyệt (đã crop bỏ dải QR + icon
+                trùng với mục "Điều gì đang chờ mẹ" ở cuối ảnh). Ẩn trên mobile
+                vì ảnh rộng 1600px, chữ co lại không đọc nổi. */}
+            <Reveal className="hidden sm:block">
+              <Image
+                src="/images/hanh-trinh-12-thang.webp"
+                alt="Hành trình 12 tháng đầu đời cùng Gạo — cột mốc phát triển của bé từ sơ sinh đến 12 tháng"
+                width={1600}
+                height={664}
+                className="w-full rounded-3xl shadow-[var(--shadow-card)]"
+              />
+            </Reveal>
+
+            {/* Mobile: dựng lại timeline từ CÙNG dữ liệu — đọc được trên điện
+                thoại thay vì phải vuốt một tấm ảnh rộng. Dải nối dọc bên trái
+                mô phỏng trục thời gian của infographic. */}
+            <div className="sm:hidden">
+              <SectionHeading eyebrow="Hành trình của bé" title="12 tháng đầu đời cùng con">
+                Mỗi cột mốc là một bước tiến diệu kỳ, từng ngày lớn lên và đầy ắp yêu thương.
+              </SectionHeading>
+              <ol className="relative mt-10 space-y-3 before:absolute before:top-6 before:bottom-6 before:left-6 before:w-px before:bg-primary-border">
+                {BABY_MILESTONES.map((m) => (
+                  <Reveal key={m.month} as="li" className="relative flex gap-4">
+                    <span className="relative z-10 flex h-12 w-12 shrink-0 flex-col items-center justify-center rounded-full bg-primary-faded text-primary ring-4 ring-cream">
+                      <span className="text-lg leading-none font-extrabold">{m.month}</span>
+                      <span className="text-[10px] leading-none font-semibold">tháng</span>
+                    </span>
+                    <div className="flex-1 rounded-2xl bg-white p-4 shadow-[var(--shadow-card)]">
+                      <h3 className="font-bold text-ink">{m.title}</h3>
+                      <p className="mt-0.5 text-sm leading-5 text-ink-faded">{m.desc}</p>
+                    </div>
+                  </Reveal>
+                ))}
+              </ol>
+            </div>
           </div>
         </section>
 
