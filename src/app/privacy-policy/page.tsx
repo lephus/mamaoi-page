@@ -37,9 +37,6 @@ export default function PrivacyPolicyPage() {
           <li>
             Email: <a href={`mailto:${SITE.email}`}>{SITE.email}</a>
           </li>
-          <li>
-            Điện thoại: <a href={`tel:${SITE.phone}`}>{SITE.phone}</a>
-          </li>
         </ul>
       </LegalSection>
 

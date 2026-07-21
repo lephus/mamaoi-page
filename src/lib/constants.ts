@@ -10,8 +10,7 @@ export const SITE = {
   tagline: "Theo dõi hành trình lớn lên của bé mỗi ngày",
   url: "https://mamaoi.vn",
   company: "MamaOi",
-  email: "info@mamaoi.com",
-  phone: "+8499.999.999",
+  email: "talentagent@bonggao.vn",
 } as const;
 
 /** Agency credit in the footer bottom bar. */
@@ -23,7 +22,7 @@ export const EVENT = {
   dateLabel: "Chủ Nhật, 30/08/2026",
   dateISO: "2026-08-30",
   venue: "ThiSkyHall Sala",
-  address: "10 Mai Chí Thọ, Thủ Thiêm, TP. Thủ Đức, TP.HCM",
+  address: "10 Mai Chí Thọ, Thủ Thiêm, Thủ Đức, TP.HCM",
   capacity: "500 mẹ bỉm",
   registrationOpens: "25/07/2026",
 } as const;
@@ -105,34 +104,96 @@ export const APP_FEATURES = [
  * neutral frame rather than a stock face — a fake portrait next to a real one
  * reads as a lie about who is actually turning up.
  */
+/** Khách mời được dành riêng một card spotlight ở đầu section diễn giả. */
 export const EVENT_SPEAKERS = [
   {
     name: "Ngô Thanh Vân",
     role: "Khách mời đặc biệt",
     photo: "/images/speaker-ngo-thanh-van.webp",
   },
-  { name: "Bác sĩ Nhi khoa", role: "Đang cập nhật", photo: null },
-  { name: "Dược sĩ", role: "Đang cập nhật", photo: null },
-  { name: "Khách mời", role: "Đang cập nhật", photo: null },
 ] as const;
 
+/**
+ * Chuyên gia chuyên môn — tách khỏi EVENT_SPEAKERS vì hiển thị khác hẳn: lưới
+ * ba cột kèm tiểu sử mở/đóng, không phải card spotlight.
+ *
+ * `bio` là nguyên văn hồ sơ khách gửi, tách theo đoạn. Đoạn đầu hiện sẵn, đoạn
+ * sau nằm sau nút "Xem thêm" — cắt bớt chữ của khách là việc không được phép,
+ * nên phần thừa được giấu đi chứ không bị xoá.
+ */
+export const EVENT_EXPERTS = [
+  {
+    name: "BS. Tăng Đức Cương",
+    role: "Giám đốc Bệnh viện Đông Đô",
+    photo: "/images/speaker-bs-tang-duc-cuong.webp",
+    bio: [
+      "Bác sĩ Tăng Đức Cương là chuyên gia với nhiều năm kinh nghiệm trong lĩnh vực sản phụ khoa và hỗ trợ sinh sản. Hiện ông là Giám đốc Bệnh viện Đông Đô, đơn vị y tế tiên phong trong chăm sóc sức khỏe sinh sản, thai sản và IVF tại Việt Nam.",
+      "Với triết lý lấy người bệnh làm trung tâm, bác sĩ luôn đồng hành cùng hàng nghìn gia đình trên hành trình mang thai, sinh con và nuôi dưỡng những em bé khỏe mạnh. Những chia sẻ của ông sẽ mang đến góc nhìn khoa học, thực tiễn và đầy giá trị cho các bậc cha mẹ trong giai đoạn đầu đời của con.",
+    ],
+  },
+  {
+    name: "BS. Vũ Văn Phi",
+    role: "Trưởng khoa Nhi – Bệnh viện AIH",
+    photo: "/images/speaker-bs-vu-van-phi.webp",
+    bio: [
+      "Bác sĩ Vũ Văn Phi là chuyên gia Nhi khoa với nhiều năm kinh nghiệm trong lĩnh vực chăm sóc và điều trị trẻ sơ sinh, trẻ nhỏ. Hiện ông giữ vị trí Trưởng khoa Nhi tại Bệnh viện Quốc tế AIH, nơi áp dụng các tiêu chuẩn y khoa quốc tế trong chăm sóc sức khỏe trẻ em.",
+      "Không chỉ được các gia đình tin tưởng bởi chuyên môn vững vàng, bác sĩ còn được yêu mến nhờ cách tư vấn gần gũi, dễ hiểu và luôn đặt sự phát triển toàn diện của trẻ lên hàng đầu. Tại sự kiện, bác sĩ sẽ chia sẻ những kiến thức thiết thực giúp ba mẹ tự tin đồng hành cùng con trong năm đầu đời.",
+    ],
+  },
+  {
+    name: "Dược sĩ Helen Nguyễn",
+    role: "Dược sĩ lâm sàng – CEO Fresh & Fit",
+    photo: "/images/speaker-ds-helen-nguyen.webp",
+    bio: [
+      "Dược sĩ Helen Nguyễn là chuyên gia trong lĩnh vực chăm sóc sức khỏe mẹ và bé, đồng thời là Nhà sáng lập & CEO Fresh & Fit. Với nhiều năm đồng hành cùng hàng chục nghìn gia đình Việt, chị được biết đến qua những nội dung chia sẻ khoa học, dễ hiểu và mang tính ứng dụng cao.",
+      "Helen luôn theo đuổi sứ mệnh giúp các bậc cha mẹ tiếp cận kiến thức y khoa chính xác để chăm sóc con một cách chủ động và tự tin. Những chia sẻ tại chương trình sẽ tập trung vào các vấn đề mà hầu hết gia đình có con nhỏ đều gặp phải trong năm đầu đời, từ dinh dưỡng, chăm sóc đến xây dựng nền tảng sức khỏe lâu dài.",
+    ],
+  },
+] as const;
+
+/** Năm điểm nổi bật, chép theo KV chính thức để web nói cùng một giọng với truyền thông. */
 export const EVENT_HIGHLIGHTS = [
   {
-    title: "Chuyên gia đầu ngành",
-    description: "Bác sĩ, dược sĩ và chuyên gia hàng đầu về mẹ và bé.",
+    title: "Quà tặng hấp dẫn",
+    description: "Hàng ngàn phần quà giá trị từ các thương hiệu uy tín.",
   },
   {
-    title: "Hoạt động trải nghiệm",
-    description: "Workshop, Cooking Show và các hoạt động tương tác cùng con.",
+    title: "Hoạt động thú vị",
+    description: "Workshop, check-in, bốc thăm trúng thưởng.",
   },
   {
-    title: "Quà tặng giá trị",
-    description: "Welcome Kit, Passport Event và quà từ các nhãn hàng uy tín.",
+    title: "Tư vấn chuyên sâu",
+    description: "Từ các bác sĩ, chuyên gia hàng đầu về mẹ và bé.",
   },
   {
-    title: "Cộng đồng mẹ bỉm",
-    description: "Gặp gỡ những gia đình có con cùng giai đoạn phát triển.",
+    title: "Gặp gỡ giao lưu",
+    description: "Kết nối cùng cộng đồng mẹ bỉm và các chuyên gia.",
   },
+  {
+    title: "Góc check-in xinh xắn",
+    description: "Không gian đẹp lung linh — lưu giữ khoảnh khắc đáng nhớ.",
+  },
+] as const;
+
+/**
+ * Cột mốc phát triển 12 tháng đầu — chép nguyên văn từ infographic "Hành trình
+ * 12 tháng đầu đời cùng Gạo". Desktop hiển thị chính tấm infographic; mảng này
+ * dựng lại bản native cho mobile (ảnh rộng đọc không nổi trên điện thoại).
+ */
+export const BABY_MILESTONES = [
+  { month: 0, title: "Sơ sinh", desc: "Làm quen với thế giới mới" },
+  { month: 1, title: "Nhìn & chú ý", desc: "Nhìn theo khuôn mặt, âm thanh" },
+  { month: 2, title: "Ngẩng đầu", desc: "Ngẩng đầu khi nằm sấp, giữ đầu chắc hơn" },
+  { month: 3, title: "Nâng ngực", desc: "Chống tay, nâng ngực khi nằm sấp" },
+  { month: 4, title: "Lật người", desc: "Bắt đầu lật từ ngửa sang sấp" },
+  { month: 5, title: "Bò trước", desc: "Bò trườn về phía trước, khám phá xung quanh" },
+  { month: 6, title: "Ngồi vững", desc: "Ngồi không cần hỗ trợ, tay với lấy đồ vật" },
+  { month: 7, title: "Tương tác", desc: "Vẫy tay, bập bẹ, hiểu cảm xúc hơn" },
+  { month: 8, title: "Bò khỏe", desc: "Bò nhanh hơn, tự tin khám phá" },
+  { month: 9, title: "Vin đứng", desc: "Vin đồ đứng lên, bước ngang" },
+  { month: 10, title: "Đứng vững", desc: "Đứng vững hơn, chuyển động linh hoạt" },
+  { month: 11, title: "Những bước đầu", desc: "Tập đi, bước đi những bước đầu tiên" },
+  { month: 12, title: "Tự tin bước đi", desc: "Đi vững, tự tin khám phá thế giới rộng lớn" },
 ] as const;
 
 export const EVENT_TIMELINE = [
@@ -145,10 +206,22 @@ export const EVENT_TIMELINE = [
 ] as const;
 
 export const EVENT_GIFTS = [
-  { title: "Welcome Kit", description: "Túi quà chào mừng dành riêng cho mỗi mẹ khi check-in." },
-  { title: "Passport Event", description: "Sổ tay đóng dấu từng hoạt động — hoàn thành để nhận quà." },
-  { title: "Quà từ đối tác", description: "Sản phẩm từ các thương hiệu mẹ và bé đồng hành." },
-  { title: "Lucky Draw", description: "Bốc thăm trúng thưởng với hàng ngàn phần quà." },
+  {
+    title: "Welcome Kit",
+    description: "Túi quà chào mừng, trao tận tay mẹ ngay khi vừa check-in.",
+  },
+  {
+    title: "Mama Ơi Passport",
+    description: "Cuốn sổ ghi dấu cả ngày của mẹ và bé. Đóng đủ dấu, nhận quà.",
+  },
+  {
+    title: "Quà từ nhãn hàng",
+    description: "Sản phẩm thật từ các thương hiệu mẹ và bé đồng hành cùng chương trình.",
+  },
+  {
+    title: "Bốc thăm may mắn",
+    description: "Hàng ngàn phần quà chờ gọi tên — mẹ nào cũng có cơ hội.",
+  },
 ] as const;
 
 export const EVENT_FAQ = [
