@@ -1,11 +1,18 @@
-import { rowsToSheet } from "./export-rows";
-import { registrationToRow, type RegistrationRow } from "./supabase";
+import { rowsToSheet, waitlistToSheet } from "./export-rows";
+import { registrationToRow, type RegistrationRow, type WaitlistRow } from "./supabase";
 import type { Registration } from "./validation";
 
 /**
  * Bản mirror thô cho ops: mỗi lượt đăng ký append một dòng vào Google Sheet,
  * độc lập với Supabase. Supabase vẫn là kho chính của /admin và /check-in;
  * Sheet chỉ để ops mở link ra xem nhanh.
+ *
+ * Hai tab RIÊNG trong cùng một spreadsheet:
+ *  - Đăng ký sự kiện → tab "register" (22 cột, có mã check-in + thông tin bé).
+ *  - Waitlist app    → tab "waitlist" (3 cột: email, consent, thời điểm).
+ * Ops tự đặt tên hai tab này trong Sheet; API `values.append` KHÔNG tự tạo tab,
+ * nên tab thiếu / gõ sai tên sẽ làm lượt ghi lỗi — nhưng non-fatal (Brevo giữ
+ * lead), route chỉ log cảnh báo.
  *
  * Append thuần tuý — không bao giờ sửa dòng cũ. Hệ quả đã chấp nhận: mẹ submit
  * hai lần thì Sheet có hai dòng, và Sheet không bao giờ biết ai đã check-in.
@@ -15,8 +22,19 @@ import type { Registration } from "./validation";
 const SCOPE = "https://www.googleapis.com/auth/spreadsheets";
 const TOKEN_URL = "https://oauth2.googleapis.com/token";
 const SHEETS_API = "https://sheets.googleapis.com/v4/spreadsheets";
-/** Không kèm tên sheet → trỏ sheet đầu tiên, khỏi phải encode tên tiếng Việt. */
-const RANGE = "A1";
+
+/** Tên hai tab — ops phải đặt CHÍNH XÁC như thế này trong Google Sheet. */
+const REGISTER_TAB = "register";
+const WAITLIST_TAB = "waitlist";
+
+/**
+ * `tab!A1` đã escape cho URL. encodeURIComponent KHÔNG escape `!`, mà Google
+ * muốn ký tự phân tách range ở dạng `%21` trong path — nên ghép tay. Tên tab
+ * toàn ASCII nên encodeURIComponent(tab) trả về chính nó; chỉ `!A1` cần escape.
+ */
+function range(tab: string): string {
+  return `${encodeURIComponent(tab)}%21A1`;
+}
 /**
  * Có tới bốn lượt gọi Google tuần tự trong một lượt đăng ký (token, đọc A1,
  * append header, append dòng), tất cả cộng dồn vào thời gian mẹ đang chờ —
@@ -28,6 +46,9 @@ const TIMEOUT_MS = 5_000;
 /** Dòng đầu Sheet: append thuần tuý có thể đếm ra số sai, phải nói rõ ngay đó. */
 const NOTE =
   "⚠ Bản ghi thô, tự động — có thể có dòng trùng và KHÔNG có trạng thái check-in. Số liệu chính thức: /admin → Xuất Excel.";
+/** Waitlist không có check-in; chỉ cảnh báo dòng trùng do append thuần tuý. */
+const WAITLIST_NOTE =
+  "⚠ Bản ghi thô, tự động — có thể có dòng trùng. Số liệu chính thức: /admin → Xuất Excel.";
 
 export function sheetsConfigured(): boolean {
   return Boolean(
@@ -61,6 +82,25 @@ export function registrationToSheetRow(
     checked_in_source: null,
   };
   return rowsToSheet([row]).rows[0];
+}
+
+/**
+ * Dựng WaitlistRow tạm rồi đưa qua `waitlistToSheet` để lấy đúng 3 ô theo đúng
+ * thứ tự cột — y hệt cách `registrationToSheetRow` tái dùng `rowsToSheet`. Thứ
+ * tự cột chỉ tồn tại một chỗ (export-rows.ts), nên Sheet và file Excel không bao
+ * giờ lệch nhau. `created_at` chụp ngay lúc ghi.
+ */
+export function waitlistToSheetRow(
+  email: string,
+  dongY: boolean,
+): (string | number)[] {
+  const row: WaitlistRow = {
+    id: "", // waitlistToSheet không xuất id — giá trị này không bao giờ được đọc
+    created_at: new Date().toISOString(), // giờ server, lệch vài ms so với Postgres
+    email,
+    dong_y_nhan_tin: dongY,
+  };
+  return waitlistToSheet([row]).rows[0];
 }
 
 /** base64url không đệm — định dạng bắt buộc của JWT. */
@@ -158,32 +198,47 @@ async function sheetsFetch(path: string, init?: RequestInit): Promise<Response> 
  */
 export const VALUE_INPUT_OPTION = "RAW";
 
-async function appendValues(values: (string | number)[][]): Promise<void> {
+async function appendValues(
+  tab: string,
+  values: (string | number)[][],
+): Promise<void> {
   await sheetsFetch(
-    `/values/${RANGE}:append?valueInputOption=${VALUE_INPUT_OPTION}&insertDataOption=INSERT_ROWS`,
+    `/values/${range(tab)}:append?valueInputOption=${VALUE_INPUT_OPTION}&insertDataOption=INSERT_ROWS`,
     { method: "POST", body: JSON.stringify({ values }) },
   );
 }
 
-// Một lần cho mỗi tiến trình server, không phải mỗi lượt đăng ký. Giữ chính
-// promise (không phải cờ boolean) để hai đăng ký đồng thời trên cùng một
-// instance cùng chờ một lần kiểm tra, thay vì cùng ghi header hai lần.
-let headerPromise: Promise<void> | null = null;
+// Một lần cho MỖI TAB, cho mỗi tiến trình server — không phải mỗi lượt đăng ký.
+// Giữ chính promise (không phải cờ boolean) để hai đăng ký đồng thời trên cùng
+// một instance cùng chờ một lần kiểm tra, thay vì cùng ghi header hai lần. Map
+// theo tên tab vì register và waitlist có bộ header khác nhau, mỗi tab tự đảm
+// bảo header của riêng mình.
+const headerPromises = new Map<string, Promise<void>>();
 
-async function ensureHeader(): Promise<void> {
-  // Lỗi thì xoá promise đã nhớ để lần sau thử lại, không nhớ luôn thất bại.
-  headerPromise ??= doEnsureHeader().catch((err) => {
-    headerPromise = null;
-    throw err;
-  });
-  return headerPromise;
+function ensureHeader(
+  tab: string,
+  headerRows: (string | number)[][],
+): Promise<void> {
+  let promise = headerPromises.get(tab);
+  if (!promise) {
+    // Lỗi thì xoá promise đã nhớ để lần sau thử lại, không nhớ luôn thất bại.
+    promise = doEnsureHeader(tab, headerRows).catch((err) => {
+      headerPromises.delete(tab);
+      throw err;
+    });
+    headerPromises.set(tab, promise);
+  }
+  return promise;
 }
 
-async function doEnsureHeader(): Promise<void> {
-  const res = await sheetsFetch(`/values/${RANGE}`);
+async function doEnsureHeader(
+  tab: string,
+  headerRows: (string | number)[][],
+): Promise<void> {
+  const res = await sheetsFetch(`/values/${range(tab)}`);
   const data = (await res.json()) as { values?: string[][] };
   if (!data.values || data.values.length === 0) {
-    await appendValues([[NOTE], rowsToSheet([]).headers]);
+    await appendValues(tab, headerRows);
   }
 }
 
@@ -191,6 +246,11 @@ export async function appendRegistration(
   data: Registration,
   code: string,
 ): Promise<void> {
-  await ensureHeader();
-  await appendValues([registrationToSheetRow(data, code)]);
+  await ensureHeader(REGISTER_TAB, [[NOTE], rowsToSheet([]).headers]);
+  await appendValues(REGISTER_TAB, [registrationToSheetRow(data, code)]);
+}
+
+export async function appendWaitlist(email: string, dongY: boolean): Promise<void> {
+  await ensureHeader(WAITLIST_TAB, [[WAITLIST_NOTE], waitlistToSheet([]).headers]);
+  await appendValues(WAITLIST_TAB, [waitlistToSheetRow(email, dongY)]);
 }
