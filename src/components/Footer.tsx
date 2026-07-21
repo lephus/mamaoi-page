@@ -21,12 +21,12 @@ export function Footer() {
           <ul className="space-y-2 text-sm text-ink-faded">
             <li>
               <Link href="/" className="hover:text-primary">
-                Ứng dụng Mama Ơi
+                Sự kiện Mama Ơi Day
               </Link>
             </li>
             <li>
-              <Link href="/su-kien" className="hover:text-primary">
-                Sự kiện Mama Ơi Day
+              <Link href="/ung-dung" className="hover:text-primary">
+                Ứng dụng Mama Ơi
               </Link>
             </li>
             <li>
