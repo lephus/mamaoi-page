@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { flushSync } from "react-dom";
 import { CHU_DE_QUAN_TAM, NGUON_BIET_DEN, PROVINCES } from "@/lib/constants";
 import { buildRegistrationPayload } from "@/lib/registration-payload";
 import { trackRegistration } from "@/lib/analytics";
@@ -152,6 +153,23 @@ function HangChon({
   );
 }
 
+/**
+ * Đưa mẹ tới đúng ô ĐẦU TIÊN đang sai sau khi submit lỗi — thay vì để mẹ đứng ở
+ * cuối form (nơi vừa bấm nút) tự dò lên xem chỗ nào tô đỏ. Bắt cả input/select
+ * lỗi (`aria-invalid`), nhóm radio/checkbox lỗi (fieldset `aria-invalid`) và
+ * thông báo lỗi chung ở đầu form (`role="alert"`) — cái nào xuất hiện trước
+ * trong DOM thì cuộn tới cái đó.
+ *
+ * PHẢI gọi SAU `flushSync`: React 19 gom (batch) `setState`, nên nếu query ngay
+ * thì DOM của lần lỗi này chưa gắn `aria-invalid`/`role="alert"`, querySelector
+ * trả `null` và không cuộn đi đâu cả. `flushSync` ép React commit đồng bộ trước.
+ */
+function scrollToFirstError() {
+  document
+    .querySelector('[aria-invalid="true"], [role="alert"]')
+    ?.scrollIntoView({ block: "center", behavior: "smooth" });
+}
+
 export function RegistrationForm() {
   const router = useRouter();
   const [errors, setErrors] = useState<Errors>({});
@@ -182,21 +200,25 @@ export function RegistrationForm() {
       const data = await res.json();
 
       if (!res.ok) {
-        setErrors(data.fieldErrors ?? { form: data.error ?? "Có lỗi xảy ra" });
-        setSubmitting(false);
-        // Move the user to the first thing that is wrong, rather than leaving
-        // them staring at an unchanged form wondering what happened.
-        document
-          .querySelector('[aria-invalid="true"], [role="alert"]')
-          ?.scrollIntoView({ block: "center", behavior: "smooth" });
+        // flushSync ép DOM gắn lỗi ngay trong lượt này, để scrollToFirstError
+        // tìm được ô sai và cuộn tới — nếu không mẹ chỉ thấy nút bật lại mà
+        // không rõ vì sao đăng ký chưa xong.
+        flushSync(() => {
+          setErrors(data.fieldErrors ?? { form: data.error ?? "Có lỗi xảy ra" });
+          setSubmitting(false);
+        });
+        scrollToFirstError();
         return;
       }
 
       trackRegistration("su-kien");
       router.push(`/cam-on?code=${encodeURIComponent(data.code ?? "")}`);
     } catch {
-      setErrors({ form: "Không thể kết nối. Vui lòng kiểm tra mạng và thử lại." });
-      setSubmitting(false);
+      flushSync(() => {
+        setErrors({ form: "Không thể kết nối. Vui lòng kiểm tra mạng và thử lại." });
+        setSubmitting(false);
+      });
+      scrollToFirstError();
     }
   }
 
