@@ -109,7 +109,7 @@ export const EVENT_SPEAKERS = [
   {
     name: "Ngô Thanh Vân",
     role: "Khách mời đặc biệt",
-    photo: "/images/speaker-ngo-thanh-van.webp",
+    photo: "/images/speaker-ngo-thanh-van.jpg",
   },
 ] as const;
 
