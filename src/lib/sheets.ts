@@ -1,4 +1,12 @@
-import { rowsToSheet, waitlistToSheet } from "./export-rows";
+import {
+  checkinCells,
+  HEADER_CODE,
+  HEADER_DA_CHECKIN,
+  HEADER_GIO_CHECKIN,
+  HEADER_NGUON_CHECKIN,
+  rowsToSheet,
+  waitlistToSheet,
+} from "./export-rows";
 import { registrationToRow, type RegistrationRow, type WaitlistRow } from "./supabase";
 import type { Registration } from "./validation";
 
@@ -14,9 +22,11 @@ import type { Registration } from "./validation";
  * nên tab thiếu / gõ sai tên sẽ làm lượt ghi lỗi — nhưng non-fatal (Brevo giữ
  * lead), route chỉ log cảnh báo.
  *
- * Append thuần tuý — không bao giờ sửa dòng cũ. Hệ quả đã chấp nhận: mẹ submit
- * hai lần thì Sheet có hai dòng, và Sheet không bao giờ biết ai đã check-in.
- * Số liệu chính thức lấy ở /admin → Xuất Excel.
+ * Chủ yếu là append lúc đăng ký. NGOẠI LỆ DUY NHẤT: khi mẹ quét QR check-in,
+ * `markCheckedInInSheet` cập nhật TẠI CHỖ ba cột check-in của đúng dòng đó — các
+ * cột đăng ký khác không bao giờ bị sửa. Hệ quả đã chấp nhận: mẹ submit hai lần
+ * thì Sheet có hai dòng (mỗi lần một mã), và chỉ dòng ứng với mã được quét mới
+ * có trạng thái check-in. Số liệu chính thức vẫn lấy ở /admin → Xuất Excel.
  */
 
 const SCOPE = "https://www.googleapis.com/auth/spreadsheets";
@@ -43,9 +53,13 @@ function range(tab: string): string {
  */
 const TIMEOUT_MS = 5_000;
 
-/** Dòng đầu Sheet: append thuần tuý có thể đếm ra số sai, phải nói rõ ngay đó. */
+/**
+ * Dòng đầu Sheet: append có thể đếm ra số sai, phải nói rõ ngay đó. Chỉ được ghi
+ * MỘT lần lúc tab còn trống (doEnsureHeader), nên tab đã tạo trước thay đổi này
+ * vẫn giữ ghi chú cũ cho tới khi ops sửa tay — thuần cảnh báo, không ảnh hưởng dữ liệu.
+ */
 const NOTE =
-  "⚠ Bản ghi thô, tự động — có thể có dòng trùng và KHÔNG có trạng thái check-in. Số liệu chính thức: /admin → Xuất Excel.";
+  "⚠ Bản ghi thô, tự động — có thể có dòng trùng; cột check-in chỉ điền khi mẹ quét QR (nguồn admin không mirror sang đây). Số liệu chính thức: /admin → Xuất Excel.";
 /** Waitlist không có check-in; chỉ cảnh báo dòng trùng do append thuần tuý. */
 const WAITLIST_NOTE =
   "⚠ Bản ghi thô, tự động — có thể có dòng trùng. Số liệu chính thức: /admin → Xuất Excel.";
@@ -76,7 +90,8 @@ export function registrationToSheetRow(
     id: "", // rowsToSheet không xuất id — giá trị này không bao giờ được đọc
     created_at: now.toISOString(), // giờ server, lệch vài ms so với Postgres
     ...registrationToRow(data, code, now),
-    // Sheet chụp lại thời điểm đăng ký, không theo dõi check-in.
+    // Lúc append, ba cột check-in để rỗng; `markCheckedInInSheet` điền sau khi
+    // mẹ quét QR.
     checked_in: false,
     checked_in_at: null,
     checked_in_source: null,
@@ -253,4 +268,100 @@ export async function appendRegistration(
 export async function appendWaitlist(email: string, dongY: boolean): Promise<void> {
   await ensureHeader(WAITLIST_TAB, [[WAITLIST_NOTE], waitlistToSheet([]).headers]);
   await appendValues(WAITLIST_TAB, [waitlistToSheetRow(email, dongY)]);
+}
+
+/**
+ * Chỉ số cột 0 → chữ cột A1 (0→A, 25→Z, 26→AA). Bảng 22 cột chỉ chạm tới V,
+ * nhưng viết đủ tổng quát để đổi thứ tự / thêm cột không âm thầm sai.
+ */
+export function colLetter(index0: number): string {
+  let n = index0;
+  let s = "";
+  do {
+    s = String.fromCharCode(65 + (n % 26)) + s;
+    n = Math.floor(n / 26) - 1;
+  } while (n >= 0);
+  return s;
+}
+
+/**
+ * Số dòng A1 (1-based) của `code` trong mảng giá trị cột "Mã check-in" mà
+ * `values.get` trả về: values[0] = dòng 1 (ô ghi chú), values[1] = dòng 2
+ * (header), values[2..] = dữ liệu. Không thấy → -1. So khớp bỏ hoa/thường và
+ * khoảng trắng, phòng khi ô được sửa tay.
+ */
+export function findCheckinRow(
+  colValues: (string[] | undefined)[],
+  code: string,
+): number {
+  const target = code.trim().toUpperCase();
+  for (let i = 0; i < colValues.length; i++) {
+    if (colValues[i]?.[0]?.trim().toUpperCase() === target) return i + 1;
+  }
+  return -1;
+}
+
+/**
+ * Dữ liệu cho `values:batchUpdate` — mỗi cột check-in một range. Vị trí cột suy
+ * ra từ `headers` (KHÔNG hardcode T/U/V) nên đổi thứ tự cột ở export-rows.ts vẫn
+ * ghi đúng ô; cột bị đổi tên → ném lỗi ngay thay vì ghi nhầm ô. Giá trị lấy từ
+ * `checkinCells`, dùng chung phép định dạng với file Excel.
+ */
+export function buildCheckinUpdate(
+  tab: string,
+  headers: string[],
+  rowNumber: number,
+  checkedInAt: string,
+  source: "qr" | "admin",
+): { range: string; values: string[][] }[] {
+  const [da, gio, nguon] = checkinCells(true, checkedInAt, source);
+  const cell = (header: string, value: string) => {
+    const i = headers.indexOf(header);
+    if (i < 0) throw new Error(`Sheet thiếu cột "${header}"`);
+    return { range: `${tab}!${colLetter(i)}${rowNumber}`, values: [[value]] };
+  };
+  return [
+    cell(HEADER_DA_CHECKIN, da),
+    cell(HEADER_GIO_CHECKIN, gio),
+    cell(HEADER_NGUON_CHECKIN, nguon),
+  ];
+}
+
+/**
+ * Cập nhật ba cột check-in vào ĐÚNG dòng của mẹ trong tab register khi mẹ quét
+ * QR — ngoại lệ có chủ đích với "chỉ append" (xem doc đầu file). Đọc cột "Mã
+ * check-in" để tìm dòng (mã ngẫu nhiên ~1 tỷ tổ hợp nên mỗi mã ứng tối đa một
+ * dòng), rồi `values:batchUpdate` ba ô.
+ *
+ * Ném lỗi nếu không thấy dòng (thường do Sheet append lỗi lúc đăng ký) — route
+ * gọi hàm này BẮT lỗi và chỉ log, vì check-in đã ghi xong ở Supabase (nguồn
+ * chính thức); Sheet lệch là non-fatal.
+ */
+export async function markCheckedInInSheet(
+  code: string,
+  checkedInAt: string,
+  source: "qr" | "admin",
+): Promise<void> {
+  const headers = rowsToSheet([]).headers;
+  const codeIdx = headers.indexOf(HEADER_CODE);
+  if (codeIdx < 0) throw new Error(`Sheet thiếu cột "${HEADER_CODE}"`);
+  const codeCol = colLetter(codeIdx);
+
+  // Đọc cả cột mã (từ dòng 1) để định vị dòng cần sửa.
+  const res = await sheetsFetch(
+    `/values/${encodeURIComponent(REGISTER_TAB)}%21${codeCol}1:${codeCol}`,
+  );
+  const data = (await res.json()) as { values?: string[][] };
+  const rowNumber = findCheckinRow(data.values ?? [], code);
+  if (rowNumber < 0) {
+    throw new Error(`Không thấy mã ${code} trong tab "${REGISTER_TAB}"`);
+  }
+
+  await sheetsFetch(`/values:batchUpdate`, {
+    method: "POST",
+    body: JSON.stringify({
+      valueInputOption: VALUE_INPUT_OPTION,
+      data: buildCheckinUpdate(REGISTER_TAB, headers, rowNumber, checkedInAt, source),
+    }),
+  });
 }

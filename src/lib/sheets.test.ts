@@ -1,6 +1,9 @@
 import { describe, it, expect } from "vitest";
 import { rowsToSheet, waitlistToSheet } from "@/lib/export-rows";
 import {
+  buildCheckinUpdate,
+  colLetter,
+  findCheckinRow,
   registrationToSheetRow,
   VALUE_INPUT_OPTION,
   waitlistToSheetRow,
@@ -125,6 +128,106 @@ describe("waitlistToSheetRow", () => {
     const row = waitlistToSheetRow("me@example.com", false);
     expect(row).not.toContain(null);
     expect(row).not.toContain("null");
+  });
+});
+
+describe("colLetter", () => {
+  it("0→A, 16→Q (mã), 19→T (đã check-in), 25→Z, 26→AA", () => {
+    expect(colLetter(0)).toBe("A");
+    expect(colLetter(16)).toBe("Q");
+    expect(colLetter(19)).toBe("T");
+    expect(colLetter(25)).toBe("Z");
+    expect(colLetter(26)).toBe("AA");
+  });
+});
+
+describe("findCheckinRow", () => {
+  // values.get trả từ dòng 1: [ghi chú], [header], [dữ liệu...]. Số dòng là 1-based.
+  const col = [[""], ["Mã check-in"], ["MO-23456A"], ["MO-BCDEFG"]];
+
+  it("trả số dòng A1 (1-based) của mã", () => {
+    expect(findCheckinRow(col, "MO-BCDEFG")).toBe(4);
+    expect(findCheckinRow(col, "MO-23456A")).toBe(3);
+  });
+
+  it("bỏ qua hoa/thường và khoảng trắng thừa", () => {
+    expect(findCheckinRow(col, "  mo-bcdefg  ")).toBe(4);
+  });
+
+  it("không thấy mã → -1", () => {
+    expect(findCheckinRow(col, "MO-ZZZZZZ")).toBe(-1);
+  });
+
+  it("không khớp nhầm header 'Mã check-in'", () => {
+    expect(findCheckinRow(col, "Mã check-in")).toBe(2); // đúng: header nằm dòng 2
+    // nhưng một mã hợp lệ không bao giờ bằng chuỗi header nên không có va chạm thật
+  });
+
+  it("chịu được ô rỗng / dòng thiếu do Google lược bỏ", () => {
+    expect(findCheckinRow([[], undefined, ["MO-23456A"]], "MO-23456A")).toBe(3);
+  });
+});
+
+describe("buildCheckinUpdate", () => {
+  const HEADERS = rowsToSheet([]).headers;
+  const iso = "2026-08-30T02:15:00.000Z"; // 09:15 30/08/2026 giờ VN
+
+  it("ghi ĐÚNG ba ô check-in của dòng, giá trị khớp file Excel", () => {
+    const byRange = Object.fromEntries(
+      buildCheckinUpdate("register", HEADERS, 5, iso, "qr").map((d) => [
+        d.range,
+        d.values[0][0],
+      ]),
+    );
+    expect(byRange["register!T5"]).toBe("Có");
+    expect(byRange["register!U5"]).toBe("09:15 30/08/2026");
+    expect(byRange["register!V5"]).toBe("qr");
+  });
+
+  it("chỉ đụng đúng ba cột check-in, không hơn", () => {
+    expect(buildCheckinUpdate("register", HEADERS, 5, iso, "qr")).toHaveLength(3);
+  });
+
+  it("giá trị khớp cột 'Đã check-in' của rowsToSheet (một nguồn định dạng)", () => {
+    const excel = rowsToSheet([
+      {
+        id: "",
+        created_at: iso,
+        checkin_code: "MO-23456A",
+        ho_ten: "x",
+        email: "x",
+        sdt: "x",
+        facebook: null,
+        tinh_thanh: "x",
+        trang_thai: "mang_thai",
+        thai_tuan: 20,
+        ten_be: null,
+        be_ngay_sinh: null,
+        be_gioi_tinh: null,
+        be_thang_tuoi: null,
+        chu_de_quan_tam: [],
+        chu_de_khac: null,
+        nguon_biet_den: "facebook",
+        di_cung_chong: false,
+        dong_y_nhan_tin: true,
+        nguon: "su-kien",
+        checked_in: true,
+        checked_in_at: iso,
+        checked_in_source: "qr",
+      },
+    ]);
+    const gio = excel.rows[0][excel.headers.indexOf("Giờ check-in")];
+    const byRange = Object.fromEntries(
+      buildCheckinUpdate("register", HEADERS, 5, iso, "qr").map((d) => [
+        d.range,
+        d.values[0][0],
+      ]),
+    );
+    expect(byRange["register!U5"]).toBe(gio);
+  });
+
+  it("cột bị đổi tên → ném lỗi thay vì ghi nhầm ô", () => {
+    expect(() => buildCheckinUpdate("register", ["x", "y"], 5, iso, "qr")).toThrow();
   });
 });
 

@@ -1,3 +1,4 @@
+import { markCheckedInInSheet, sheetsConfigured } from "@/lib/sheets";
 import { checkinByCode } from "@/lib/supabase";
 import { isValidCheckinCode } from "@/lib/validation";
 
@@ -6,6 +7,10 @@ import { isValidCheckinCode } from "@/lib/validation";
  * ticket (~1 tỷ tổ hợp nên dò mã bất khả thi). Chỉ GHI khi bấm nút — trang mở
  * (GET) chỉ đọc, nên prefetch/quét link của email client không thể vô tình check-in.
  */
+// Có thêm hai lượt gọi Google (đọc cột mã + batchUpdate) sau khi ghi Supabase —
+// nới maxDuration để lượt check-in tại cửa không bị nền tảng giết giữa chừng.
+export const maxDuration = 30;
+
 export async function POST(request: Request) {
   let body: unknown;
   try {
@@ -24,6 +29,19 @@ export async function POST(request: Request) {
     if (result.status === "not_found") {
       return Response.json({ error: "Không tìm thấy mã" }, { status: 404 });
     }
+
+    // Mirror trạng thái check-in sang dòng của mẹ trong Google Sheet. Chỉ khi
+    // vừa check-in LẦN ĐẦU ("ok"): quét lại ("already") không đổi gì ở Supabase
+    // nên cũng không cần chạm Sheet. Non-fatal — check-in đã ghi xong ở Supabase
+    // (nguồn chính thức /admin); Sheet lệch chỉ log để ops back-fill.
+    if (result.status === "ok" && sheetsConfigured()) {
+      try {
+        await markCheckedInInSheet(code, result.time, "qr");
+      } catch (err) {
+        console.error("[check-in] Sheets update failed:", code, err);
+      }
+    }
+
     return Response.json({
       ok: true,
       alreadyCheckedIn: result.status === "already",
