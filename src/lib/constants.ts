@@ -22,7 +22,7 @@ export const EVENT = {
   dateLabel: "Chủ Nhật, 30/08/2026",
   dateISO: "2026-08-30",
   venue: "ThiSkyHall Sala",
-  address: "10 Mai Chí Thọ, Thủ Thiêm, TP. Thủ Đức, TP.HCM",
+  address: "10 Mai Chí Thọ, Thủ Thiêm, Thủ Đức, TP.HCM",
   capacity: "500 mẹ bỉm",
   registrationOpens: "25/07/2026",
 } as const;

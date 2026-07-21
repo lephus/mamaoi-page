@@ -39,7 +39,7 @@ Locked facts — these appear verbatim on the page:
 |---|---|
 | Event | Mama Ơi Day – Hành trình 1 năm đầu đời cùng con |
 | Date | Sunday, 30/08/2026 |
-| Venue | ThiSkyHall Sala, 10 Mai Chí Thọ, Thủ Thiêm, TP. Thủ Đức, TP.HCM |
+| Venue | ThiSkyHall Sala, 10 Mai Chí Thọ, Thủ Thiêm, Thủ Đức, TP.HCM |
 | Capacity | 500 mothers |
 | Registration opens | 25/07/2026, driven from Ngô Thanh Vân's Facebook page |
 
