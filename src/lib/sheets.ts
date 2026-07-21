@@ -23,10 +23,11 @@ import type { Registration } from "./validation";
  * lead), route chỉ log cảnh báo.
  *
  * Chủ yếu là append lúc đăng ký. NGOẠI LỆ DUY NHẤT: khi mẹ quét QR check-in,
- * `markCheckedInInSheet` cập nhật TẠI CHỖ ba cột check-in của đúng dòng đó — các
- * cột đăng ký khác không bao giờ bị sửa. Hệ quả đã chấp nhận: mẹ submit hai lần
- * thì Sheet có hai dòng (mỗi lần một mã), và chỉ dòng ứng với mã được quét mới
- * có trạng thái check-in. Số liệu chính thức vẫn lấy ở /admin → Xuất Excel.
+ * `markCheckedInInSheet` cập nhật TẠI CHỖ ba cột check-in — các cột đăng ký khác
+ * không bao giờ bị sửa. Hệ quả đã chấp nhận: mẹ submit hai lần thì Sheet có hai
+ * dòng CÙNG một mã (mã của một email được giữ cố định, xem `existingCheckinCode`),
+ * và khi mẹ quét QR thì CẢ HAI dòng cùng mã đó đều được đánh dấu check-in. Số
+ * liệu chính thức vẫn lấy ở /admin → Xuất Excel.
  */
 
 const SCOPE = "https://www.googleapis.com/auth/spreadsheets";
@@ -285,20 +286,24 @@ export function colLetter(index0: number): string {
 }
 
 /**
- * Số dòng A1 (1-based) của `code` trong mảng giá trị cột "Mã check-in" mà
+ * TẤT CẢ số dòng A1 (1-based) của `code` trong mảng giá trị cột "Mã check-in" mà
  * `values.get` trả về: values[0] = dòng 1 (ô ghi chú), values[1] = dòng 2
- * (header), values[2..] = dữ liệu. Không thấy → -1. So khớp bỏ hoa/thường và
- * khoảng trắng, phòng khi ô được sửa tay.
+ * (header), values[2..] = dữ liệu. Trả mảng rỗng nếu không thấy. So khớp bỏ
+ * hoa/thường và khoảng trắng, phòng khi ô được sửa tay.
+ *
+ * Trả về NHIỀU dòng vì mã của một email được giữ cố định + Sheet chỉ append: mẹ
+ * đăng ký lại tạo thêm dòng CÙNG mã, và cả cụm đó phải cùng được đánh dấu check-in.
  */
-export function findCheckinRow(
+export function findCheckinRows(
   colValues: (string[] | undefined)[],
   code: string,
-): number {
+): number[] {
   const target = code.trim().toUpperCase();
+  const rows: number[] = [];
   for (let i = 0; i < colValues.length; i++) {
-    if (colValues[i]?.[0]?.trim().toUpperCase() === target) return i + 1;
+    if (colValues[i]?.[0]?.trim().toUpperCase() === target) rows.push(i + 1);
   }
-  return -1;
+  return rows;
 }
 
 /**
@@ -328,13 +333,13 @@ export function buildCheckinUpdate(
 }
 
 /**
- * Cập nhật ba cột check-in vào ĐÚNG dòng của mẹ trong tab register khi mẹ quét
- * QR — ngoại lệ có chủ đích với "chỉ append" (xem doc đầu file). Đọc cột "Mã
- * check-in" để tìm dòng (mã ngẫu nhiên ~1 tỷ tổ hợp nên mỗi mã ứng tối đa một
- * dòng), rồi `values:batchUpdate` ba ô.
+ * Cập nhật ba cột check-in vào MỌI dòng của mẹ trong tab register khi mẹ quét QR
+ * — ngoại lệ có chủ đích với "chỉ append" (xem doc đầu file). Đọc cột "Mã
+ * check-in", tìm mọi dòng trùng mã (đăng ký lại giữ nguyên mã nên có thể có nhiều
+ * dòng), rồi `values:batchUpdate` ba ô cho từng dòng.
  *
- * Ném lỗi nếu không thấy dòng (thường do Sheet append lỗi lúc đăng ký) — route
- * gọi hàm này BẮT lỗi và chỉ log, vì check-in đã ghi xong ở Supabase (nguồn
+ * Ném lỗi nếu KHÔNG thấy dòng nào (thường do Sheet append lỗi lúc đăng ký) —
+ * route gọi hàm này BẮT lỗi và chỉ log, vì check-in đã ghi xong ở Supabase (nguồn
  * chính thức); Sheet lệch là non-fatal.
  */
 export async function markCheckedInInSheet(
@@ -347,13 +352,13 @@ export async function markCheckedInInSheet(
   if (codeIdx < 0) throw new Error(`Sheet thiếu cột "${HEADER_CODE}"`);
   const codeCol = colLetter(codeIdx);
 
-  // Đọc cả cột mã (từ dòng 1) để định vị dòng cần sửa.
+  // Đọc cả cột mã (từ dòng 1) để định vị các dòng cần sửa.
   const res = await sheetsFetch(
     `/values/${encodeURIComponent(REGISTER_TAB)}%21${codeCol}1:${codeCol}`,
   );
   const data = (await res.json()) as { values?: string[][] };
-  const rowNumber = findCheckinRow(data.values ?? [], code);
-  if (rowNumber < 0) {
+  const rowNumbers = findCheckinRows(data.values ?? [], code);
+  if (rowNumbers.length === 0) {
     throw new Error(`Không thấy mã ${code} trong tab "${REGISTER_TAB}"`);
   }
 
@@ -361,7 +366,9 @@ export async function markCheckedInInSheet(
     method: "POST",
     body: JSON.stringify({
       valueInputOption: VALUE_INPUT_OPTION,
-      data: buildCheckinUpdate(REGISTER_TAB, headers, rowNumber, checkedInAt, source),
+      data: rowNumbers.flatMap((n) =>
+        buildCheckinUpdate(REGISTER_TAB, headers, n, checkedInAt, source),
+      ),
     }),
   });
 }

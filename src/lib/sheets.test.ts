@@ -3,7 +3,7 @@ import { rowsToSheet, waitlistToSheet } from "@/lib/export-rows";
 import {
   buildCheckinUpdate,
   colLetter,
-  findCheckinRow,
+  findCheckinRows,
   registrationToSheetRow,
   VALUE_INPUT_OPTION,
   waitlistToSheetRow,
@@ -141,30 +141,30 @@ describe("colLetter", () => {
   });
 });
 
-describe("findCheckinRow", () => {
+describe("findCheckinRows", () => {
   // values.get trả từ dòng 1: [ghi chú], [header], [dữ liệu...]. Số dòng là 1-based.
   const col = [[""], ["Mã check-in"], ["MO-23456A"], ["MO-BCDEFG"]];
 
-  it("trả số dòng A1 (1-based) của mã", () => {
-    expect(findCheckinRow(col, "MO-BCDEFG")).toBe(4);
-    expect(findCheckinRow(col, "MO-23456A")).toBe(3);
+  it("trả mảng số dòng A1 (1-based) của mã", () => {
+    expect(findCheckinRows(col, "MO-BCDEFG")).toEqual([4]);
+    expect(findCheckinRows(col, "MO-23456A")).toEqual([3]);
+  });
+
+  it("mã trùng ở nhiều dòng (đăng ký lại giữ mã) → trả HẾT các dòng", () => {
+    const dup = [[""], ["Mã check-in"], ["MO-23456A"], ["MO-BCDEFG"], ["MO-23456A"]];
+    expect(findCheckinRows(dup, "MO-23456A")).toEqual([3, 5]);
   });
 
   it("bỏ qua hoa/thường và khoảng trắng thừa", () => {
-    expect(findCheckinRow(col, "  mo-bcdefg  ")).toBe(4);
+    expect(findCheckinRows(col, "  mo-bcdefg  ")).toEqual([4]);
   });
 
-  it("không thấy mã → -1", () => {
-    expect(findCheckinRow(col, "MO-ZZZZZZ")).toBe(-1);
-  });
-
-  it("không khớp nhầm header 'Mã check-in'", () => {
-    expect(findCheckinRow(col, "Mã check-in")).toBe(2); // đúng: header nằm dòng 2
-    // nhưng một mã hợp lệ không bao giờ bằng chuỗi header nên không có va chạm thật
+  it("không thấy mã → mảng rỗng", () => {
+    expect(findCheckinRows(col, "MO-ZZZZZZ")).toEqual([]);
   });
 
   it("chịu được ô rỗng / dòng thiếu do Google lược bỏ", () => {
-    expect(findCheckinRow([[], undefined, ["MO-23456A"]], "MO-23456A")).toBe(3);
+    expect(findCheckinRows([[], undefined, ["MO-23456A"]], "MO-23456A")).toEqual([3]);
   });
 });
 

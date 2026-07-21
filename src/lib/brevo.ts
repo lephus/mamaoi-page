@@ -107,6 +107,33 @@ export async function upsertContact(
   }
 }
 
+/**
+ * Mã check-in đã cấp cho email này ở lần đăng ký sự kiện trước (nếu có), để lần
+ * sau DÙNG LẠI thay vì sinh mã mới — giữ mã của một email cố định thì QR/email cũ
+ * không bao giờ hết hiệu lực (nếu không, upsert theo email ghi đè mã cũ và mọi QR
+ * đã gửi trước đó báo "không tìm thấy mã").
+ *
+ * Tra ở Brevo — nguồn sự thật của contact, luôn nằm trong luồng đăng ký — chứ
+ * không ở Supabase (non-fatal, có thể tắt). Trả null khi email chưa có contact
+ * (404) hoặc mới chỉ ở waitlist app (chưa có MA_CHECKIN); cả hai đều nghĩa là
+ * "chưa từng đăng ký sự kiện" → gọi nơi dùng sẽ sinh mã mới.
+ */
+export async function existingCheckinCode(email: string): Promise<string | null> {
+  const key = process.env.BREVO_API_KEY;
+  if (!key) throw new Error("BREVO_API_KEY chưa được cấu hình");
+
+  const res = await fetch(`${BREVO_API}/contacts/${encodeURIComponent(email)}`, {
+    headers: { "api-key": key, accept: "application/json" },
+  });
+  if (res.status === 404) return null;
+  if (!res.ok) {
+    throw new Error(`Brevo get contact failed (${res.status}): ${await res.text()}`);
+  }
+  const data = (await res.json()) as { attributes?: Record<string, unknown> };
+  const code = data.attributes?.MA_CHECKIN;
+  return typeof code === "string" && code.length > 0 ? code : null;
+}
+
 function escapeHtml(s: string): string {
   return s.replace(
     /[&<>"']/g,

@@ -1,5 +1,10 @@
 import { NextResponse } from "next/server";
-import { sendEventEmail, sendWaitlistEmail, upsertContact } from "@/lib/brevo";
+import {
+  existingCheckinCode,
+  sendEventEmail,
+  sendWaitlistEmail,
+  upsertContact,
+} from "@/lib/brevo";
 import { appendRegistration, appendWaitlist, sheetsConfigured } from "@/lib/sheets";
 import { insertRegistration, insertWaitlist, supabaseConfigured } from "@/lib/supabase";
 import {
@@ -64,7 +69,21 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: true });
   }
 
-  const checkinCode = isRegistration(data) ? generateCheckinCode() : undefined;
+  // Mã check-in: nếu email đã đăng ký sự kiện trước đó thì DÙNG LẠI mã cũ để mã
+  // của một email không bao giờ đổi (QR/email cũ vẫn quét được, hết lỗi "không
+  // tìm thấy mã" do upsert-theo-email ghi đè mã). Chỉ sinh mã mới ở lần đầu. Tra
+  // Brevo lỗi → sinh mã mới: xấu nhất là quay lại hành vi cũ cho đúng lượt này,
+  // chứ không chặn mẹ đăng ký.
+  let checkinCode: string | undefined;
+  if (isRegistration(data)) {
+    let reused: string | null = null;
+    try {
+      reused = await existingCheckinCode(data.email);
+    } catch (err) {
+      console.error("[dang-ky] existingCheckinCode failed:", data.email, err);
+    }
+    checkinCode = reused ?? generateCheckinCode();
+  }
 
   // Brevo holds the member record. If this fails, the registration genuinely
   // did not happen — surface a real error rather than a comforting lie.
