@@ -108,7 +108,7 @@ export const APP_FEATURES = [
 export const EVENT_SPEAKERS = [
   {
     name: "Ngô Thanh Vân",
-    role: "Khách mời đặc biệt",
+    role: "Host",
     photo: "/images/speaker-ngo-thanh-van.jpg",
   },
 ] as const;
@@ -221,6 +221,45 @@ export const EVENT_GIFTS = [
   {
     title: "Bốc thăm may mắn",
     description: "Hàng ngàn phần quà chờ gọi tên — mẹ nào cũng có cơ hội.",
+  },
+] as const;
+
+/**
+ * Đối tác đồng hành — logo khách gửi, nhóm theo hạng tài trợ (nguồn: thư mục
+ * "LOGO ĐỐI TÁC"). Ảnh đã được trim nền trong suốt + resize, nằm ở
+ * /public/images/partners. `name` dùng cho alt text.
+ *
+ * Thêm/bớt logo chỉ cần sửa mảng này — layout tự co giãn. Với AIH dùng bản logo
+ * MÀU (không phải "version trang" nền trắng dành cho nền tối), vì card nền trắng.
+ * NOTE: con số "20+ thương hiệu" ở EVENT_STATS là figure khách cấp, không tự đổi
+ * theo số logo ở đây.
+ */
+export const PARTNER_TIERS = [
+  {
+    tier: "Kim cương",
+    logos: [
+      { name: "Bệnh viện Đông Đô – IVF Center", src: "/images/partners/dong-do-ivf.png" },
+    ],
+  },
+  {
+    tier: "Vàng",
+    logos: [
+      { name: "Hippy", src: "/images/partners/hippy.png" },
+    ],
+  },
+  {
+    tier: "Tiêu chuẩn",
+    logos: [
+      {
+        name: "American International Hospital (AIH) × Raffles Medical Group",
+        src: "/images/partners/aih-rmg.png",
+      },
+      { name: "The Joyful Nest", src: "/images/partners/the-joyful-nest.png" },
+      { name: "Mommy Spa & Skin Care", src: "/images/partners/mommy-spa.png" },
+      { name: "Doppelherz", src: "/images/partners/doppelherz.png" },
+      { name: "MOOIMOM", src: "/images/partners/mooimom.png" },
+      { name: "Mugu Australia", src: "/images/partners/mugu.png" },
+    ],
   },
 ] as const;
 

@@ -15,6 +15,7 @@ import {
   EVENT_SPEAKERS,
   EVENT_STATS,
   EVENT_TIMELINE,
+  PARTNER_TIERS,
 } from "@/lib/constants";
 
 export const metadata: Metadata = {
@@ -269,7 +270,7 @@ export default function EventPage() {
         {/* ---------- Giới thiệu ---------- */}
         <section className="px-5 py-14 sm:py-16">
           <div className="mx-auto grid max-w-5xl items-center gap-12 md:grid-cols-2 md:gap-16">
-            {/* App welcome screen, framed as a phone on a soft sage glow. */}
+            {/* Màn hình app (splash bé Gạo), lồng trong khung điện thoại trên nền sage. */}
             <Reveal className="relative flex justify-center">
               <div
                 aria-hidden="true"
@@ -277,8 +278,8 @@ export default function EventPage() {
               />
               <div className="animate-float relative w-fit rounded-[2.5rem] border-[10px] border-ink/90 bg-ink/90 shadow-2xl">
                 <Image
-                  src="/images/app-welcome.png"
-                  alt="Màn hình chào mừng của ứng dụng Mama Ơi"
+                  src="/images/app-be-gao.png"
+                  alt="Màn hình ứng dụng Mama Ơi với bé Gạo"
                   width={390}
                   height={844}
                   className="w-56 rounded-[1.8rem] sm:w-60"
@@ -845,27 +846,42 @@ export default function EventPage() {
           <div className="mx-auto max-w-6xl">
             <SectionHeading eyebrow="Đối tác" title="Đồng hành cùng Mama Ơi" />
             {/*
-              PLACEHOLDER — no sponsor logos supplied yet. Tiers are laid out so
-              logos can be dropped in without touching the layout.
+              Logo khách gửi, đọc từ PARTNER_TIERS. Card to dần theo hạng (Kim
+              cương > Vàng > Tiêu chuẩn) để thứ bậc tài trợ đọc ra ngay.
             */}
             <div className="mt-12 space-y-10">
-              {(["Gold", "Silver", "Standard"] as const).map((tier, i) => (
-                <div key={tier}>
-                  <h3 className="mb-5 text-center text-sm font-bold tracking-wide text-ink-faded uppercase">
-                    {tier}
-                  </h3>
-                  <ul className="flex flex-wrap justify-center gap-4">
-                    {Array.from({ length: [3, 4, 6][i] }).map((_, j) => (
-                      <li
-                        key={j}
-                        className="flex h-20 w-36 items-center justify-center rounded-xl border border-line bg-white text-xs text-ink-placeholder"
-                      >
-                        Logo
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              ))}
+              {PARTNER_TIERS.map((tier, i) => {
+                const box = [
+                  "h-28 w-56 sm:h-32 sm:w-72", // Kim cương
+                  "h-32 w-44 sm:h-36 sm:w-52", // Vàng — cao/vuông hơn cho logo square (Hippy)
+                  "h-20 w-40 sm:h-24 sm:w-44", // Tiêu chuẩn
+                ][i];
+                return (
+                  <div key={tier.tier}>
+                    <h3 className="mb-5 text-center text-sm font-bold tracking-wide text-ink-faded uppercase">
+                      {tier.tier}
+                    </h3>
+                    <ul className="flex flex-wrap justify-center gap-4">
+                      {tier.logos.map((logo) => (
+                        <li
+                          key={logo.src}
+                          className={`flex ${box} items-center justify-center rounded-2xl border border-line bg-white p-4 shadow-sm`}
+                        >
+                          <div className="relative h-full w-full">
+                            <Image
+                              src={logo.src}
+                              alt={logo.name}
+                              fill
+                              sizes="288px"
+                              className="object-contain"
+                            />
+                          </div>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                );
+              })}
             </div>
           </div>
         </section>
