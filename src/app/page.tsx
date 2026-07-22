@@ -270,19 +270,19 @@ export default function EventPage() {
         {/* ---------- Giới thiệu ---------- */}
         <section className="px-5 py-14 sm:py-16">
           <div className="mx-auto grid max-w-5xl items-center gap-12 md:grid-cols-2 md:gap-16">
-            {/* Màn hình app (splash bé Gạo), lồng trong khung điện thoại trên nền sage. */}
+            {/* Bé Gạo (ảnh nền trong suốt) lơ lửng với hiệu ứng 3D — không khung điện thoại. */}
             <Reveal className="relative flex justify-center">
               <div
                 aria-hidden="true"
                 className="pointer-events-none absolute top-1/2 left-1/2 h-[360px] w-[360px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-secondary-faded blur-3xl"
               />
-              <div className="animate-float relative w-fit rounded-[2.5rem] border-[10px] border-ink/90 bg-ink/90 shadow-2xl">
+              <div className="relative [perspective:1400px]">
                 <Image
-                  src="/images/app-be-gao.png"
-                  alt="Màn hình ứng dụng Mama Ơi với bé Gạo"
-                  width={390}
-                  height={844}
-                  className="w-56 rounded-[1.8rem] sm:w-60"
+                  src="/images/illo-baby-girl.png"
+                  alt="Bé Gạo — người bạn nhỏ của cộng đồng Mama Ơi"
+                  width={640}
+                  height={640}
+                  className="animate-float-3d w-64 drop-shadow-[0_35px_30px_rgba(120,90,70,0.35)] sm:w-80"
                 />
               </div>
             </Reveal>

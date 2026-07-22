@@ -116,6 +116,26 @@ body {
   animation: float 4s ease-in-out infinite;
 }
 
+/*
+  Float với chút xoay 3D — dùng cho bé Gạo (ảnh nền trong suốt) để trông như
+  một nhân vật 3D đang lơ lửng, khẽ đung đưa. Cần `perspective` ở thẻ cha.
+*/
+@keyframes float-3d {
+  0%,
+  100% {
+    transform: translateY(0) rotateX(6deg) rotateY(-7deg) rotateZ(-1deg);
+  }
+  50% {
+    transform: translateY(-14px) rotateX(3deg) rotateY(7deg) rotateZ(1deg);
+  }
+}
+
+.animate-float-3d {
+  animation: float-3d 6s ease-in-out infinite;
+  transform-style: preserve-3d;
+  will-change: transform;
+}
+
 @keyframes reveal {
   from {
     opacity: 0;
