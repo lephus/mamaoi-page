@@ -219,8 +219,8 @@ export const EVENT_TIMELINE = [
 
 /**
  * Ảnh quà tặng cho carousel ở section "Quà tặng" (component <GiftCarousel>).
- * Thứ tự: tổng thể bộ kit → passport → cận cảnh dây đeo. Passport có `srcMobile`
- * là bản bìa vì bản trải hai trang co lại trên mobile thì chữ không đọc nổi.
+ * Thứ tự: tổng thể bộ kit → passport → cận cảnh dây đeo. Passport dùng ảnh bìa
+ * (mọi màn hình) vì bản trải hai trang co lại thì chữ không đọc nổi.
  */
 export const EVENT_GIFT_GALLERY = [
   {
@@ -231,8 +231,7 @@ export const EVENT_GIFT_GALLERY = [
       "Túi tote, dây đeo + thẻ, Mama Ơi Passport và bút — trao tận tay khi mẹ vừa check-in.",
   },
   {
-    src: "/images/passport-mama-oi.webp",
-    srcMobile: "/images/passport-mama-oi-bia.webp",
+    src: "/images/passport-mama-oi-bia.png",
     alt: "Mama Ơi Passport — bìa và trang thông tin thành viên",
     title: "Mama Ơi Passport",
     caption:
