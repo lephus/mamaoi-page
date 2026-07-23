@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Image from "next/image";
 import { Footer } from "@/components/Footer";
 import { Header } from "@/components/Header";
+import { CardSlider } from "@/components/CardSlider";
 import { CountUp } from "@/components/CountUp";
 import { GiftCarousel } from "@/components/GiftCarousel";
 import { RegistrationForm } from "@/components/RegistrationForm";
@@ -540,13 +541,17 @@ export default function EventPage() {
                 sau <details>. Dùng thẻ native chứ không phải state React: mẹ đọc
                 được cả khi JS chưa tải xong, và Ctrl+F của trình duyệt vẫn tìm
                 thấy chữ bên trong. */}
-            <ul className="mt-6 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+            {/* Slider ngang: nhiều diễn giả hơn sức chứa thì trượt/vuốt, không
+                xuống hàng. Mỗi card một khổ cố định (mobile chừa mép ló card kế
+                tiếp làm gợi ý còn nữa; desktop vừa 3 card, số dư nằm sau mũi tên). */}
+            <div className="mt-6">
+              <CardSlider ariaLabel="Danh sách diễn giả tại Mama Ơi Day">
               {EVENT_EXPERTS.map((s, i) => (
                 <Reveal
                   key={s.name}
                   as="li"
                   delay={(i % 3) * 60}
-                  className="h-full"
+                  className="h-full w-[86%] shrink-0 snap-start sm:w-[calc(50%-0.625rem)] lg:w-[calc(33.333%-0.834rem)]"
                 >
                   <div className="flex h-full flex-col items-center rounded-2xl bg-white p-6 text-center shadow-[var(--shadow-card)] ring-1 ring-line">
                     <Image
@@ -605,7 +610,8 @@ export default function EventPage() {
                   </div>
                 </Reveal>
               ))}
-            </ul>
+              </CardSlider>
+            </div>
           </div>
         </section>
 

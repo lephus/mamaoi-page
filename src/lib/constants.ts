@@ -123,6 +123,16 @@ export const EVENT_SPEAKERS = [
  */
 export const EVENT_EXPERTS = [
   {
+    name: "Huy Trần",
+    role: "Chef/CEO ChanChan",
+    photo: "/images/speaker-huy-tran.webp",
+    bio: [
+      "Huy Trần là một KOL, Chef Influencer và Doanh nhân Việt kiều Đức, đồng thời là chủ chuỗi nhà hàng thuần chay ChanChan.",
+      "Những năm gần đây, bên cạnh công việc kinh doanh, anh dành trọn tâm huyết chăm sóc cho gia đình nhỏ: tự tay thiết kế thực đơn dinh dưỡng khoa học chu đáo cho bà xã Ngô Thanh Vân trong suốt thai kỳ, và đảm nhận vai trò “bếp trưởng gia đình” chăm chút từng bữa ăn dặm đầy đủ dưỡng chất cho con gái đầu lòng (bé Gạo).",
+      "Tên tuổi của anh ngày càng nhận được nhiều sự yêu mến nhờ hình ảnh người chồng, người bố gắn liền với lối sống lành mạnh và niềm đam mê ẩm thực tinh tế.",
+    ],
+  },
+  {
     name: "BS. Tăng Đức Cương",
     role: "Giám đốc Bệnh viện Đông Đô",
     photo: "/images/speaker-bs-tang-duc-cuong.webp",
