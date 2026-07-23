@@ -25,7 +25,7 @@ export function SpeakerCard({ speaker }: { speaker: Speaker }) {
   const titleId = `speaker-${speaker.name.replace(/\s+/g, "-").toLowerCase()}`;
 
   return (
-    <div className="flex h-full flex-col items-center rounded-2xl bg-white p-6 text-center shadow-[var(--shadow-card)] ring-1 ring-line">
+    <div className="flex h-full w-full flex-col items-center rounded-2xl bg-white p-6 text-center shadow-[var(--shadow-card)] ring-1 ring-line">
       <Image
         src={speaker.photo}
         alt={speaker.name}

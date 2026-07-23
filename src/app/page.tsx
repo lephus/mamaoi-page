@@ -8,7 +8,7 @@ import { GiftCarousel } from "@/components/GiftCarousel";
 import { RegistrationForm } from "@/components/RegistrationForm";
 import { Reveal } from "@/components/Reveal";
 import { SpeakerCard } from "@/components/SpeakerCard";
-import { ButtonLink } from "@/components/ui/Button";
+import { AnchorButton } from "@/components/ui/Button";
 import {
   EVENT,
   EVENT_EXPERTS,
@@ -262,7 +262,7 @@ export default function EventPage() {
               </div>
 
               <div className="mt-6">
-                <ButtonLink href="#dang-ky">Đăng ký ngay</ButtonLink>
+                <AnchorButton href="#dang-ky">Đăng ký ngay</AnchorButton>
               </div>
 
               <dl className="mt-6 grid grid-cols-2 gap-x-6 gap-y-4 lg:grid-cols-4">
@@ -544,20 +544,26 @@ export default function EventPage() {
                 Mỗi card là <SpeakerCard>: 2 dòng tiểu sử, bấm "Xem thêm" mở popup
                 hiện đầy đủ (modal render qua portal ra <body> nên không bị
                 Reveal/slider cắt). */}
-            <div className="mt-6">
+            {/* Reveal bọc CẢ slider (không bọc từng card): card nằm ngoài khung
+                ngang không giao với viewport nên IntersectionObserver của <Reveal>
+                không kích hoạt → card đó kẹt opacity:0. Bọc ngoài thì cả slider
+                fade vào một lần, mọi card luôn hiện.
+                <li> để `flex` (KHÔNG h-full): h-full = height:100% trên flex item
+                vô hiệu hoá align-items:stretch và không resolve (ul cao auto) nên
+                card co theo nội dung → lệch cao. Bỏ h-full → stretch cân đều; li
+                flex + card w-full để card lấp đầy ô. */}
+            <Reveal className="mt-6">
               <CardSlider ariaLabel="Danh sách diễn giả tại Mama Ơi Day">
-              {EVENT_EXPERTS.map((s, i) => (
-                <Reveal
-                  key={s.name}
-                  as="li"
-                  delay={(i % 3) * 60}
-                  className="h-full w-[86%] shrink-0 snap-start sm:w-[calc(50%-0.625rem)] lg:w-[calc(33.333%-0.834rem)]"
-                >
-                  <SpeakerCard speaker={s} />
-                </Reveal>
-              ))}
+                {EVENT_EXPERTS.map((s) => (
+                  <li
+                    key={s.name}
+                    className="flex w-[86%] shrink-0 snap-start sm:w-[calc(50%-0.625rem)] lg:w-[calc(33.333%-0.834rem)]"
+                  >
+                    <SpeakerCard speaker={s} />
+                  </li>
+                ))}
               </CardSlider>
-            </div>
+            </Reveal>
           </div>
         </section>
 
@@ -623,7 +629,7 @@ export default function EventPage() {
 
               {/* Action. */}
               <div className="relative px-6 pt-8 pb-10 text-center sm:px-12">
-                <ButtonLink href="#dang-ky">Đăng ký ngay</ButtonLink>
+                <AnchorButton href="#dang-ky">Đăng ký ngay</AnchorButton>
                 <p className="mt-4 text-sm text-ink-faded">
                   Miễn phí · {EVENT.dateLabel}
                 </p>

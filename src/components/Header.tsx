@@ -4,7 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
-import { ButtonLink } from "./ui/Button";
+import { AnchorButton, ButtonLink } from "./ui/Button";
 
 const NAV = [
   { href: "/", label: "Mama Ơi Day" },
@@ -30,6 +30,11 @@ export function Header() {
     pathname === "/"
       ? { href: "#dang-ky", label: "Đăng ký ngay" }
       : { href: "/", label: "Mama Ơi Day" };
+
+  // Link hash trong cùng trang (#dang-ky) phải là <a> thuần (AnchorButton) để
+  // native scroll-behavior:smooth cuộn lại mỗi lần bấm — next/link (ButtonLink)
+  // bỏ qua khi hash không đổi. Link sang trang khác ("/") vẫn dùng router.
+  const CtaButton = cta.href.startsWith("#") ? AnchorButton : ButtonLink;
 
   return (
     <header
@@ -61,9 +66,9 @@ export function Header() {
               {item.label}
             </Link>
           ))}
-          <ButtonLink href={cta.href} className="px-6 py-2.5 text-sm">
+          <CtaButton href={cta.href} className="px-6 py-2.5 text-sm">
             {cta.label}
-          </ButtonLink>
+          </CtaButton>
         </nav>
 
         <button
@@ -108,12 +113,12 @@ export function Header() {
                 {item.label}
               </Link>
             ))}
-            <ButtonLink
+            <CtaButton
               href={cta.href}
               className="mt-2 w-full"
             >
               {cta.label}
-            </ButtonLink>
+            </CtaButton>
           </nav>
         </div>
       )}
