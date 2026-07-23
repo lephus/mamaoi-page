@@ -30,18 +30,29 @@ export function Marquee({
   ariaLabel,
   secondsPerItem = 3,
   itemClassName = "",
+  gapClass = "mr-4",
+  viewportClassName = "",
 }: {
   items: readonly { key: string; content: ReactNode }[];
   ariaLabel: string;
   secondsPerItem?: number;
   itemClassName?: string;
+  /** Khoảng cách giữa các ô (margin-right, đồng đều mọi ô để nối liền khít). */
+  gapClass?: string;
+  /**
+   * Class thêm cho khung (viewport). `overflow-hidden` cắt cả chiều dọc nên card
+   * có shadow tràn ra ngoài sẽ bị cụt — truyền padding dọc (vd `py-8`) để chừa chỗ.
+   */
+  viewportClassName?: string;
 }) {
   const [paused, setPaused] = useState(false);
   const duration = items.length * secondsPerItem;
 
   return (
     <div
-      className="marquee-viewport overflow-hidden"
+      className={`marquee-viewport overflow-hidden${
+        viewportClassName ? ` ${viewportClassName}` : ""
+      }`}
       onPointerEnter={() => setPaused(true)}
       onPointerLeave={() => setPaused(false)}
     >
@@ -56,7 +67,7 @@ export function Marquee({
             <li
               key={`${item.key}-${dup ? "b" : "a"}`}
               aria-hidden={dup}
-              className={`mr-4 flex shrink-0${itemClassName ? ` ${itemClassName}` : ""}${
+              className={`${gapClass} flex shrink-0${itemClassName ? ` ${itemClassName}` : ""}${
                 dup ? " marquee-dup" : ""
               }`}
             >

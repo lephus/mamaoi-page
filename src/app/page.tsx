@@ -560,6 +560,9 @@ export default function EventPage() {
                 }))}
                 ariaLabel="Danh sách diễn giả tại Mama Ơi Day"
                 itemClassName="w-72 sm:w-80"
+                secondsPerItem={6}
+                gapClass="mr-8 sm:mr-12"
+                viewportClassName="py-8"
               />
             </Reveal>
           </div>
