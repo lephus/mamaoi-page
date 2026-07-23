@@ -7,6 +7,7 @@ import { CountUp } from "@/components/CountUp";
 import { GiftCarousel } from "@/components/GiftCarousel";
 import { RegistrationForm } from "@/components/RegistrationForm";
 import { Reveal } from "@/components/Reveal";
+import { SpeakerCard } from "@/components/SpeakerCard";
 import { ButtonLink } from "@/components/ui/Button";
 import {
   EVENT,
@@ -537,13 +538,12 @@ export default function EventPage() {
               ))}
             </div>
 
-            {/* Chuyên gia — tiểu sử dài nên đoạn đầu hiện sẵn, phần còn lại nằm
-                sau <details>. Dùng thẻ native chứ không phải state React: mẹ đọc
-                được cả khi JS chưa tải xong, và Ctrl+F của trình duyệt vẫn tìm
-                thấy chữ bên trong. */}
             {/* Slider ngang: nhiều diễn giả hơn sức chứa thì trượt/vuốt, không
                 xuống hàng. Mỗi card một khổ cố định (mobile chừa mép ló card kế
-                tiếp làm gợi ý còn nữa; desktop vừa 3 card, số dư nằm sau mũi tên). */}
+                tiếp làm gợi ý còn nữa; desktop vừa 3 card, số dư nằm sau mũi tên).
+                Mỗi card là <SpeakerCard>: 2 dòng tiểu sử, bấm "Xem thêm" mở popup
+                hiện đầy đủ (modal render qua portal ra <body> nên không bị
+                Reveal/slider cắt). */}
             <div className="mt-6">
               <CardSlider ariaLabel="Danh sách diễn giả tại Mama Ơi Day">
               {EVENT_EXPERTS.map((s, i) => (
@@ -553,61 +553,7 @@ export default function EventPage() {
                   delay={(i % 3) * 60}
                   className="h-full w-[86%] shrink-0 snap-start sm:w-[calc(50%-0.625rem)] lg:w-[calc(33.333%-0.834rem)]"
                 >
-                  <div className="flex h-full flex-col items-center rounded-2xl bg-white p-6 text-center shadow-[var(--shadow-card)] ring-1 ring-line">
-                    <Image
-                      src={s.photo}
-                      alt={s.name}
-                      width={320}
-                      height={320}
-                      className="h-28 w-28 rounded-full object-cover shadow-md ring-4 ring-primary-faded"
-                    />
-                    <h3 className="mt-4 text-lg font-bold text-ink">
-                      {s.name}
-                    </h3>
-                    <span className="mt-2 rounded-full bg-primary-faded px-3 py-1 text-xs font-semibold text-primary">
-                      {s.role}
-                    </span>
-
-                    {/* Tiểu sử: 2 dòng đầu hiện sẵn (line-clamp-2), phần còn lại
-                        mở ra sau "Xem thêm". Bản xem trước phải NẰM TRONG <summary>:
-                        khi <details> đóng, trình duyệt ẩn mọi nội dung trừ
-                        <summary>, nên để đoạn mô tả ra ngoài thì nó biến mất. Mở ra:
-                        bỏ clamp + hiện các đoạn còn lại. Thẻ native, không cần JS. */}
-                    <details className="group mt-4 w-full text-left">
-                      <summary className="cursor-pointer list-none [&::-webkit-details-marker]:hidden">
-                        {/* <span> (không phải <p>) vì <summary> chỉ nhận phrasing
-                            content; line-clamp-2 tự đặt display:-webkit-box để cắt
-                            dòng và thêm dấu "…" ở cuối dòng 2. */}
-                        <span className="line-clamp-2 text-base leading-6 text-ink-faded group-open:line-clamp-none">
-                          {s.bio[0]}
-                        </span>
-                        <span className="mt-3 inline-flex items-center gap-1 text-sm font-bold text-primary hover:underline">
-                          <span className="group-open:hidden">Xem thêm</span>
-                          <span className="hidden group-open:inline">Thu gọn</span>
-                          <svg
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="currentColor"
-                            strokeWidth={2}
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            className="h-4 w-4 transition-transform group-open:rotate-180"
-                            aria-hidden="true"
-                          >
-                            <path d="m19.5 8.25-7.5 7.5-7.5-7.5" />
-                          </svg>
-                        </span>
-                      </summary>
-                      {s.bio.slice(1).map((p) => (
-                        <p
-                          key={p.slice(0, 24)}
-                          className="mt-3 text-base leading-6 text-ink-faded"
-                        >
-                          {p}
-                        </p>
-                      ))}
-                    </details>
-                  </div>
+                  <SpeakerCard speaker={s} />
                 </Reveal>
               ))}
               </CardSlider>

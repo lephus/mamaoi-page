@@ -12,9 +12,11 @@ import {
  * Slider ngang cho một hàng card — thiếu chỗ thì trượt/vuốt thay vì xuống hàng.
  *
  * Dùng scroll-snap gốc của trình duyệt (không transform) nên nuốt được card cao
- * thấp khác nhau và card có <details> mở/đóng bên trong. Vuốt/trackpad chạy sẵn;
- * cặp mũi tên chỉ hiện khi hàng tràn khỏi khung, và tự mờ đi ở hai đầu. Cuộn mượt
- * bị khử khi máy bật "giảm chuyển động".
+ * thấp khác nhau và card có nội dung mở/đóng bên trong. Vuốt/trackpad chạy sẵn;
+ * cặp mũi tên chỉ hiện khi hàng tràn khỏi khung, và tự mờ đi ở hai đầu.
+ *
+ * Tự cuộn 3s/lần khi hàng bị tràn, dừng lúc hover / focus / chạm và tới cuối thì
+ * quay về đầu. Cuộn mượt + tự cuộn đều bị khử khi máy bật "giảm chuyển động".
  */
 export function CardSlider({
   children,
@@ -27,6 +29,7 @@ export function CardSlider({
   const [overflow, setOverflow] = useState(false);
   const [atStart, setAtStart] = useState(true);
   const [atEnd, setAtEnd] = useState(false);
+  const [paused, setPaused] = useState(false);
 
   const update = useCallback(() => {
     const el = ref.current;
@@ -49,6 +52,25 @@ export function CardSlider({
     };
   }, [update]);
 
+  // Tự cuộn 3s/lần: nhích một card, tới cuối thì quay về đầu. Chỉ chạy khi hàng
+  // bị tràn và không bị tạm dừng (hover / focus / chạm); tắt khi "giảm chuyển động".
+  useEffect(() => {
+    if (!overflow || paused) return;
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    const id = setInterval(() => {
+      const el = ref.current;
+      if (!el) return;
+      const max = el.scrollWidth - el.clientWidth;
+      const card = el.firstElementChild as HTMLElement | null;
+      const step = card ? card.getBoundingClientRect().width + 20 : el.clientWidth * 0.8;
+      el.scrollTo({
+        left: el.scrollLeft >= max - 1 ? 0 : el.scrollLeft + step,
+        behavior: "smooth",
+      });
+    }, 3000);
+    return () => clearInterval(id);
+  }, [overflow, paused]);
+
   const scrollByCard = (dir: 1 | -1) => {
     const el = ref.current;
     if (!el) return;
@@ -60,7 +82,15 @@ export function CardSlider({
   };
 
   return (
-    <div className="relative">
+    <div
+      className="relative"
+      onMouseEnter={() => setPaused(true)}
+      onMouseLeave={() => setPaused(false)}
+      onFocusCapture={() => setPaused(true)}
+      onBlurCapture={() => setPaused(false)}
+      onTouchStart={() => setPaused(true)}
+      onTouchEnd={() => setPaused(false)}
+    >
       {overflow && (
         <div className="mb-4 flex justify-end gap-2">
           <SliderButton
