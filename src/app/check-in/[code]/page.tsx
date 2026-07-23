@@ -1,9 +1,10 @@
 import type { Metadata } from "next";
+import QRCode from "qrcode";
+import { CheckinPass } from "@/components/CheckinPass";
 import { Footer } from "@/components/Footer";
 import { Header } from "@/components/Header";
-import { CheckinConfirm } from "@/components/CheckinConfirm";
+import { checkinUrl } from "@/lib/checkin-url";
 import { findByCode, type RegistrationRow } from "@/lib/supabase";
-import { formatCheckinTime } from "@/lib/time";
 import { isValidCheckinCode } from "@/lib/validation";
 
 export const metadata: Metadata = {
@@ -82,22 +83,24 @@ export default async function CheckinPage({
     );
   }
 
-  if (row.checked_in) {
-    return (
-      <Shell>
-        <Message
-          title="Mẹ đã check-in rồi 💛"
-          body={`Chào chị ${row.ho_ten}, mẹ đã check-in lúc ${formatCheckinTime(
-            row.checked_in_at ?? "",
-          )}.`}
-        />
-      </Shell>
-    );
+  // QR sinh server-side (tái dùng `qrcode` như email/admin, không phình bundle
+  // client). Nội dung là URL check-in dùng chung `checkinUrl` — cùng đích với QR
+  // trong email. Lỗi sinh QR không nên chặn cả vé: vé vẫn check-in được qua mã
+  // chữ, nên chỉ log rồi dựng vé không có ảnh QR.
+  let qrDataUrl: string | null = null;
+  try {
+    qrDataUrl = await QRCode.toDataURL(checkinUrl(code), {
+      width: 320,
+      margin: 1,
+      color: { dark: "#292929", light: "#ffffff" },
+    });
+  } catch (err) {
+    console.error("[check-in] QR generation failed:", code, err);
   }
 
   return (
     <Shell>
-      <CheckinConfirm code={code} name={row.ho_ten} />
+      <CheckinPass row={row} qrDataUrl={qrDataUrl} />
     </Shell>
   );
 }
