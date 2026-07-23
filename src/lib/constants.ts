@@ -300,6 +300,7 @@ export const PARTNER_TIERS = [
       { name: "Doppelherz", src: "/images/partners/doppelherz.png" },
       { name: "MOOIMOM", src: "/images/partners/mooimom.png" },
       { name: "Mugu Australia", src: "/images/partners/mugu.png" },
+      { name: "Bimbosan", src: "/images/partners/bimbosan.jpg" },
     ],
   },
 ] as const;
