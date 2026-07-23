@@ -178,11 +178,26 @@ export function RegistrationForm() {
     "chuan_bi_mang_thai" | "ivf" | "mang_thai" | "da_sinh" | ""
   >("");
   const [chuDe, setChuDe] = useState<string[]>([]);
+  const [nguon, setNguon] = useState("");
+
+  // Xoá lỗi của MỘT field ngay khi mẹ vừa chỉnh nó, thay vì để thông báo đỏ đứng
+  // ì tới lần submit sau. Với radio/checkbox điều này quan trọng nhất: mẹ đã bấm
+  // chọn mà lỗi vẫn còn thì tưởng thao tác chưa ăn. Trả nguyên `prev` khi field
+  // không có lỗi để khỏi render thừa.
+  function clearError(key: string) {
+    setErrors((prev) => {
+      if (!prev[key]) return prev;
+      const next = { ...prev };
+      delete next[key];
+      return next;
+    });
+  }
 
   function toggleChuDe(value: string) {
     setChuDe((prev) =>
       prev.includes(value) ? prev.filter((v) => v !== value) : [...prev, value],
     );
+    clearError("chuDeQuanTam");
   }
 
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
@@ -484,6 +499,11 @@ export function RegistrationForm() {
             type="radio"
             name="nguonBietDen"
             value={n.value}
+            checked={nguon === n.value}
+            onChange={() => {
+              setNguon(n.value);
+              clearError("nguonBietDen");
+            }}
             label={n.label}
           />
         ))}
