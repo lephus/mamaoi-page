@@ -3,6 +3,7 @@ import Image from "next/image";
 import { Footer } from "@/components/Footer";
 import { Header } from "@/components/Header";
 import { CountUp } from "@/components/CountUp";
+import { GiftCarousel } from "@/components/GiftCarousel";
 import { RegistrationForm } from "@/components/RegistrationForm";
 import { Reveal } from "@/components/Reveal";
 import { ButtonLink } from "@/components/ui/Button";
@@ -10,6 +11,7 @@ import {
   EVENT,
   EVENT_EXPERTS,
   EVENT_FAQ,
+  EVENT_GIFT_GALLERY,
   EVENT_GIFTS,
   EVENT_HIGHLIGHTS,
   EVENT_SPEAKERS,
@@ -147,9 +149,12 @@ const GIFT_STYLES = [
 
 /**
  * One tone + Heroicon per timeline moment, aligned to EVENT_TIMELINE order.
- * Reuses the app's six-colour rotation (same system as the feature/gift rows)
- * so each moment reads as its own on-brand accent — check-in → coral, talkshow
- * → blue, tea break → amber, cooking → sage, lucky draw → violet, closing → teal.
+ * Reuses the app's six-colour rotation (the same system as the feature/gift
+ * rows). The agenda now runs eight moments, so the coral + blue accents repeat
+ * on the last two rows — placed non-adjacently so no two beads share a tone.
+ * check-in → coral ticket, mở màn → blue mic, IVF → violet sparkles,
+ * khám thai & sinh nở → sage family, ra mắt app → amber phone,
+ * sữa mẹ → teal heart, ăn dặm → coral fire, bế mạc → blue camera.
  */
 const TIMELINE_STYLES = [
   // Check-in — ticket
@@ -157,29 +162,39 @@ const TIMELINE_STYLES = [
     tone: "bg-primary-faded text-primary",
     path: "M16.5 6v.75m0 3v.75m0 3v.75m0 3V18m-9-5.25h5.25M7.5 15h3M3.375 5.25c-.621 0-1.125.504-1.125 1.125v3.026a2.999 2.999 0 0 1 0 5.198v3.026c0 .621.504 1.125 1.125 1.125h17.25c.621 0 1.125-.504 1.125-1.125v-3.026a2.999 2.999 0 0 1 0-5.198V6.375c0-.621-.504-1.125-1.125-1.125H3.375Z",
   },
-  // Talkshow — microphone
+  // Mở màn — microphone
   {
     tone: "bg-info-faded text-info",
     path: "M12 18.75a6 6 0 0 0 6-6v-1.5m-6 7.5a6 6 0 0 1-6-6v-1.5m6 7.5v3.75m-3.75 0h7.5M12 15.75a3 3 0 0 1-3-3V4.5a3 3 0 1 1 6 0v8.25a3 3 0 0 1-3 3Z",
   },
-  // Tea Break — cup (custom stroke, matches Heroicons weight)
-  {
-    tone: "bg-warning-faded text-warning",
-    path: "M4 8.5h11v4.5a4 4 0 0 1-4 4H8a4 4 0 0 1-4-4V8.5Z M15 9.5h1.5a2.25 2.25 0 0 1 0 4.5H15 M8 3v2 M11 3v2",
-  },
-  // Cooking Show — fire
-  {
-    tone: "bg-secondary-faded text-secondary",
-    path: "M15.362 5.214A8.252 8.252 0 0 1 12 21 8.25 8.25 0 0 1 6.038 7.047 8.287 8.287 0 0 0 9 9.601a8.983 8.983 0 0 1 3.361-6.867 8.21 8.21 0 0 0 3 2.48Z M12 18a3.75 3.75 0 0 0 .495-7.467 5.99 5.99 0 0 0-1.925 3.546 5.974 5.974 0 0 1-2.133-1A3.75 3.75 0 0 0 12 18Z",
-  },
-  // Lucky Draw — sparkles
+  // Hành trình IVF — sparkles (a spark of new life)
   {
     tone: "bg-violet-faded text-violet",
     path: "M9.813 15.904 9 18.75l-.813-2.846a4.5 4.5 0 0 0-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 0 0 3.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 0 0 3.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 0 0-3.09 3.09ZM18.259 8.715 18 9.75l-.259-1.035a3.375 3.375 0 0 0-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 0 0 2.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 0 0 2.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 0 0-2.456 2.456ZM16.894 20.567 16.5 21.75l-.394-1.183a2.25 2.25 0 0 0-1.423-1.423L13.5 18.75l1.183-.394a2.25 2.25 0 0 0 1.423-1.423l.394-1.183.394 1.183a2.25 2.25 0 0 0 1.423 1.423l1.183.394-1.183.394a2.25 2.25 0 0 0-1.423 1.423Z",
   },
-  // Bế mạc — camera
+  // Khám thai & Sinh nở — family (mẹ và bé)
+  {
+    tone: "bg-secondary-faded text-secondary",
+    path: "M15 19.128a9.38 9.38 0 0 0 2.625.372 9.337 9.337 0 0 0 4.121-.952 4.125 4.125 0 0 0-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 0 1 8.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0 1 11.964-3.07M12 6.375a3.375 3.375 0 1 1-6.75 0 3.375 3.375 0 0 1 6.75 0Zm8.25 2.25a2.625 2.625 0 1 1-5.25 0 2.625 2.625 0 0 1 5.25 0Z",
+  },
+  // Ra mắt App Mama Ơi — device-phone-mobile
+  {
+    tone: "bg-warning-faded text-warning",
+    path: "M10.5 1.5H8.25A2.25 2.25 0 0 0 6 3.75v16.5a2.25 2.25 0 0 0 2.25 2.25h7.5A2.25 2.25 0 0 0 18 20.25V3.75a2.25 2.25 0 0 0-2.25-2.25H13.5m-3 0V3h3V1.5m-3 0h3m-3 18.75h3",
+  },
+  // Nuôi con bằng sữa mẹ — heart (nurture)
   {
     tone: "bg-teal-faded text-teal",
+    path: "M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12Z",
+  },
+  // Hành trình ăn dặm — fire (nấu ăn dặm)
+  {
+    tone: "bg-primary-faded text-primary",
+    path: "M15.362 5.214A8.252 8.252 0 0 1 12 21 8.25 8.25 0 0 1 6.038 7.047 8.287 8.287 0 0 0 9 9.601a8.983 8.983 0 0 1 3.361-6.867 8.21 8.21 0 0 0 3 2.48Z M12 18a3.75 3.75 0 0 0 .495-7.467 5.99 5.99 0 0 0-1.925 3.546 5.974 5.974 0 0 1-2.133-1A3.75 3.75 0 0 0 12 18Z",
+  },
+  // Bế mạc — camera
+  {
+    tone: "bg-info-faded text-info",
     path: "M6.827 6.175A2.31 2.31 0 0 1 5.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 0 0 2.25 2.25h15A2.25 2.25 0 0 0 21.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 0 0-1.134-.175 2.31 2.31 0 0 1-1.64-1.055l-.822-1.316a2.192 2.192 0 0 0-1.736-1.039 48.774 48.774 0 0 0-5.232 0 2.192 2.192 0 0 0-1.736 1.039l-.821 1.316Z M16.5 12.75a4.5 4.5 0 1 1-9 0 4.5 4.5 0 0 1 9 0ZM18.75 10.5h.008v.008h-.008V10.5Z",
   },
 ] as const;
@@ -762,82 +777,56 @@ export default function EventPage() {
               eyebrow="Quà tặng"
               title="Không chỉ là một ngày vui"
             >
-              1.000 phần quà cho 500 mẹ — nghĩa là mẹ nào cũng có phần, và
-              thường là nhiều hơn một.
+              Những món quà nhỏ Mama Ơi chuẩn bị cho mẹ, như một lời cảm ơn vì
+              mẹ đã đến.
             </SectionHeading>
 
-            {/* Hai cột: Passport bên trái vì đó là món quà đặc trưng nhất và là
-                thứ duy nhất mẹ nhìn thấy được trước khi đến; bốn nhóm quà còn lại
-                xếp 2×2 bên phải để hai bên cân nhau thay vì ảnh nằm trên một dải
-                card dàn ngang. Mobile xếp chồng, ảnh vẫn lên trước. */}
-            <div className="mt-12 grid items-center gap-8 lg:grid-cols-2 lg:gap-12">
-              {/* Mobile chỉ hiện trang bìa: bản trải hai trang co lại thì chữ bên
-                  trong không đọc nổi, thà cho xem rõ một nửa. */}
-              <Reveal>
-                <figure className="rounded-3xl bg-primary-faded p-5 text-center sm:p-8">
-                  <Image
-                    src="/images/passport-mama-oi-bia.webp"
-                    alt="Bìa Mama Ơi Passport — sổ tay dành cho mẹ tại sự kiện"
-                    width={700}
-                    height={1122}
-                    className="mx-auto w-full max-w-[240px] rounded-2xl shadow-lg sm:hidden"
-                  />
-                  <Image
-                    src="/images/passport-mama-oi.webp"
-                    alt="Mama Ơi Passport — bìa và trang thông tin thành viên"
-                    width={1400}
-                    height={1122}
-                    className="mx-auto hidden w-full rounded-2xl shadow-lg sm:block"
-                  />
-                  <figcaption className="mt-5 text-base leading-6 text-ink-faded">
-                    <span className="font-bold text-ink">Mama Ơi Passport</span>{" "}
-                    — mỗi mẹ một cuốn, mang về làm kỷ niệm ngày đầu tiên của
-                    hành trình.
-                  </figcaption>
-                </figure>
-              </Reveal>
+            {/* Carousel ảnh quà: gộp Welcome Kit + Passport + dây đeo vào một
+                khung cỡ vừa, thay cho hai khối ảnh lớn dàn dọc trước đây. */}
+            <Reveal className="mt-12">
+              <GiftCarousel slides={EVENT_GIFT_GALLERY} />
+            </Reveal>
 
-              <ul className="grid gap-4 sm:grid-cols-2">
-                {EVENT_GIFTS.map((g, i) => {
-                  const s = GIFT_STYLES[i % GIFT_STYLES.length];
-                  return (
-                    <Reveal
-                      key={g.title}
-                      as="li"
-                      delay={(i % 4) * 50}
-                      className="h-full"
+            {/* Bốn nhóm quà xếp thành một hàng bên dưới carousel (2×2 trên mobile,
+                4 cột trên desktop) — phần chữ mô tả từng loại quà. */}
+            <ul className="mt-14 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+              {EVENT_GIFTS.map((g, i) => {
+                const s = GIFT_STYLES[i % GIFT_STYLES.length];
+                return (
+                  <Reveal
+                    key={g.title}
+                    as="li"
+                    delay={(i % 4) * 50}
+                    className="h-full"
+                  >
+                    <div
+                      className={`group flex h-full flex-col rounded-2xl p-6 transition-[translate,box-shadow] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] hover:-translate-y-1.5 hover:shadow-[var(--shadow-hover)] ${s.card}`}
                     >
-                      <div
-                        className={`group flex h-full flex-col rounded-2xl p-6 transition-[translate,box-shadow] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] hover:-translate-y-1.5 hover:shadow-[var(--shadow-hover)] ${s.card}`}
+                      <span
+                        className={`mb-4 inline-flex h-12 w-12 items-center justify-center rounded-xl bg-white shadow-sm transition-[scale] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:scale-110 ${s.chip}`}
                       >
-                        <span
-                          className={`mb-4 inline-flex h-12 w-12 items-center justify-center rounded-xl bg-white shadow-sm transition-[scale] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:scale-110 ${s.chip}`}
+                        <svg
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth={1.7}
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          className="h-6 w-6"
+                          aria-hidden="true"
                         >
-                          <svg
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="currentColor"
-                            strokeWidth={1.7}
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            className="h-6 w-6"
-                            aria-hidden="true"
-                          >
-                            <path d={s.path} />
-                          </svg>
-                        </span>
-                        <h3 className="text-lg font-bold text-ink">
-                          {g.title}
-                        </h3>
-                        <p className="mt-2 text-base leading-6 text-ink-faded">
-                          {g.description}
-                        </p>
-                      </div>
-                    </Reveal>
-                  );
-                })}
-              </ul>
-            </div>
+                          <path d={s.path} />
+                        </svg>
+                      </span>
+                      <h3 className="text-lg font-bold text-ink">{g.title}</h3>
+                      <p className="mt-2 text-base leading-6 text-ink-faded">
+                        {g.description}
+                      </p>
+                    </div>
+                  </Reveal>
+                );
+              })}
+            </ul>
           </div>
         </section>
 

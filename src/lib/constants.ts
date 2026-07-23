@@ -197,12 +197,43 @@ export const BABY_MILESTONES = [
 ] as const;
 
 export const EVENT_TIMELINE = [
-  { time: "08:00", title: "Check-in", description: "Nhận Welcome Kit và Passport Event." },
-  { time: "09:00", title: "Talkshow", description: "Chia sẻ từ chị Vân và các chuyên gia." },
-  { time: "10:30", title: "Tea Break", description: "Nghỉ giải lao, giao lưu cùng các mẹ." },
-  { time: "11:00", title: "Cooking Show", description: "Hướng dẫn nấu ăn dặm cho bé." },
-  { time: "14:00", title: "Lucky Draw", description: "Bốc thăm trúng thưởng." },
-  { time: "15:30", title: "Bế mạc", description: "Chụp ảnh lưu niệm cùng bé Gạo." },
+  { time: "09:00", title: "Check-in", description: "Nhận Welcome Kit và Mama Ơi Passport." },
+  { time: "09:30", title: "Mở màn", description: "Khai mạc, mở ra một ngày của mẹ và bé." },
+  { time: "09:51", title: "Hành trình IVF", description: "Câu chuyện hành trình tìm con bằng IVF." },
+  { time: "11:46", title: "Khám thai & Sinh nở", description: "Đồng hành cùng mẹ từ thai kỳ đến ngày vượt cạn." },
+  { time: "13:06", title: "Ra mắt App Mama Ơi", description: "Chính thức giới thiệu ứng dụng Mama Ơi." },
+  { time: "13:16", title: "Nuôi con bằng sữa mẹ", description: "Bí quyết nuôi con khoẻ mạnh bằng sữa mẹ." },
+  { time: "14:26", title: "Hành trình ăn dặm", description: "Cùng con bắt đầu hành trình ăn dặm." },
+  { time: "15:46", title: "Bế mạc", description: "Chụp ảnh lưu niệm, khép lại một ngày trọn vẹn." },
+] as const;
+
+/**
+ * Ảnh quà tặng cho carousel ở section "Quà tặng" (component <GiftCarousel>).
+ * Thứ tự: tổng thể bộ kit → passport → cận cảnh dây đeo. Passport có `srcMobile`
+ * là bản bìa vì bản trải hai trang co lại trên mobile thì chữ không đọc nổi.
+ */
+export const EVENT_GIFT_GALLERY = [
+  {
+    src: "/images/welcome-kit.webp",
+    alt: "Bộ Welcome Kit Mama Ơi Day — túi tote, dây đeo và thẻ, Mama Ơi Passport và bút",
+    title: "Bộ Welcome Kit",
+    caption:
+      "Túi tote, dây đeo + thẻ, Mama Ơi Passport và bút — trao tận tay khi mẹ vừa check-in.",
+  },
+  {
+    src: "/images/passport-mama-oi.webp",
+    srcMobile: "/images/passport-mama-oi-bia.webp",
+    alt: "Mama Ơi Passport — bìa và trang thông tin thành viên",
+    title: "Mama Ơi Passport",
+    caption:
+      "Mỗi mẹ một cuốn, ghi dấu cả ngày và mang về làm kỷ niệm ngày đầu tiên của hành trình.",
+  },
+  {
+    src: "/images/welcome-kit-lanyard.webp",
+    alt: "Dây đeo và thẻ tên Mama Ơi Day",
+    title: "Dây đeo + Thẻ tên",
+    caption: "Thẻ tên xinh xắn theo chân mẹ suốt Mama Ơi Day.",
+  },
 ] as const;
 
 export const EVENT_GIFTS = [
