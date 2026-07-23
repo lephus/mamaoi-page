@@ -553,7 +553,11 @@ export default function EventPage() {
                 card co theo nội dung → lệch cao. Bỏ h-full → stretch cân đều; li
                 flex + card w-full để card lấp đầy ô. */}
             <Reveal className="mt-6">
-              <CardSlider ariaLabel="Danh sách diễn giả tại Mama Ơi Day">
+              <CardSlider
+                ariaLabel="Danh sách diễn giả tại Mama Ơi Day"
+                prevLabel="Xem diễn giả trước"
+                nextLabel="Xem diễn giả tiếp theo"
+              >
                 {EVENT_EXPERTS.map((s) => (
                   <li
                     key={s.name}
@@ -803,29 +807,47 @@ export default function EventPage() {
                   "h-32 w-44 sm:h-36 sm:w-52", // Vàng — cao/vuông hơn cho logo square (Hippy)
                   "h-20 w-40 sm:h-24 sm:w-44", // Tiêu chuẩn
                 ][i];
+                const card = (logo: { name: string; src: string }) => (
+                  <div
+                    className={`flex ${box} items-center justify-center rounded-2xl border border-line bg-white p-4 shadow-sm`}
+                  >
+                    <div className="relative h-full w-full">
+                      <Image
+                        src={logo.src}
+                        alt={logo.name}
+                        fill
+                        sizes="288px"
+                        className="object-contain"
+                      />
+                    </div>
+                  </div>
+                );
                 return (
                   <div key={tier.tier}>
                     <h3 className="mb-5 text-center text-sm font-bold tracking-wide text-ink-faded uppercase">
                       {tier.tier}
                     </h3>
-                    <ul className="flex flex-wrap justify-center gap-4">
-                      {tier.logos.map((logo) => (
-                        <li
-                          key={logo.src}
-                          className={`flex ${box} items-center justify-center rounded-2xl border border-line bg-white p-4 shadow-sm`}
-                        >
-                          <div className="relative h-full w-full">
-                            <Image
-                              src={logo.src}
-                              alt={logo.name}
-                              fill
-                              sizes="288px"
-                              className="object-contain"
-                            />
-                          </div>
-                        </li>
-                      ))}
-                    </ul>
+                    {/* Hạng Tiêu chuẩn nhiều logo → slider tự cuộn 3s, loop; các hạng
+                        khác ít logo nên xếp giữa cho gọn. */}
+                    {tier.tier === "Tiêu chuẩn" ? (
+                      <CardSlider
+                        ariaLabel="Nhà tài trợ hạng Tiêu chuẩn"
+                        prevLabel="Xem nhà tài trợ trước"
+                        nextLabel="Xem nhà tài trợ tiếp theo"
+                      >
+                        {tier.logos.map((logo) => (
+                          <li key={logo.src} className="flex shrink-0 snap-start">
+                            {card(logo)}
+                          </li>
+                        ))}
+                      </CardSlider>
+                    ) : (
+                      <ul className="flex flex-wrap justify-center gap-4">
+                        {tier.logos.map((logo) => (
+                          <li key={logo.src}>{card(logo)}</li>
+                        ))}
+                      </ul>
+                    )}
                   </div>
                 );
               })}

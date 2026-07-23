@@ -21,9 +21,13 @@ import {
 export function CardSlider({
   children,
   ariaLabel,
+  prevLabel = "Xem mục trước",
+  nextLabel = "Xem mục tiếp theo",
 }: {
   children: ReactNode;
   ariaLabel: string;
+  prevLabel?: string;
+  nextLabel?: string;
 }) {
   const ref = useRef<HTMLUListElement>(null);
   const [overflow, setOverflow] = useState(false);
@@ -94,13 +98,13 @@ export function CardSlider({
       {overflow && (
         <div className="mb-4 flex justify-end gap-2">
           <SliderButton
-            label="Xem diễn giả trước"
+            label={prevLabel}
             disabled={atStart}
             onClick={() => scrollByCard(-1)}
             path="M15.75 19.5 8.25 12l7.5-7.5"
           />
           <SliderButton
-            label="Xem diễn giả tiếp theo"
+            label={nextLabel}
             disabled={atEnd}
             onClick={() => scrollByCard(1)}
             path="m8.25 4.5 7.5 7.5-7.5 7.5"
