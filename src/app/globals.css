@@ -136,6 +136,67 @@ body {
   will-change: transform;
 }
 
+/*
+  Băng chạy liên tục (marquee) — dùng cho hàng logo nhà tài trợ và hàng card diễn
+  giả. Track chứa 2 bản danh sách; dịch -50% = đúng một bản nên vòng lặp khít,
+  không thấy điểm nối, không tua ngược. `linear` cho chuyển động đều, mượt, không
+  giật. Dừng khi rê chuột / chạm (class .is-paused bật từ JS — dùng class unlayer
+  để thắng shorthand `animation` của .marquee).
+
+  Máy bật "giảm chuyển động": tắt animation, ẩn bản nhân đôi và cho cuộn ngang
+  bằng tay để vẫn xem đủ (khối reduce phía trên đã trung hoà mọi animation, ở đây
+  chỉ lo phần bố cục).
+*/
+@keyframes marquee {
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+.marquee {
+  display: flex;
+  width: max-content;
+  animation: marquee var(--marquee-duration, 24s) linear infinite;
+  will-change: transform;
+}
+
+.marquee.is-paused {
+  animation-play-state: paused;
+}
+
+/*
+  Hai mép trái/phải mờ dần về trong suốt (mask gradient) để mục hiện/tan mềm khi
+  vào–ra khung, không cắt cụt đột ngột. Mask làm mờ chính nội dung nên ăn theo mọi nền.
+*/
+.marquee-viewport {
+  -webkit-mask-image: linear-gradient(
+    to right,
+    transparent,
+    #000 3rem,
+    #000 calc(100% - 3rem),
+    transparent
+  );
+  mask-image: linear-gradient(
+    to right,
+    transparent,
+    #000 3rem,
+    #000 calc(100% - 3rem),
+    transparent
+  );
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .marquee {
+    animation: none;
+  }
+  .marquee-dup {
+    display: none;
+  }
+  .marquee-viewport {
+    overflow-x: auto;
+  }
+}
+
 @keyframes reveal {
   from {
     opacity: 0;

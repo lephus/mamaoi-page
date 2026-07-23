@@ -2,9 +2,9 @@ import type { Metadata } from "next";
 import Image from "next/image";
 import { Footer } from "@/components/Footer";
 import { Header } from "@/components/Header";
-import { CardSlider } from "@/components/CardSlider";
 import { CountUp } from "@/components/CountUp";
 import { GiftCarousel } from "@/components/GiftCarousel";
+import { Marquee } from "@/components/Marquee";
 import { RegistrationForm } from "@/components/RegistrationForm";
 import { Reveal } from "@/components/Reveal";
 import { SpeakerCard } from "@/components/SpeakerCard";
@@ -553,20 +553,14 @@ export default function EventPage() {
                 card co theo nội dung → lệch cao. Bỏ h-full → stretch cân đều; li
                 flex + card w-full để card lấp đầy ô. */}
             <Reveal className="mt-6">
-              <CardSlider
+              <Marquee
+                items={EVENT_EXPERTS.map((s) => ({
+                  key: s.name,
+                  content: <SpeakerCard speaker={s} />,
+                }))}
                 ariaLabel="Danh sách diễn giả tại Mama Ơi Day"
-                prevLabel="Xem diễn giả trước"
-                nextLabel="Xem diễn giả tiếp theo"
-              >
-                {EVENT_EXPERTS.map((s) => (
-                  <li
-                    key={s.name}
-                    className="flex w-[86%] shrink-0 snap-start sm:w-[calc(50%-0.625rem)] lg:w-[calc(33.333%-0.834rem)]"
-                  >
-                    <SpeakerCard speaker={s} />
-                  </li>
-                ))}
-              </CardSlider>
+                itemClassName="w-72 sm:w-80"
+              />
             </Reveal>
           </div>
         </section>
@@ -827,20 +821,16 @@ export default function EventPage() {
                     <h3 className="mb-5 text-center text-sm font-bold tracking-wide text-ink-faded uppercase">
                       {tier.tier}
                     </h3>
-                    {/* Hạng Tiêu chuẩn nhiều logo → slider tự cuộn 3s, loop; các hạng
-                        khác ít logo nên xếp giữa cho gọn. */}
+                    {/* Hạng Tiêu chuẩn nhiều logo → băng marquee chạy liên tục một
+                        chiều, lặp vô hạn; các hạng khác ít logo nên xếp giữa cho gọn. */}
                     {tier.tier === "Tiêu chuẩn" ? (
-                      <CardSlider
+                      <Marquee
+                        items={tier.logos.map((logo) => ({
+                          key: logo.src,
+                          content: card(logo),
+                        }))}
                         ariaLabel="Nhà tài trợ hạng Tiêu chuẩn"
-                        prevLabel="Xem nhà tài trợ trước"
-                        nextLabel="Xem nhà tài trợ tiếp theo"
-                      >
-                        {tier.logos.map((logo) => (
-                          <li key={logo.src} className="flex shrink-0 snap-start">
-                            {card(logo)}
-                          </li>
-                        ))}
-                      </CardSlider>
+                      />
                     ) : (
                       <ul className="flex flex-wrap justify-center gap-4">
                         {tier.logos.map((logo) => (
