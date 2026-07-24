@@ -28,6 +28,33 @@ export const EVENT = {
 } as const;
 
 /**
+ * Sức chứa sự kiện, dạng SỐ.
+ *
+ * `EVENT.capacity` ở trên là chuỗi hiển thị (chữ khách duyệt) — đừng parse nó
+ * để lấy số: đổi copy thành "Giới hạn 500 mẹ" là parseInt trả NaN và chỗ dùng
+ * hỏng im lặng.
+ *
+ * Đây chỉ là MẶC ĐỊNH. Con số đang thực sự áp dụng lấy qua `sucChua()` trong
+ * `suc-chua.ts`, có thể nâng bằng biến môi trường `EVENT_CAPACITY` mà không cần
+ * deploy lại (khách hay chốt "mở thêm 50 chỗ" ngay trong ngày mở đăng ký).
+ */
+export const SUC_CHUA_MAC_DINH = 500;
+
+/**
+ * Màn hình mẹ thấy khi đã hết chỗ. Nhận số chỗ làm tham số chứ không gõ "500"
+ * vào câu chữ — ops nâng `EVENT_CAPACITY` lên 550 mà câu vẫn đọc 500 thì thông
+ * báo từ chối nói sai ngay trên mặt mẹ.
+ *
+ * CHƯA được khách duyệt (mọi wording khác trên trang đều là chữ khách duyệt).
+ * Khách sửa chữ thì sửa ở đây, không đụng logic.
+ */
+export const HET_CHO = {
+  tieuDe: (soCho: number) => `Rất tiếc, sự kiện đã đủ ${soCho} mẹ.`,
+  mo: "Mẹ để lại email để Mama Ơi báo ngay khi có chỗ trống nhé.",
+  nut: "Đăng ký nhận tin ứng dụng",
+} as const;
+
+/**
  * Headline numbers from the event key visual — all numeric so the row reads as
  * one consistent set.
  *

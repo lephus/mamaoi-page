@@ -3,7 +3,14 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { flushSync } from "react-dom";
-import { CHU_DE_QUAN_TAM, NGUON_BIET_DEN, PROVINCES } from "@/lib/constants";
+import Link from "next/link";
+import {
+  CHU_DE_QUAN_TAM,
+  HET_CHO,
+  NGUON_BIET_DEN,
+  PROVINCES,
+  SUC_CHUA_MAC_DINH,
+} from "@/lib/constants";
 import { buildRegistrationPayload } from "@/lib/registration-payload";
 import { trackRegistration } from "@/lib/analytics";
 import { homNayVN } from "@/lib/time";
@@ -179,6 +186,14 @@ export function RegistrationForm() {
   >("");
   const [chuDe, setChuDe] = useState<string[]>([]);
   const [nguon, setNguon] = useState("");
+  /**
+   * Số chỗ của sự kiện khi server báo đã hết — `null` là còn chỗ.
+   *
+   * Giữ CON SỐ chứ không giữ boolean: câu thông báo phải đọc đúng giới hạn
+   * server đang áp dụng (ops nâng `EVENT_CAPACITY` lên 550 thì không được nói
+   * "đã đủ 500 mẹ"), nên số phải đi theo từ response chứ không lấy hằng ở client.
+   */
+  const [hetCho, setHetCho] = useState<number | null>(null);
 
   // Xoá lỗi của MỘT field ngay khi mẹ vừa chỉnh nó, thay vì để thông báo đỏ đứng
   // ì tới lần submit sau. Với radio/checkbox điều này quan trọng nhất: mẹ đã bấm
@@ -221,7 +236,15 @@ export function RegistrationForm() {
         // tìm được ô sai và cuộn tới — nếu không mẹ chỉ thấy nút bật lại mà
         // không rõ vì sao đăng ký chưa xong.
         flushSync(() => {
-          setErrors(data.fieldErrors ?? { form: data.error ?? "Có lỗi xảy ra" });
+          // Hết chỗ KHÔNG phải lỗi mẹ điền sai — không nhét vào ô đỏ validation,
+          // mà thay hẳn nút gửi bằng khối thông báo riêng. `??` chứ không `||`:
+          // giới hạn hợp lệ không bao giờ là 0, nhưng response thiếu field thì
+          // phải rơi về hằng client chứ không hiện "đã đủ 0 mẹ".
+          if (data.full) {
+            setHetCho(typeof data.gioiHan === "number" ? data.gioiHan : SUC_CHUA_MAC_DINH);
+          } else {
+            setErrors(data.fieldErrors ?? { form: data.error ?? "Có lỗi xảy ra" });
+          }
           setSubmitting(false);
         });
         scrollToFirstError();
@@ -549,13 +572,35 @@ export function RegistrationForm() {
         className="absolute left-[-9999px] h-0 w-0 opacity-0"
       />
 
-      <Button type="submit" disabled={submitting} className="w-full">
-        {submitting ? "Đang gửi..." : "Đăng ký ngay"}
-      </Button>
+      {/* Hết chỗ thì bỏ hẳn nút gửi: để nút lại chỉ mời mẹ bấm thêm vài lần nữa
+          rồi nhận đúng câu trả lời đó. `role="alert"` để trình đọc màn hình đọc
+          ngay, và để `scrollToFirstError` cuộn tới — nó bắt theo selector này. */}
+      {hetCho !== null ? (
+        <div
+          role="alert"
+          className="rounded-2xl bg-primary-faded px-5 py-6 text-center"
+        >
+          <p className="text-lg font-extrabold text-ink">{HET_CHO.tieuDe(hetCho)}</p>
+          <p className="mt-1.5 text-base leading-6 text-ink-faded">{HET_CHO.mo}</p>
+          <Link
+            href="/ung-dung#nhan-tin"
+            className="mt-4 inline-block rounded-full bg-primary px-6 py-3 text-base font-bold text-white transition-colors hover:bg-primary-hover"
+          >
+            {HET_CHO.nut}
+          </Link>
+        </div>
+      ) : (
+        <>
+          <Button type="submit" disabled={submitting} className="w-full">
+            {submitting ? "Đang gửi..." : "Đăng ký ngay"}
+          </Button>
 
-      <p className="text-center text-xs leading-4 text-ink-faded">
-        Sự kiện miễn phí, giới hạn 500 mẹ. Mẹ sẽ nhận email xác nhận kèm mã QR check-in.
-      </p>
+          <p className="text-center text-xs leading-4 text-ink-faded">
+            Sự kiện miễn phí, giới hạn {SUC_CHUA_MAC_DINH} mẹ. Mẹ sẽ nhận email xác nhận
+            kèm mã QR check-in.
+          </p>
+        </>
+      )}
     </form>
   );
 }

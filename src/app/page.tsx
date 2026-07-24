@@ -20,6 +20,7 @@ import {
   EVENT_STATS,
   EVENT_TIMELINE,
   PARTNER_TIERS,
+  SUC_CHUA_MAC_DINH,
 } from "@/lib/constants";
 
 export const metadata: Metadata = {
@@ -605,7 +606,7 @@ export default function EventPage() {
                 </p>
                 <div className="mt-1 flex items-baseline justify-center gap-2.5">
                   <CountUp
-                    to={parseInt(EVENT.capacity, 10)}
+                    to={SUC_CHUA_MAC_DINH}
                     className="bg-gradient-to-br from-primary to-primary-pressed bg-clip-text text-6xl leading-none font-extrabold tracking-tight text-transparent sm:text-7xl"
                   />
                   <span className="text-xl font-extrabold text-ink sm:text-2xl">

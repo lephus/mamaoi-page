@@ -6,7 +6,14 @@ import {
   upsertContact,
 } from "@/lib/brevo";
 import { appendRegistration, appendWaitlist, sheetsConfigured } from "@/lib/sheets";
-import { insertRegistration, insertWaitlist, supabaseConfigured } from "@/lib/supabase";
+import {
+  giuChoDangKy,
+  insertRegistration,
+  insertWaitlist,
+  supabaseConfigured,
+} from "@/lib/supabase";
+import { quyetDinhSucChua, sucChua } from "@/lib/suc-chua";
+import { HET_CHO } from "@/lib/constants";
 import {
   chungSchema,
   generateCheckinCode,
@@ -85,8 +92,49 @@ export async function POST(request: Request) {
     checkinCode = reused ?? generateCheckinCode();
   }
 
+  const warnings: string[] = [];
+
+  // ---------- Cổng chặn sức chứa ----------
+  //
+  // PHẢI đứng TRƯỚC Brevo. Đặt sau thì mẹ đã nhận email xác nhận kèm mã QR rồi
+  // mới bị báo hết chỗ — không rút lại được.
+  //
+  // Chỉ áp cho đăng ký sự kiện; waitlist app không giới hạn số lượng.
+  const gioiHan = sucChua();
+  let lamMoiDongCu = false;
+
+  if (isRegistration(data)) {
+    // Không cấu hình Supabase (dev) thì không có gì để đếm — cho đi tiếp.
+    let ket = "khong_cau_hinh";
+    if (supabaseConfigured()) {
+      try {
+        ket = await giuChoDangKy(data, checkinCode!, gioiHan);
+      } catch (err) {
+        console.error("[dang-ky] giữ chỗ thất bại:", data.email, err);
+        ket = "loi";
+      }
+    }
+
+    const quyetDinh = quyetDinhSucChua(ket);
+    if (quyetDinh.chan) {
+      return NextResponse.json(
+        { error: HET_CHO.tieuDe(gioiHan), full: true, gioiHan },
+        { status: 409 },
+      );
+    }
+    lamMoiDongCu = quyetDinh.ghiLai;
+
+    // Cảnh báo RIÊNG, không gộp vào "supabase": ở đây nghĩa là lượt đăng ký này
+    // KHÔNG được đếm vào sức chứa (fail open), khác hẳn với việc ghi dòng hỏng.
+    if (ket === "loi") warnings.push("suc-chua");
+  }
+
   // Brevo holds the member record. If this fails, the registration genuinely
   // did not happen — surface a real error rather than a comforting lie.
+  //
+  // Chỗ đã giữ ở trên KHÔNG được nhả lại: mẹ bấm gửi lại thì RPC trả
+  // 'da_dang_ky' nên không tốn ghế thứ hai, còn nhả ra ở đây sẽ mở cửa cho
+  // đúng khoảng trống mà cái khoá kia sinh ra để bịt.
   try {
     await upsertContact(data, checkinCode);
   } catch (err) {
@@ -99,7 +147,6 @@ export async function POST(request: Request) {
 
   // Past this point she IS registered. Nothing below may fail her request —
   // she would be refilling the form to fix a problem that is entirely ours.
-  const warnings: string[] = [];
 
   try {
     if (isRegistration(data)) {
@@ -124,7 +171,10 @@ export async function POST(request: Request) {
   if (supabaseConfigured()) {
     try {
       if (isRegistration(data)) {
-        await insertRegistration(data, checkinCode!);
+        // Cổng chặn ở trên đã insert xong ở nhánh 'moi'. Chỉ ghi thêm khi email
+        // đã có dòng cũ cần làm mới (mẹ gửi lại form để sửa số điện thoại) —
+        // gọi vô điều kiện là một lượt ghi thừa ngay sau lượt vừa xong.
+        if (lamMoiDongCu) await insertRegistration(data, checkinCode!);
       } else {
         await insertWaitlist(data.email, data.dongYNhanTin);
       }

@@ -108,6 +108,36 @@ export function registrationToRow(
 }
 
 /**
+ * Giữ một chỗ trong 500 chỗ của sự kiện, NGUYÊN TỬ.
+ *
+ * Đếm và ghi phải nằm trong cùng một transaction có khoá, nên toàn bộ phép quyết
+ * định nằm ở function `giu_cho_dang_ky` trong Postgres (xem
+ * `supabase/2026-07-24-suc-chua.sql`) chứ không ở đây. Đếm bằng JS rồi mới gọi
+ * insert sẽ hở một khoảng: hai request cùng đọc 499 thì cả hai cùng ghi.
+ *
+ * Trả về:
+ *  - `'moi'`        — đã giữ được chỗ VÀ đã insert xong. Không cần ghi gì thêm.
+ *  - `'da_dang_ky'` — email này đã có chỗ từ trước; RPC không đụng dòng cũ, gọi
+ *                     `insertRegistration` sau đó để làm mới thông tin.
+ *  - `'het_cho'`    — đã đủ chỗ. Route phải dừng TRƯỚC Brevo.
+ *
+ * KHÔNG bắt lỗi ở đây: route quyết định fail open, và nuốt lỗi tại chỗ này sẽ
+ * giấu mất sự cố DB khỏi `warnings`.
+ */
+export async function giuChoDangKy(
+  data: Registration,
+  code: string,
+  gioiHan: number,
+): Promise<string> {
+  const { data: ket, error } = await db().rpc("giu_cho_dang_ky", {
+    p_row: registrationToRow(data, code, new Date()),
+    p_gioi_han: gioiHan,
+  });
+  if (error) throw new Error(`Supabase giuChoDangKy failed: ${error.message}`);
+  return String(ket);
+}
+
+/**
  * Upsert on email so a mother who submits the form twice stays ONE row.
  */
 export async function insertRegistration(data: Registration, code: string): Promise<void> {
