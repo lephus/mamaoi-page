@@ -23,14 +23,17 @@ vi.mock("@/lib/supabase", () => ({
 
 vi.mock("@/lib/sheets", () => ({
   sheetsConfigured: vi.fn(() => true),
-  docEmailDaDangKy: vi.fn(async () => new Set<string>()),
+  docSoLieuDangKy: vi.fn(async () => ({ soDong: 0, emails: new Set<string>() })),
   appendRegistration: vi.fn(async () => {}),
   appendWaitlist: vi.fn(async () => {}),
 }));
 
-/** Sheet đang có `n` mẹ khác — không mẹ nào trùng email với `dangKyHopLe()`. */
-function sheetCo(n: number): Set<string> {
-  return new Set(Array.from({ length: n }, (_, i) => `me${i}@email.com`));
+/** Sheet đang có `n` dòng của mẹ khác — không dòng nào trùng `dangKyHopLe()`. */
+function sheetCo(n: number) {
+  return {
+    soDong: n,
+    emails: new Set(Array.from({ length: n }, (_, i) => `me${i}@email.com`)),
+  };
 }
 
 function post(body: unknown): Request {
@@ -65,7 +68,7 @@ beforeEach(() => {
   vi.clearAllMocks();
   vi.mocked(supabase.supabaseConfigured).mockReturnValue(true);
   vi.mocked(sheets.sheetsConfigured).mockReturnValue(true);
-  vi.mocked(sheets.docEmailDaDangKy).mockResolvedValue(new Set());
+  vi.mocked(sheets.docSoLieuDangKy).mockResolvedValue(sheetCo(0));
 
   // Ghim đồng hồ cho MỌI test trong file. Route giờ có cổng chặn theo hạn
   // 30/08/2026, nên để đồng hồ thật thì sau ngày đó toàn bộ test sức chứa nhận
@@ -127,7 +130,7 @@ describe("POST /api/dang-ky — cổng chặn hết hạn", () => {
 
     expect(brevo.upsertContact).not.toHaveBeenCalled();
     expect(brevo.sendEventEmail).not.toHaveBeenCalled();
-    expect(sheets.docEmailDaDangKy).not.toHaveBeenCalled();
+    expect(sheets.docSoLieuDangKy).not.toHaveBeenCalled();
     expect(supabase.insertRegistration).not.toHaveBeenCalled();
     expect(sheets.appendRegistration).not.toHaveBeenCalled();
   });
@@ -163,7 +166,7 @@ describe("POST /api/dang-ky — cổng chặn hết hạn", () => {
 
 describe("POST /api/dang-ky — cổng chặn sức chứa (đếm trên Google Sheet)", () => {
   it("hết chỗ: trả 409 kèm full + gioiHan", async () => {
-    vi.mocked(sheets.docEmailDaDangKy).mockResolvedValue(sheetCo(500));
+    vi.mocked(sheets.docSoLieuDangKy).mockResolvedValue(sheetCo(500));
 
     const res = await POST(post(dangKyHopLe()));
     expect(res.status).toBe(409);
@@ -176,7 +179,7 @@ describe("POST /api/dang-ky — cổng chặn sức chứa (đếm trên Google 
 
   /** Mốc cuối: 499 mẹ trong Sheet thì mẹ thứ 500 vẫn phải vào được. */
   it("còn đúng một chỗ: vẫn nhận", async () => {
-    vi.mocked(sheets.docEmailDaDangKy).mockResolvedValue(sheetCo(499));
+    vi.mocked(sheets.docSoLieuDangKy).mockResolvedValue(sheetCo(499));
 
     const res = await POST(post(dangKyHopLe()));
     expect(res.status).toBe(200);
@@ -187,7 +190,7 @@ describe("POST /api/dang-ky — cổng chặn sức chứa (đếm trên Google 
    * mẹ đã nhận email xác nhận kèm mã QR cho một chỗ không tồn tại.
    */
   it("hết chỗ: KHÔNG chạm tới Brevo, không gửi email nào, không ghi dòng nào", async () => {
-    vi.mocked(sheets.docEmailDaDangKy).mockResolvedValue(sheetCo(500));
+    vi.mocked(sheets.docSoLieuDangKy).mockResolvedValue(sheetCo(500));
 
     await POST(post(dangKyHopLe()));
 
@@ -212,8 +215,8 @@ describe("POST /api/dang-ky — cổng chặn sức chứa (đếm trên Google 
    */
   it("email đã có trong Sheet: vẫn qua được dù sự kiện đang đầy", async () => {
     const day = sheetCo(500);
-    day.add("mai@email.com");
-    vi.mocked(sheets.docEmailDaDangKy).mockResolvedValue(day);
+    day.emails.add("mai@email.com");
+    vi.mocked(sheets.docSoLieuDangKy).mockResolvedValue(day);
 
     const res = await POST(post(dangKyHopLe("mai@email.com")));
 
@@ -222,7 +225,7 @@ describe("POST /api/dang-ky — cổng chặn sức chứa (đếm trên Google 
   });
 
   it("đọc Sheet lỗi: fail open — mẹ vẫn đăng ký được, kèm cảnh báo suc-chua", async () => {
-    vi.mocked(sheets.docEmailDaDangKy).mockRejectedValue(new Error("Google Sheets 403"));
+    vi.mocked(sheets.docSoLieuDangKy).mockRejectedValue(new Error("Google Sheets 403"));
 
     const res = await POST(post(dangKyHopLe()));
     expect(res.status).toBe(200);
@@ -238,7 +241,7 @@ describe("POST /api/dang-ky — cổng chặn sức chứa (đếm trên Google 
     const res = await POST(post(dangKyHopLe()));
 
     expect(res.status).toBe(200);
-    expect(sheets.docEmailDaDangKy).not.toHaveBeenCalled();
+    expect(sheets.docSoLieuDangKy).not.toHaveBeenCalled();
   });
 
   /**
@@ -247,7 +250,7 @@ describe("POST /api/dang-ky — cổng chặn sức chứa (đếm trên Google 
    */
   it("Supabase sập: cổng chặn vẫn chạy bình thường trên Sheet", async () => {
     vi.mocked(supabase.supabaseConfigured).mockReturnValue(false);
-    vi.mocked(sheets.docEmailDaDangKy).mockResolvedValue(sheetCo(500));
+    vi.mocked(sheets.docSoLieuDangKy).mockResolvedValue(sheetCo(500));
 
     const res = await POST(post(dangKyHopLe()));
 
@@ -256,14 +259,14 @@ describe("POST /api/dang-ky — cổng chặn sức chứa (đếm trên Google 
   });
 
   it("waitlist app không dính cổng chặn", async () => {
-    vi.mocked(sheets.docEmailDaDangKy).mockResolvedValue(sheetCo(500));
+    vi.mocked(sheets.docSoLieuDangKy).mockResolvedValue(sheetCo(500));
 
     const res = await POST(
       post({ nguon: "app-waitlist", email: "mai@email.com", dongYNhanTin: true }),
     );
 
     expect(res.status).toBe(200);
-    expect(sheets.docEmailDaDangKy).not.toHaveBeenCalled();
+    expect(sheets.docSoLieuDangKy).not.toHaveBeenCalled();
     expect(supabase.insertWaitlist).toHaveBeenCalledOnce();
   });
 });

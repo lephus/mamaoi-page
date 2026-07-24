@@ -8,7 +8,7 @@ import {
 import {
   appendRegistration,
   appendWaitlist,
-  docEmailDaDangKy,
+  docSoLieuDangKy,
   sheetsConfigured,
 } from "@/lib/sheets";
 import { insertRegistration, insertWaitlist, supabaseConfigured } from "@/lib/supabase";
@@ -130,7 +130,7 @@ export async function POST(request: Request) {
     let ket: KetQuaSucChua = "khong_cau_hinh";
     if (sheetsConfigured()) {
       try {
-        ket = ketQuaSucChua(await docEmailDaDangKy(), data.email, gioiHan);
+        ket = ketQuaSucChua(await docSoLieuDangKy(), data.email, gioiHan);
       } catch (err) {
         console.error("[dang-ky] đếm chỗ trên Sheet thất bại:", data.email, err);
         ket = "loi";

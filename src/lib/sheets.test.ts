@@ -3,7 +3,7 @@ import { rowsToSheet, waitlistToSheet } from "@/lib/export-rows";
 import {
   buildCheckinUpdate,
   colLetter,
-  emailsTuCotSheet,
+  soLieuTuCotSheet,
   findCheckinRows,
   registrationToSheetRow,
   VALUE_INPUT_OPTION,
@@ -169,44 +169,56 @@ describe("findCheckinRows", () => {
   });
 });
 
-describe("emailsTuCotSheet — con số quyết định còn chỗ hay hết chỗ", () => {
+describe("soLieuTuCotSheet — con số quyết định còn chỗ hay hết chỗ", () => {
   // values.get trả từ dòng 1: [ghi chú], [header], [dữ liệu...].
   const col = [["⚠ Bản ghi thô..."], ["Email"], ["mai@email.com"], ["lan@email.com"]];
 
-  it("chỉ lấy ô có email, bỏ ô ghi chú và header", () => {
-    expect(emailsTuCotSheet(col)).toEqual(new Set(["mai@email.com", "lan@email.com"]));
+  it("chỉ đếm ô có email, bỏ ô ghi chú và header", () => {
+    expect(soLieuTuCotSheet(col)).toEqual({
+      soDong: 2,
+      emails: new Set(["mai@email.com", "lan@email.com"]),
+    });
   });
 
   /**
-   * Đây là lý do đếm email khác nhau chứ không đếm số dòng: Sheet chỉ append,
-   * mẹ bấm gửi hai lần là hai dòng của CÙNG một mẹ. Đếm dòng thì mẹ đó ăn hai
-   * ghế và mẹ thứ 500 bị báo hết chỗ trong khi hội trường còn trống.
+   * Con số chặn là SỐ DÒNG, đúng thứ ops đếm được khi mở Sheet. Mẹ gửi lại form
+   * tạo thêm một dòng, và dòng đó ops vẫn nhìn thấy là một chỗ đã dùng — đây là
+   * cái giá đã chấp nhận để hai con số không lệch nhau.
    */
-  it("mẹ đăng ký hai lần chỉ tính MỘT chỗ", () => {
+  it("mẹ đăng ký hai lần tính HAI dòng, nhưng vẫn là một email", () => {
     const trung = [...col, ["mai@email.com"]];
-    expect(emailsTuCotSheet(trung).size).toBe(2);
-  });
-
-  it("gộp hoa/thường và khoảng trắng thừa về một email", () => {
-    const lech = [...col, ["  MAI@Email.com  "]];
-    expect(emailsTuCotSheet(lech).size).toBe(2);
+    const s = soLieuTuCotSheet(trung);
+    expect(s.soDong).toBe(3);
+    expect(s.emails.size).toBe(2);
   });
 
   /**
-   * Ops chèn/xoá dòng đầu là chuyện thường. Lọc theo "@" nên vị trí trôi bao
-   * nhiêu cũng không đếm nhầm ô ghi chú thành một mẹ.
+   * Tập email chỉ để trả lời "mẹ này đã đăng ký chưa" nên phải gộp hoa/thường;
+   * số dòng thì vẫn đếm đủ vì Sheet có đúng ngần ấy dòng.
+   */
+  it("gộp hoa/thường và khoảng trắng thừa khi so email", () => {
+    const lech = [...col, ["  MAI@Email.com  "]];
+    const s = soLieuTuCotSheet(lech);
+    expect(s.soDong).toBe(3);
+    expect(s.emails.size).toBe(2);
+  });
+
+  /**
+   * Ops chèn/xoá dòng đầu là chuyện thường — tab register hiện tại thậm chí
+   * không có dòng ghi chú. Lọc theo "@" nên vị trí trôi bao nhiêu cũng không
+   * đếm nhầm ô ghi chú/header thành một mẹ.
    */
   it("không phụ thuộc vị trí dòng ghi chú / header", () => {
-    expect(emailsTuCotSheet([["mai@email.com"], ["lan@email.com"]]).size).toBe(2);
-    expect(emailsTuCotSheet([["Email"], ["ghi chú"], [""]]).size).toBe(0);
+    expect(soLieuTuCotSheet([["mai@email.com"], ["lan@email.com"]]).soDong).toBe(2);
+    expect(soLieuTuCotSheet([["Email"], ["ghi chú"], [""]]).soDong).toBe(0);
   });
 
   it("chịu được ô rỗng / dòng thiếu do Google lược bỏ", () => {
-    expect(emailsTuCotSheet([[], undefined, ["mai@email.com"], [""]]).size).toBe(1);
+    expect(soLieuTuCotSheet([[], undefined, ["mai@email.com"], [""]]).soDong).toBe(1);
   });
 
-  it("Sheet trống → không có mẹ nào", () => {
-    expect(emailsTuCotSheet([]).size).toBe(0);
+  it("Sheet trống → không có dòng nào", () => {
+    expect(soLieuTuCotSheet([])).toEqual({ soDong: 0, emails: new Set() });
   });
 });
 

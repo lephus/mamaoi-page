@@ -26,20 +26,30 @@ describe("sucChua — đọc giới hạn từ env", () => {
   });
 });
 
-describe("ketQuaSucChua — số email trong Sheet thành quyết định", () => {
-  const tap = (...e: string[]) => new Set(e);
+describe("ketQuaSucChua — số DÒNG trong Sheet thành quyết định", () => {
+  const soLieu = (soDong: number, ...e: string[]) => ({ soDong, emails: new Set(e) });
 
   it("còn chỗ thì cho đi tiếp", () => {
-    expect(ketQuaSucChua(tap("a@x.y", "b@x.y"), "moi@x.y", 500)).toBe("moi");
+    expect(ketQuaSucChua(soLieu(2, "a@x.y", "b@x.y"), "moi@x.y", 500)).toBe("moi");
   });
 
   it("đủ số chỗ thì chặn", () => {
-    expect(ketQuaSucChua(tap("a@x.y", "b@x.y"), "moi@x.y", 2)).toBe("het_cho");
+    expect(ketQuaSucChua(soLieu(2, "a@x.y", "b@x.y"), "moi@x.y", 2)).toBe("het_cho");
   });
 
-  /** `>=` chứ không `>`: đủ 2 email là đã hết, mẹ tiếp theo là người thứ 3. */
+  /** `>=` chứ không `>`: đủ 2 dòng là đã hết, mẹ tiếp theo là người thứ 3. */
   it("mốc cuối: còn thiếu đúng một chỗ thì vẫn nhận", () => {
-    expect(ketQuaSucChua(tap("a@x.y"), "moi@x.y", 2)).toBe("moi");
+    expect(ketQuaSucChua(soLieu(1, "a@x.y"), "moi@x.y", 2)).toBe("moi");
+  });
+
+  /**
+   * ĐÂY LÀ LỖI ĐÃ GẶP THẬT: Sheet có 511 dòng nhưng chỉ 17 email khác nhau (dữ
+   * liệu test dùng lại vài địa chỉ). Bản cũ đếm email nên thấy 17 < 500 và vẫn
+   * nhận thêm mẹ, dù ops mở Sheet ra đã thấy quá 500 dòng từ lâu.
+   */
+  it("511 dòng / 17 email khác nhau → HẾT CHỖ, không phải còn chỗ", () => {
+    const nhieuTrung = { soDong: 511, emails: new Set(["a@x.y", "b@x.y"]) };
+    expect(ketQuaSucChua(nhieuTrung, "moi@x.y", 500)).toBe("het_cho");
   });
 
   /**
@@ -47,21 +57,21 @@ describe("ketQuaSucChua — số email trong Sheet thành quyết định", () =
    * gửi lại form để sửa số điện thoại.
    */
   it("email đã có trong Sheet vẫn qua được dù đang đầy", () => {
-    expect(ketQuaSucChua(tap("a@x.y", "b@x.y"), "a@x.y", 2)).toBe("da_dang_ky");
+    expect(ketQuaSucChua(soLieu(2, "a@x.y", "b@x.y"), "a@x.y", 2)).toBe("da_dang_ky");
   });
 
   /**
    * Zod đã `.trim().toLowerCase()` email trước khi ghi, nhưng ô trong Sheet sửa
-   * tay được — không chuẩn hoá thì mẹ viết hoa bị tính thành người thứ hai và
-   * ăn thêm một ghế.
+   * tay được — không chuẩn hoá thì mẹ viết hoa bị coi là người lạ và bị chặn
+   * khỏi chỗ của chính mẹ khi sự kiện đã đầy.
    */
   it("so khớp bỏ hoa/thường và khoảng trắng thừa", () => {
-    expect(ketQuaSucChua(tap("mai@email.com"), "  MAI@Email.com ", 500)).toBe(
+    expect(ketQuaSucChua(soLieu(1, "mai@email.com"), "  MAI@Email.com ", 1)).toBe(
       "da_dang_ky",
     );
   });
 
   it("Sheet trống thì mẹ đầu tiên là chỗ mới", () => {
-    expect(ketQuaSucChua(new Set(), "mai@x.y", 500)).toBe("moi");
+    expect(ketQuaSucChua(soLieu(0), "mai@x.y", 500)).toBe("moi");
   });
 });

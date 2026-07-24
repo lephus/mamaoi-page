@@ -1,11 +1,16 @@
 import { SUC_CHUA_MAC_DINH } from "./constants";
+import type { SoLieuDangKy } from "./sheets";
 
 /**
  * Sức chứa sự kiện: còn chỗ hay đã đầy, quyết định từ SỐ EMAIL trong Google
  * Sheet (tab register).
  *
  * Nguồn đếm là Sheet theo yêu cầu của khách — ops nhìn Sheet nên con số chặn
- * phải là đúng con số ops nhìn thấy. Hai hệ quả đã biết và chấp nhận:
+ * phải là đúng con số ops nhìn thấy. Đếm SỐ DÒNG, không đếm email khác nhau.
+ * Ba hệ quả đã biết và chấp nhận:
+ *
+ *  0. Mẹ gửi lại form tạo thêm một dòng, tức ăn hai ghế trong 500. Đây là cái
+ *     giá của việc con số chặn khớp đúng con số ops đếm trên Sheet.
  *
  *  1. KHÔNG nguyên tử. Dòng Sheet chỉ được append ở CUỐI route (sau Brevo), nên
  *     hai mẹ submit trong cùng một nhịp đều đọc ra cùng một con số và cùng đi
@@ -51,20 +56,24 @@ export type KetQuaSucChua =
   | "khong_cau_hinh";
 
 /**
- * `emails` là tập email đã có trong Sheet (xem `emailsTuCotSheet`).
+ * `soLieu` đọc từ tab register (xem `soLieuTuCotSheet`).
  *
- * Email đã đăng ký LUÔN đi tiếp, kể cả khi đã đủ 500: mẹ này không chiếm thêm
- * ghế nào — chặn ở đây là đuổi mẹ khỏi chỗ mẹ đang giữ, chỉ vì mẹ bấm gửi lại
- * form để sửa số điện thoại.
+ * Chặn theo `soDong` — SỐ DÒNG trong Sheet, đúng con số ops đếm được khi mở
+ * file. KHÔNG chặn theo số email khác nhau: một mẹ gửi lại form tạo thêm dòng,
+ * và dòng đó ops vẫn nhìn thấy là một chỗ đã dùng.
  *
- * So sánh `>=` chứ không `>`: đủ 500 email trong Sheet là ĐÃ hết chỗ, mẹ tiếp
+ * Email đã đăng ký LUÔN đi tiếp, kể cả khi đã đủ 500: mẹ này đang giữ chỗ của
+ * chính mẹ — chặn ở đây là đuổi mẹ khỏi chỗ đó, chỉ vì mẹ bấm gửi lại form để
+ * sửa số điện thoại.
+ *
+ * So sánh `>=` chứ không `>`: đủ 500 dòng trong Sheet là ĐÃ hết chỗ, mẹ tiếp
  * theo là người thứ 501.
  */
 export function ketQuaSucChua(
-  emails: Set<string>,
+  soLieu: SoLieuDangKy,
   email: string,
   gioiHan: number,
 ): KetQuaSucChua {
-  if (emails.has(email.trim().toLowerCase())) return "da_dang_ky";
-  return emails.size >= gioiHan ? "het_cho" : "moi";
+  if (soLieu.emails.has(email.trim().toLowerCase())) return "da_dang_ky";
+  return soLieu.soDong >= gioiHan ? "het_cho" : "moi";
 }
