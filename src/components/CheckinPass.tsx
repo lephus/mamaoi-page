@@ -1,11 +1,17 @@
 import Image from "next/image";
-import { EVENT, EVENT_TIMELINE, trangThaiLabel } from "@/lib/constants";
+import { EVENT, GIO_MO_CHECK_IN, trangThaiLabel } from "@/lib/constants";
 import type { RegistrationRow } from "@/lib/supabase";
 import { formatCheckinTime, ngayVN } from "@/lib/time";
 import { CheckinButton } from "./CheckinButton";
 
-/** Giờ mở check-in lấy thẳng từ timeline chính thức — không hard-code lệch nguồn. */
-const CHECKIN_TIME = EVENT_TIMELINE.find((t) => t.title === "Check-in")?.time ?? "09:00";
+/**
+ * Giờ mở check-in lấy thẳng từ timeline chính thức — không hard-code lệch nguồn.
+ *
+ * Trước đây tìm theo `title === "Check-in"`; khách đổi lịch trình thành "Check
+ * in" (không gạch nối) là câu đó rơi về fallback "09:00" và vé in sai giờ mà
+ * không ai thấy. Nay đọc mốc đầu ngày qua hằng số dùng chung.
+ */
+const CHECKIN_TIME = GIO_MO_CHECK_IN;
 
 /** Nhãn tình trạng; mang thai thì kèm tuần thai (nếu có). */
 function statusText(row: RegistrationRow): string {

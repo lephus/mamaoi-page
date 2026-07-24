@@ -13,6 +13,7 @@ import {
   SUC_CHUA_MAC_DINH,
 } from "@/lib/constants";
 import { buildRegistrationPayload } from "@/lib/registration-payload";
+import { datSauDangKy } from "@/lib/kho-cho-trong";
 import { trackRegistration } from "@/lib/analytics";
 import { homNayVN } from "@/lib/time";
 import { useDaDongDangKy } from "./Countdown";
@@ -277,7 +278,12 @@ export function RegistrationForm() {
             // Quá hạn: tab mở sẵn từ hôm trước, hoặc đồng hồ máy mẹ chạy chậm.
             setDongTheoServer(true);
           } else if (data.full) {
-            setHetCho(typeof data.gioiHan === "number" ? data.gioiHan : SUC_CHUA_MAC_DINH);
+            const gioiHan =
+              typeof data.gioiHan === "number" ? data.gioiHan : SUC_CHUA_MAC_DINH;
+            setHetCho(gioiHan);
+            // Server vừa nói đã đầy — widget "Còn N/500 chỗ" trên trang phải đổi
+            // theo ngay, chứ không đứng mời đăng ký bên trên một khối báo hết chỗ.
+            datSauDangKy({ gioiHan, conLai: 0 });
           } else {
             setErrors(data.fieldErrors ?? { form: data.error ?? "Có lỗi xảy ra" });
           }
@@ -285,6 +291,14 @@ export function RegistrationForm() {
         });
         scrollToFirstError();
         return;
+      }
+
+      // Số chỗ còn lại đi kèm response, tính đúng lúc dòng Sheet được ghi. Đẩy
+      // vào kho để widget đổi ngay — form điều hướng sang /cam-on bằng router
+      // client-side, nên mẹ bấm quay lại `/` phải thấy số mới chứ không phải số
+      // đã đọc lúc mở trang.
+      if (typeof data.conLai === "number" && typeof data.gioiHan === "number") {
+        datSauDangKy({ gioiHan: data.gioiHan, conLai: data.conLai });
       }
 
       trackRegistration("su-kien");

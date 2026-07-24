@@ -28,10 +28,9 @@ vi.mock("@/lib/sheets", () => ({
   appendWaitlist: vi.fn(async () => {}),
 }));
 
-/** Sheet đang có `n` dòng của mẹ khác — không dòng nào trùng `dangKyHopLe()`. */
+/** Sheet đang có `n` mẹ khác — không email nào trùng `dangKyHopLe()`. */
 function sheetCo(n: number) {
   return {
-    soDong: n,
     emails: new Set(Array.from({ length: n }, (_, i) => `me${i}@email.com`)),
   };
 }
@@ -268,5 +267,74 @@ describe("POST /api/dang-ky — cổng chặn sức chứa (đếm trên Google 
     expect(res.status).toBe(200);
     expect(sheets.docSoLieuDangKy).not.toHaveBeenCalled();
     expect(supabase.insertWaitlist).toHaveBeenCalledOnce();
+  });
+});
+
+/**
+ * Số chỗ còn lại đi kèm ngay trong response đăng ký, để widget "Còn N/500 chỗ"
+ * cập nhật tức thì mà mẹ không phải tải lại trang.
+ *
+ * Trả từ CHÍNH route này chứ không để client gọi lại `/api/cho-trong`: endpoint
+ * đó có bộ nhớ tạm 30 giây, gọi lại ngay sau khi submit sẽ nhận đúng con số cũ.
+ */
+describe("POST /api/dang-ky — trả số chỗ còn lại cho client", () => {
+  it("đăng ký mới: trả conLai đã trừ mẹ vừa đăng ký", async () => {
+    vi.mocked(sheets.docSoLieuDangKy).mockResolvedValue(sheetCo(10));
+
+    const body = await (await POST(post(dangKyHopLe()))).json();
+
+    expect(body.gioiHan).toBe(500);
+    expect(body.conLai).toBe(489); // 500 - 10 mẹ cũ - 1 mẹ vừa đăng ký
+  });
+
+  /** Mẹ gửi lại form để sửa số điện thoại: một email vẫn chỉ là một QR. */
+  it("email đã đăng ký: conLai KHÔNG giảm thêm", async () => {
+    const day = sheetCo(10);
+    day.emails.add("mai@email.com");
+    vi.mocked(sheets.docSoLieuDangKy).mockResolvedValue(day);
+
+    const body = await (await POST(post(dangKyHopLe("mai@email.com")))).json();
+
+    expect(body.conLai).toBe(489); // 500 - 11 mẹ đã có, mẹ này nằm trong 11
+  });
+
+  /**
+   * Ghi Sheet hỏng thì mẹ KHÔNG được đếm (xem doc suc-chua.ts) — con số trả về
+   * phải nói đúng điều đó, không được trừ một chỗ chưa hề bị chiếm.
+   */
+  it("ghi Sheet hỏng: conLai không trừ mẹ vừa đăng ký", async () => {
+    vi.mocked(sheets.docSoLieuDangKy).mockResolvedValue(sheetCo(10));
+    vi.mocked(sheets.appendRegistration).mockRejectedValue(new Error("Google 500"));
+
+    const body = await (await POST(post(dangKyHopLe()))).json();
+
+    expect(body.warnings).toContain("sheets");
+    expect(body.conLai).toBe(490);
+  });
+
+  /** Không đọc được Sheet thì không biết còn bao nhiêu — thà im còn hơn đoán. */
+  it("đọc Sheet lỗi: KHÔNG trả conLai", async () => {
+    vi.mocked(sheets.docSoLieuDangKy).mockRejectedValue(new Error("Google 403"));
+
+    const body = await (await POST(post(dangKyHopLe()))).json();
+
+    expect(body.conLai).toBeUndefined();
+  });
+
+  it("chưa cấu hình Sheets: KHÔNG trả conLai", async () => {
+    vi.mocked(sheets.sheetsConfigured).mockReturnValue(false);
+
+    const body = await (await POST(post(dangKyHopLe()))).json();
+
+    expect(body.conLai).toBeUndefined();
+  });
+
+  /** Waitlist app không chiếm chỗ sự kiện nên không có gì để cập nhật. */
+  it("waitlist app: KHÔNG trả conLai", async () => {
+    const body = await (
+      await POST(post({ nguon: "app-waitlist", email: "mai@email.com", dongYNhanTin: true }))
+    ).json();
+
+    expect(body.conLai).toBeUndefined();
   });
 });

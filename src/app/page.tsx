@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Image from "next/image";
+import { ChoConLai } from "@/components/ChoConLai";
 import { Footer } from "@/components/Footer";
 import { Header } from "@/components/Header";
 import { Countdown } from "@/components/Countdown";
@@ -154,11 +155,13 @@ const GIFT_STYLES = [
 /**
  * One tone + Heroicon per timeline moment, aligned to EVENT_TIMELINE order.
  * Reuses the app's six-colour rotation (the same system as the feature/gift
- * rows). The agenda now runs eight moments, so the coral + blue accents repeat
- * on the last two rows — placed non-adjacently so no two beads share a tone.
- * check-in → coral ticket, mở màn → blue mic, IVF → violet sparkles,
- * khám thai & sinh nở → sage family, ra mắt app → amber phone,
- * sữa mẹ → teal heart, ăn dặm → coral fire, bế mạc → blue camera.
+ * rows). The agenda runs nine moments against six tones, so blue, coral and
+ * amber each repeat once — always placed non-adjacently, so no two beads that
+ * touch share a tone.
+ * check in → coral ticket, khai mạc → blue mic, IVF → violet sparkles,
+ * khám thai và sinh nở → sage family, tea break → amber cup,
+ * ra mắt app → blue phone, sữa mẹ → teal heart, ăn dặm → coral fire,
+ * rút thăm & bế mạc → amber gift.
  */
 const TIMELINE_STYLES = [
   // Check-in — ticket
@@ -181,9 +184,14 @@ const TIMELINE_STYLES = [
     tone: "bg-secondary-faded text-secondary",
     path: "M15 19.128a9.38 9.38 0 0 0 2.625.372 9.337 9.337 0 0 0 4.121-.952 4.125 4.125 0 0 0-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 0 1 8.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0 1 11.964-3.07M12 6.375a3.375 3.375 0 1 1-6.75 0 3.375 3.375 0 0 1 6.75 0Zm8.25 2.25a2.625 2.625 0 1 1-5.25 0 2.625 2.625 0 0 1 5.25 0Z",
   },
-  // Ra mắt App Mama Ơi — device-phone-mobile
+  // Tea Break — tách trà kèm hơi bốc lên
   {
     tone: "bg-warning-faded text-warning",
+    path: "M4.5 8.25h10.5v6a4.5 4.5 0 0 1-4.5 4.5H9a4.5 4.5 0 0 1-4.5-4.5v-6Z M15 10.5h1.5a2.25 2.25 0 0 1 0 4.5H15 M3 21h13.5 M8.25 3v2.25 M11.25 3v2.25",
+  },
+  // Ra mắt App Mama Ơi — device-phone-mobile
+  {
+    tone: "bg-info-faded text-info",
     path: "M10.5 1.5H8.25A2.25 2.25 0 0 0 6 3.75v16.5a2.25 2.25 0 0 0 2.25 2.25h7.5A2.25 2.25 0 0 0 18 20.25V3.75a2.25 2.25 0 0 0-2.25-2.25H13.5m-3 0V3h3V1.5m-3 0h3m-3 18.75h3",
   },
   // Nuôi con bằng sữa mẹ — heart (nurture)
@@ -196,10 +204,10 @@ const TIMELINE_STYLES = [
     tone: "bg-primary-faded text-primary",
     path: "M15.362 5.214A8.252 8.252 0 0 1 12 21 8.25 8.25 0 0 1 6.038 7.047 8.287 8.287 0 0 0 9 9.601a8.983 8.983 0 0 1 3.361-6.867 8.21 8.21 0 0 0 3 2.48Z M12 18a3.75 3.75 0 0 0 .495-7.467 5.99 5.99 0 0 0-1.925 3.546 5.974 5.974 0 0 1-2.133-1A3.75 3.75 0 0 0 12 18Z",
   },
-  // Bế mạc — camera
+  // Rút thăm trúng thưởng & Bế mạc — gift (mốc này mở đầu bằng rút thăm)
   {
-    tone: "bg-info-faded text-info",
-    path: "M6.827 6.175A2.31 2.31 0 0 1 5.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 0 0 2.25 2.25h15A2.25 2.25 0 0 0 21.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 0 0-1.134-.175 2.31 2.31 0 0 1-1.64-1.055l-.822-1.316a2.192 2.192 0 0 0-1.736-1.039 48.774 48.774 0 0 0-5.232 0 2.192 2.192 0 0 0-1.736 1.039l-.821 1.316Z M16.5 12.75a4.5 4.5 0 1 1-9 0 4.5 4.5 0 0 1 9 0ZM18.75 10.5h.008v.008h-.008V10.5Z",
+    tone: "bg-warning-faded text-warning",
+    path: "M21 11.25v8.25a1.5 1.5 0 0 1-1.5 1.5H5.25a1.5 1.5 0 0 1-1.5-1.5v-8.25M12 4.875A2.625 2.625 0 1 0 9.375 7.5H12m0-2.625V7.5m0-2.625A2.625 2.625 0 1 1 14.625 7.5H12m0 0V21m-8.625-9.75h18.75a.75.75 0 0 0 .75-.75v-1.5a.75.75 0 0 0-.75-.75H3.375a.75.75 0 0 0-.75.75v1.5c0 .414.336.75.75.75Z",
   },
 ] as const;
 
@@ -240,6 +248,11 @@ export default function EventPage() {
                   ép thời gian, mà cửa đăng ký chỉ mở đúng 37 ngày. */}
               <Countdown />
 
+              {/* "Còn N/500 chỗ" — khách chốt hiện công khai (feedback
+                  24/07/2026, mục 9). Tự ẩn khi chưa đọc được số hoặc đã đóng
+                  đăng ký, nên không chừa khoảng trống lúc đó. */}
+              <ChoConLai className="mt-3" />
+
               <h1 className="mt-4 text-4xl leading-tight font-extrabold text-ink sm:text-5xl">
                 Mama Ơi Day
               </h1>
@@ -255,6 +268,9 @@ export default function EventPage() {
                   <p className="text-lg font-bold text-ink">
                     {EVENT.dateLabel}
                   </p>
+                  {/* Khung giờ, bổ sung theo feedback khách 24/07/2026 — cùng
+                      cỡ chữ với địa chỉ bên cạnh để hai cột cân nhau. */}
+                  <p className="text-sm text-ink-faded">{EVENT.timeLabel}</p>
                 </div>
                 <div className="hidden w-px bg-line sm:block" />
                 <div>
@@ -327,10 +343,13 @@ export default function EventPage() {
                 Về cộng đồng Mama Ơi
               </h2>
               <div className="mt-5 space-y-4 text-lg leading-7 text-ink-faded">
+                {/* Chữ khách duyệt (feedback 24/07/2026) — mở rộng đối tượng ra
+                    cả người muốn làm mẹ và sắp làm mẹ, không chỉ mẹ đã sinh. */}
                 <p>
-                  Mama Ơi là cộng đồng của những người mẹ đang đi cùng con qua{" "}
-                  <strong className="text-ink">một năm đầu đời</strong> — quãng
-                  thời gian đẹp nhất, và cũng nhiều bỡ ngỡ nhất.
+                  Mama Ơi là cộng đồng của những người muốn làm Mẹ, sắp làm Mẹ
+                  và những người Mẹ đang đi cùng con qua{" "}
+                  <strong className="text-ink">tháng năm đầu đời</strong> —
+                  quãng thời gian đẹp nhất, và cũng là nhiều bỡ ngỡ nhất.
                 </p>
                 <p>
                   Chúng tôi tin rằng không người mẹ nào nên đi một mình. Mama Ơi
@@ -376,9 +395,8 @@ export default function EventPage() {
                 Gặp bé Gạo tại Mama Ơi Day
               </h2>
               <p className="mt-5 text-lg leading-7 text-ink-faded">
-                Bé Gạo là người bạn nhỏ của cộng đồng Mama Ơi — cô bé sẽ cùng mẹ
-                và bé đi hết một ngày thật vui: từ lúc check-in, qua từng hoạt
-                động, đến khi ra về.
+                Bé Gạo là người bạn nhỏ của cộng đồng Mama Ơi. Cô bé đang chờ
+                gặp các Mẹ và Bé tại Mama Ơi Day đấy!
               </p>
 
               {/* Thẻ MAMA ƠI PASSPORT — trái tim là SVG inline (không dùng emoji). */}
@@ -633,9 +651,14 @@ export default function EventPage() {
 
               {/* Action. */}
               <div className="relative px-6 pt-8 pb-10 text-center sm:px-12">
-                <NutDangKy>Đăng ký ngay</NutDangKy>
+                {/* Section này vốn dựng quanh sự khan hiếm ("tấm vé"), nên số chỗ
+                    còn lại đứng ngay trên nút là đúng chỗ nhất của nó. */}
+                <ChoConLai className="mb-5" />
+                <div>
+                  <NutDangKy>Đăng ký ngay</NutDangKy>
+                </div>
                 <p className="mt-4 text-sm text-ink-faded">
-                  Miễn phí · {EVENT.dateLabel}
+                  Miễn phí · {EVENT.dateLabel} · {EVENT.timeLabel}
                 </p>
               </div>
             </div>
@@ -645,7 +668,10 @@ export default function EventPage() {
         {/* ---------- Timeline ---------- */}
         <section className="px-5 py-14 sm:py-16">
           <div className="mx-auto w-full max-w-4xl">
-            <SectionHeading eyebrow="Timeline" title="Một ngày của mẹ và bé" />
+            <SectionHeading
+              eyebrow="Timeline"
+              title="Một ngày của Mẹ và Bé tại MAMA ƠI DAY"
+            />
 
             {/*
               Alternating "day journey": a soft gradient spine runs down the middle
@@ -700,14 +726,21 @@ export default function EventPage() {
                           <span
                             className={`inline-block rounded-full px-3 py-1 text-xs font-extrabold tracking-wide text-ink ${s.tone}`}
                           >
-                            {item.time}
+                            {item.timeEnd
+                              ? `${item.time} – ${item.timeEnd}`
+                              : item.time}
                           </span>
                           <h3 className="mt-2.5 text-lg font-bold text-ink">
                             {item.title}
                           </h3>
-                          <p className="mt-1 text-base leading-6 text-ink-faded">
-                            {item.description}
-                          </p>
+                          {/* Khai mạc và Tea Break không có mô tả trong lịch
+                              trình khách gửi — bỏ hẳn thẻ <p> thay vì render
+                              một dòng rỗng chừa khoảng trắng lệch card. */}
+                          {item.description && (
+                            <p className="mt-1 text-base leading-6 text-ink-faded">
+                              {item.description}
+                            </p>
+                          )}
                         </div>
                       </div>
                     </Reveal>

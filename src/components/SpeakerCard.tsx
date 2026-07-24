@@ -6,7 +6,12 @@ import { createPortal } from "react-dom";
 
 export type Speaker = {
   name: string;
-  role: string;
+  /**
+   * Chức danh, MỘT PHẦN TỬ MỖI DÒNG. Khách chốt chức danh của Helen Nguyễn phải
+   * xuống dòng thành hai vế (feedback 24/07/2026) — nhét cả hai vào một chuỗi
+   * rồi để trình duyệt tự ngắt thì chỗ ngắt đổi theo bề rộng màn hình.
+   */
+  role: readonly string[];
   photo: string;
   bio: readonly string[];
 };
@@ -34,8 +39,12 @@ export function SpeakerCard({ speaker }: { speaker: Speaker }) {
         className="h-28 w-28 rounded-full object-cover shadow-md ring-4 ring-primary-faded"
       />
       <h3 className="mt-4 text-lg font-bold text-ink">{speaker.name}</h3>
-      <span className="mt-2 rounded-full bg-primary-faded px-3 py-1 text-xs font-semibold text-primary">
-        {speaker.role}
+      <span className="mt-2 rounded-full bg-primary-faded px-3 py-1 text-center text-xs font-semibold text-primary">
+        {speaker.role.map((line) => (
+          <span key={line} className="block">
+            {line}
+          </span>
+        ))}
       </span>
       <p className="mt-4 line-clamp-2 text-base leading-6 text-ink-faded">
         {speaker.bio[0]}
@@ -146,8 +155,12 @@ function SpeakerModal({
           <h2 id={titleId} className="mt-4 text-2xl font-extrabold text-ink">
             {speaker.name}
           </h2>
-          <span className="mt-2 rounded-full bg-primary-faded px-3.5 py-1 text-sm font-semibold text-primary">
-            {speaker.role}
+          <span className="mt-2 rounded-full bg-primary-faded px-3.5 py-1 text-center text-sm font-semibold text-primary">
+            {speaker.role.map((line) => (
+              <span key={line} className="block">
+                {line}
+              </span>
+            ))}
           </span>
         </div>
 

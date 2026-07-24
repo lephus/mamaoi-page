@@ -2,20 +2,24 @@ import { SUC_CHUA_MAC_DINH } from "./constants";
 import type { SoLieuDangKy } from "./sheets";
 
 /**
- * Sức chứa sự kiện: còn chỗ hay đã đầy, quyết định từ SỐ EMAIL trong Google
- * Sheet (tab register).
+ * Sức chứa sự kiện: còn chỗ hay đã đầy, quyết định từ SỐ EMAIL KHÁC NHAU trong
+ * Google Sheet (tab register).
  *
- * Nguồn đếm là Sheet theo yêu cầu của khách — ops nhìn Sheet nên con số chặn
- * phải là đúng con số ops nhìn thấy. Đếm SỐ DÒNG, không đếm email khác nhau.
+ * Nguồn đếm là Sheet theo yêu cầu của khách. Con số chặn là SỐ QR ĐÃ GỬI RA —
+ * khách chốt trong feedback 24/07/2026: "unique email => 1 QR" và "ngưng nhận
+ * đơn khi đã có 500 QR được gửi ra". Một email chỉ bao giờ có một mã (xem
+ * `existingCheckinCode` trong route), nên số email khác nhau chính là số QR.
+ *
  * Ba hệ quả đã biết và chấp nhận:
  *
- *  0. Mẹ gửi lại form tạo thêm một dòng, tức ăn hai ghế trong 500. Đây là cái
- *     giá của việc con số chặn khớp đúng con số ops đếm trên Sheet.
- *
+ *  0. Số dòng ops đếm bằng mắt trên Sheet LỚN HƠN số chỗ đã dùng khi có mẹ gửi
+ *     lại form. Đó là chủ ý: mẹ sửa số điện thoại rồi gửi lại không được phép
+ *     ăn thêm một ghế trong 500.
  *  1. KHÔNG nguyên tử. Dòng Sheet chỉ được append ở CUỐI route (sau Brevo), nên
  *     hai mẹ submit trong cùng một nhịp đều đọc ra cùng một con số và cùng đi
  *     qua — sự kiện có thể nhận dôi vài chỗ quanh mốc 500. Bản cũ đếm-và-ghi
  *     trong một transaction Postgres nên không hở; đổi nguồn đếm là mất tính đó.
+ *     Vì thế `choConLai` phải kẹp ở 0, không bao giờ trả số âm.
  *  2. Lượt ghi Sheet hỏng thì mẹ đó đăng ký thành công nhưng KHÔNG được đếm —
  *     ghế của mẹ vẫn bán tiếp cho người sau. Route log cảnh báo `sheets` khi việc
  *     đó xảy ra.
@@ -56,18 +60,26 @@ export type KetQuaSucChua =
   | "khong_cau_hinh";
 
 /**
+ * Số QR đã gửi ra = số email khác nhau trong tab register. Một email chỉ có một
+ * mã, nên hai con số này luôn là một.
+ */
+export function soQRDaGui(soLieu: SoLieuDangKy): number {
+  return soLieu.emails.size;
+}
+
+/**
  * `soLieu` đọc từ tab register (xem `soLieuTuCotSheet`).
  *
- * Chặn theo `soDong` — SỐ DÒNG trong Sheet, đúng con số ops đếm được khi mở
- * file. KHÔNG chặn theo số email khác nhau: một mẹ gửi lại form tạo thêm dòng,
- * và dòng đó ops vẫn nhìn thấy là một chỗ đã dùng.
+ * Chặn theo SỐ QR ĐÃ GỬI, tức số email khác nhau — luật khách chốt 24/07/2026.
+ * Mẹ gửi lại form sinh thêm dòng trong Sheet nhưng không sinh thêm mã QR, nên
+ * không được tính thêm một chỗ.
  *
  * Email đã đăng ký LUÔN đi tiếp, kể cả khi đã đủ 500: mẹ này đang giữ chỗ của
  * chính mẹ — chặn ở đây là đuổi mẹ khỏi chỗ đó, chỉ vì mẹ bấm gửi lại form để
  * sửa số điện thoại.
  *
- * So sánh `>=` chứ không `>`: đủ 500 dòng trong Sheet là ĐÃ hết chỗ, mẹ tiếp
- * theo là người thứ 501.
+ * So sánh `>=` chứ không `>`: gửi đủ 500 QR là ĐÃ hết chỗ, mẹ tiếp theo là người
+ * thứ 501.
  */
 export function ketQuaSucChua(
   soLieu: SoLieuDangKy,
@@ -75,5 +87,16 @@ export function ketQuaSucChua(
   gioiHan: number,
 ): KetQuaSucChua {
   if (soLieu.emails.has(email.trim().toLowerCase())) return "da_dang_ky";
-  return soLieu.soDong >= gioiHan ? "het_cho" : "moi";
+  return soQRDaGui(soLieu) >= gioiHan ? "het_cho" : "moi";
+}
+
+/**
+ * Số chỗ còn lại để hiện công khai trên trang ("Còn N/500 chỗ").
+ *
+ * Kẹp ở 0: cổng chặn không nguyên tử (xem doc đầu file) nên số QR có thể vượt
+ * giới hạn vài cái quanh mốc cuối, và "Còn -3 chỗ" là thứ không được phép xuất
+ * hiện trước mặt mẹ.
+ */
+export function choConLai(soLieu: SoLieuDangKy, gioiHan: number): number {
+  return Math.max(0, gioiHan - soQRDaGui(soLieu));
 }

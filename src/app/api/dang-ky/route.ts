@@ -12,7 +12,8 @@ import {
   sheetsConfigured,
 } from "@/lib/sheets";
 import { insertRegistration, insertWaitlist, supabaseConfigured } from "@/lib/supabase";
-import { ketQuaSucChua, sucChua, type KetQuaSucChua } from "@/lib/suc-chua";
+import { choConLai, ketQuaSucChua, sucChua, type KetQuaSucChua } from "@/lib/suc-chua";
+import type { SoLieuDangKy } from "@/lib/sheets";
 import { daDongDangKy } from "@/lib/countdown";
 import { DA_DONG, HET_CHO } from "@/lib/constants";
 import {
@@ -125,14 +126,23 @@ export async function POST(request: Request) {
   // Chỉ áp cho đăng ký sự kiện; waitlist app không giới hạn số lượng.
   const gioiHan = sucChua();
 
+  /**
+   * Số liệu đọc được ở cổng chặn, giữ lại tới cuối route để tính `conLai` trả về
+   * cho client. `null` = không đọc được (chưa cấu hình Sheets, hoặc Google lỗi):
+   * khi đó response không kèm `conLai`, vì đoán một con số còn tệ hơn không nói.
+   */
+  let soLieu: SoLieuDangKy | null = null;
+
   if (isRegistration(data)) {
     // Chưa cấu hình Sheets (dev) thì không có gì để đếm — cho đi tiếp.
     let ket: KetQuaSucChua = "khong_cau_hinh";
     if (sheetsConfigured()) {
       try {
-        ket = ketQuaSucChua(await docSoLieuDangKy(), data.email, gioiHan);
+        soLieu = await docSoLieuDangKy();
+        ket = ketQuaSucChua(soLieu, data.email, gioiHan);
       } catch (err) {
         console.error("[dang-ky] đếm chỗ trên Sheet thất bại:", data.email, err);
+        soLieu = null;
         ket = "loi";
       }
     }
@@ -207,6 +217,7 @@ export async function POST(request: Request) {
   // sập sẽ kéo mất luôn dòng Sheet, đúng lúc nó có giá trị nhất.
   //  - Đăng ký sự kiện → tab "register".
   //  - Waitlist app    → tab "waitlist".
+  let daGhiSheet = false;
   if (sheetsConfigured()) {
     try {
       if (isRegistration(data)) {
@@ -214,11 +225,32 @@ export async function POST(request: Request) {
       } else {
         await appendWaitlist(data.email, data.dongYNhanTin);
       }
+      daGhiSheet = true;
     } catch (err) {
       console.error("[dang-ky] Sheets append failed:", data.email, err);
       warnings.push("sheets");
     }
   }
 
-  return NextResponse.json({ ok: true, code: checkinCode, warnings });
+  /**
+   * Số chỗ còn lại SAU lượt đăng ký này, để widget "Còn N/500 chỗ" trên trang
+   * cập nhật ngay mà mẹ không phải tải lại.
+   *
+   * Tính ở đây chứ không để client gọi lại `/api/cho-trong`: endpoint đó có bộ
+   * nhớ tạm 30 giây, gọi ngay sau khi submit sẽ nhận đúng con số cũ.
+   *
+   * Cộng email vào chính tập vừa đọc rồi đếm lại, thay vì trừ tay đi một: `Set`
+   * bỏ qua giá trị trùng, nên mẹ gửi lại form tự động KHÔNG bị trừ thêm chỗ —
+   * đúng luật "một email một QR" mà không cần nhánh if riêng.
+   *
+   * Chỉ cộng khi dòng Sheet ghi thành công: ghi hỏng thì mẹ không được đếm ở lần
+   * đọc sau (xem doc `suc-chua.ts`), nên trừ ở đây là nói sai.
+   */
+  let conLai: number | undefined;
+  if (soLieu) {
+    if (daGhiSheet) soLieu.emails.add(data.email.trim().toLowerCase());
+    conLai = choConLai(soLieu, gioiHan);
+  }
+
+  return NextResponse.json({ ok: true, code: checkinCode, warnings, gioiHan, conLai });
 }

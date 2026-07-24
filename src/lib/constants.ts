@@ -20,6 +20,12 @@ export const EVENT = {
   name: "Mama Ơi Day – Hành trình 1 năm đầu đời cùng con",
   shortName: "Mama Ơi Day",
   dateLabel: "Chủ Nhật, 30/08/2026",
+  /**
+   * Khung giờ diễn ra, hiện ngay dưới ngày ở hero (feedback khách 24/07/2026).
+   * Giữ nguyên văn "sáng/chiều" của khách — pill giờ trong lịch trình mới là chỗ
+   * dùng dạng 24h cho gọn.
+   */
+  timeLabel: "8:00 sáng – 3:00 chiều",
   dateISO: "2026-08-30",
   venue: "ThiSkyHall Sala",
   address: "10 Mai Chí Thọ, Thủ Thiêm, Thủ Đức, TP.HCM",
@@ -89,17 +95,19 @@ export const DA_DONG = {
  * Headline numbers from the event key visual — all numeric so the row reads as
  * one consistent set.
  *
- * `plus` adds a "+" to counts that mean "at least this many" (500+, 1.000+,
- * 20+). It stays off for "1 ngày": the event is exactly one day, so "1+
- * memorable day" would be wrong — a deliberate, client-approved exception.
+ * `plus` adds a "+" to counts that mean "at least this many" (500+, 10+). It
+ * stays off for "1 ngày": the event is exactly one day, so "1+ memorable day"
+ * would be wrong — a deliberate, client-approved exception.
  *
- * NOTE: 20 (thương hiệu) is a client-supplied figure. Update it if the real
- * partner count changes.
+ * NOTE: cả 500 (phần quà) lẫn 10 (thương hiệu) là figure khách cấp — feedback
+ * 24/07/2026 hạ từ "1.000+ phần quà / 20+ thương hiệu" xuống. Khách đã được báo
+ * là "500+ phần quà" đứng ngay cạnh "500+ mẹ bỉm" trong cùng hàng số liệu và
+ * vẫn chốt giữ; đừng "sửa cho đỡ trùng".
  */
 export const EVENT_STATS = [
   { value: 500, plus: true, label: "mẹ bỉm" },
-  { value: 1000, plus: true, label: "phần quà hấp dẫn" },
-  { value: 20, plus: true, label: "thương hiệu mẹ và bé" },
+  { value: 500, plus: true, label: "phần quà hấp dẫn" },
+  { value: 10, plus: true, label: "thương hiệu Mẹ và Bé" },
   { value: 1, plus: false, label: "ngày đáng nhớ" },
 ] as const;
 
@@ -178,11 +186,16 @@ export const EVENT_SPEAKERS = [
  * `bio` là nguyên văn hồ sơ khách gửi, tách theo đoạn. Đoạn đầu hiện sẵn, đoạn
  * sau nằm sau nút "Xem thêm" — cắt bớt chữ của khách là việc không được phép,
  * nên phần thừa được giấu đi chứ không bị xoá.
+ *
+ * `role` là MẢNG dòng, không phải một chuỗi: khách chốt (feedback 24/07/2026)
+ * chức danh của Helen Nguyễn phải xuống dòng thành hai vế. Người khác chỉ có một
+ * dòng nhưng vẫn viết dạng mảng — hai kiểu dữ liệu cho cùng một trường là chỗ
+ * sinh lỗi, và card render mảng thì không cần biết ai có mấy dòng.
  */
 export const EVENT_EXPERTS = [
   {
     name: "Huy Trần",
-    role: "Chef/CEO ChanChan",
+    role: ["Chef/CEO ChanChan"],
     photo: "/images/speaker-huy-tran.webp",
     bio: [
       "Huy Trần là một KOL, Chef Influencer và Doanh nhân Việt kiều Đức, đồng thời là chủ chuỗi nhà hàng thuần chay ChanChan.",
@@ -192,7 +205,7 @@ export const EVENT_EXPERTS = [
   },
   {
     name: "BS. Tăng Đức Cương",
-    role: "Giám đốc Bệnh viện Đông Đô",
+    role: ["Giám đốc Bệnh viện Đông Đô"],
     photo: "/images/speaker-bs-tang-duc-cuong.webp",
     bio: [
       "Bác sĩ Tăng Đức Cương là chuyên gia với nhiều năm kinh nghiệm trong lĩnh vực sản phụ khoa và hỗ trợ sinh sản. Hiện ông là Giám đốc Bệnh viện Đông Đô, đơn vị y tế tiên phong trong chăm sóc sức khỏe sinh sản, thai sản và IVF tại Việt Nam.",
@@ -201,7 +214,7 @@ export const EVENT_EXPERTS = [
   },
   {
     name: "BS. Vũ Văn Phi",
-    role: "Trưởng khoa Nhi – Bệnh viện AIH",
+    role: ["Trưởng khoa Nhi – Bệnh viện AIH"],
     photo: "/images/speaker-bs-vu-van-phi.webp",
     bio: [
       "Bác sĩ Vũ Văn Phi là chuyên gia Nhi khoa với nhiều năm kinh nghiệm trong lĩnh vực chăm sóc và điều trị trẻ sơ sinh, trẻ nhỏ. Hiện ông giữ vị trí Trưởng khoa Nhi tại Bệnh viện Quốc tế AIH, nơi áp dụng các tiêu chuẩn y khoa quốc tế trong chăm sóc sức khỏe trẻ em.",
@@ -209,12 +222,15 @@ export const EVENT_EXPERTS = [
     ],
   },
   {
-    name: "Dược sĩ Helen Nguyễn",
-    role: "Trưởng ban chăm sóc bà mẹ và trẻ em viện MCI - CEO Fresh and Fit",
+    // Tên, chức danh và tiểu sử thay TOÀN BỘ theo feedback khách 24/07/2026.
+    name: "Ms. Helen Nguyễn",
+    role: [
+      "Doanh nhân & Chuyên gia Dinh dưỡng",
+      "Gọi sữa Chuyên gia kích sữa & chăm sóc sau sinh",
+    ],
     photo: "/images/speaker-ds-helen-nguyen.webp",
     bio: [
-      "Dược sĩ Helen Nguyễn là chuyên gia nổi tiếng tại TP.HCM trong lĩnh vực chăm sóc sức khỏe mẹ và bé, được biết đến với phương pháp kích sữa bằng bấm huyệt kết hợp cân bằng dinh dưỡng. Chị là Nhà sáng lập & CEO Fresh & Fit, với nhiều năm đồng hành cùng hàng chục nghìn gia đình Việt qua những nội dung chia sẻ khoa học, dễ hiểu và mang tính ứng dụng cao.",
-      "Helen luôn theo đuổi sứ mệnh giúp các bậc cha mẹ tiếp cận kiến thức y khoa chính xác để chăm sóc con một cách chủ động và tự tin. Những chia sẻ tại chương trình sẽ tập trung vào các vấn đề mà hầu hết gia đình có con nhỏ đều gặp phải trong năm đầu đời, từ dinh dưỡng, chăm sóc đến xây dựng nền tảng sức khỏe lâu dài.",
+      "Được cộng đồng mẹ bỉm ví là “bàn tay vàng trong làng gọi sữa”, cô chuyên tư vấn, đồng hành cùng các mẹ bỉm sữa trong hành trình nuôi con bằng sữa mẹ và dinh dưỡng thai kỳ, sau sinh. 7 năm chia sẻ tới hơn 70.000 mẹ sữa. Cô là CEO & Co-Founder của các thương hiệu như Fresh and Fit, Yến sào Tuệ Tâm, đồng thời đảm nhiệm vị trí Trưởng ban Chăm sóc Bà mẹ và Trẻ em thuộc Viện Nghiên cứu và Đào tạo Y học Cộng đồng.",
     ],
   },
 ] as const;
@@ -223,11 +239,12 @@ export const EVENT_EXPERTS = [
 export const EVENT_HIGHLIGHTS = [
   {
     title: "Quà tặng hấp dẫn",
-    description: "Hàng ngàn phần quà giá trị từ các thương hiệu uy tín.",
+    description:
+      "Nhiều phần quà hấp dẫn và giá trị từ các thương hiệu uy tín trong lĩnh vực Mẹ và Bé.",
   },
   {
     title: "Hoạt động thú vị",
-    description: "Workshop, check-in, bốc thăm trúng thưởng.",
+    description: "Các hoạt động tương tác, trải nghiệm và bốc thăm trúng thưởng.",
   },
   {
     title: "Tư vấn chuyên sâu",
@@ -264,16 +281,87 @@ export const BABY_MILESTONES = [
   { month: 12, title: "Tự tin bước đi", desc: "Đi vững, tự tin khám phá thế giới rộng lớn" },
 ] as const;
 
-export const EVENT_TIMELINE = [
-  { time: "09:00", title: "Check-in", description: "Nhận Welcome Kit và Mama Ơi Passport." },
-  { time: "09:30", title: "Mở màn", description: "Khai mạc, mở ra một ngày của mẹ và bé." },
-  { time: "09:51", title: "Hành trình IVF", description: "Câu chuyện hành trình tìm con bằng IVF." },
-  { time: "11:46", title: "Khám thai & Sinh nở", description: "Đồng hành cùng mẹ từ thai kỳ đến ngày vượt cạn." },
-  { time: "13:06", title: "Ra mắt App Mama Ơi", description: "Chính thức giới thiệu ứng dụng Mama Ơi." },
-  { time: "13:16", title: "Nuôi con bằng sữa mẹ", description: "Bí quyết nuôi con khoẻ mạnh bằng sữa mẹ." },
-  { time: "14:26", title: "Hành trình ăn dặm", description: "Cùng con bắt đầu hành trình ăn dặm." },
-  { time: "15:46", title: "Bế mạc", description: "Chụp ảnh lưu niệm, khép lại một ngày trọn vẹn." },
-] as const;
+/**
+ * Một mốc trong lịch trình.
+ *
+ * `timeEnd` và `description` đều KHÔNG bắt buộc: khách gửi vài mốc chỉ có giờ
+ * bắt đầu ("9:00 – Khai mạc") và vài mốc không kèm mô tả (Khai mạc, Tea Break).
+ * Bịa mô tả cho đủ ô là tự viết chữ cho sự kiện của khách, nên card tự ẩn dòng
+ * đó khi không có.
+ */
+export type TimelineItem = {
+  /** Giờ bắt đầu, dạng 24h "HH:MM". */
+  time: string;
+  /** Giờ kết thúc — có thì pill hiện dạng khoảng "08:00 – 09:00". */
+  timeEnd?: string;
+  title: string;
+  description?: string;
+};
+
+/**
+ * Lịch trình chính thức — thay TOÀN BỘ theo feedback khách 24/07/2026 (bản cũ
+ * có giờ lẻ 09:51/11:46/13:06 là số dựng tạm, sai hoàn toàn).
+ *
+ * Chữ giữ nguyên văn khách gửi, chỉ sửa đúng hai lỗi chính tả "chia sẽ" → "chia
+ * sẻ". Giờ đổi sang 24h cho pill trong timeline; câu "8:00 sáng – 3:00 chiều"
+ * của khách nằm ở `EVENT.timeLabel` trên hero.
+ */
+export const EVENT_TIMELINE: readonly TimelineItem[] = [
+  {
+    time: "08:00",
+    timeEnd: "09:00",
+    title: "Check in",
+    description: "Nhận welcome kit và Mama Ơi passport.",
+  },
+  { time: "09:00", title: "Khai mạc Mama Ơi Day" },
+  {
+    time: "09:30",
+    timeEnd: "10:30",
+    title: "Hành trình IVF",
+    description:
+      "Câu chuyện tìm con bằng IVF được chia sẻ bởi Bác sĩ Tăng Đức Cương - Bệnh Viện Đông Đô.",
+  },
+  {
+    time: "10:30",
+    timeEnd: "11:30",
+    title: "Khám thai và sinh nở",
+    description:
+      "Đồng hành cùng Mẹ từ thai kỳ đến ngày cuối vượt cạn, được chia sẻ bởi Bác sĩ Vũ Văn Phi - Bệnh Viện AIH.",
+  },
+  { time: "11:30", timeEnd: "12:00", title: "Tea Break" },
+  {
+    time: "12:00",
+    timeEnd: "12:30",
+    title: "Ra mắt App MAMA ƠI",
+    description: "Chính thức giới thiệu ứng dụng MAMA ƠI bởi Ngô Thanh Vân.",
+  },
+  {
+    time: "12:30",
+    timeEnd: "13:30",
+    title: "Nuôi con bằng sữa mẹ",
+    description: "Bí quyết nuôi con bằng sữa mẹ bởi Cô Helen Nguyễn.",
+  },
+  {
+    time: "13:30",
+    timeEnd: "14:30",
+    title: "Hành trình ăn dặm",
+    description: "Cùng con bắt đầu hành trình ăn dặm với Chef Huy Trần và Ngô Thanh Vân.",
+  },
+  {
+    time: "15:00",
+    title: "Rút thăm trúng thưởng & Bế mạc",
+    description: "Chụp ảnh lưu niệm, khép lại một ngày trọn vẹn.",
+  },
+];
+
+/**
+ * Giờ mở cửa check-in, in trên vé QR — lấy từ MỐC ĐẦU của lịch trình chính thức
+ * chứ không gõ tay, để vé và trang không bao giờ nói hai giờ khác nhau.
+ *
+ * Mốc đầu ngày là lúc cửa mở, đúng theo mọi bản lịch trình khách từng gửi. Nếu
+ * có bản lịch mở đầu bằng việc khác thì sửa ở đây.
+ */
+export const GIO_MO_CHECK_IN = EVENT_TIMELINE[0].time;
 
 /**
  * Ảnh quà tặng cho carousel ở section "Quà tặng" (component <GiftCarousel>).
@@ -318,7 +406,7 @@ export const EVENT_GIFTS = [
   },
   {
     title: "Bốc thăm may mắn",
-    description: "Hàng ngàn phần quà chờ gọi tên — mẹ nào cũng có cơ hội.",
+    description: "Nhiều phần quà đang chờ các Mẹ tại ngày hội.",
   },
 ] as const;
 
@@ -329,7 +417,7 @@ export const EVENT_GIFTS = [
  *
  * Thêm/bớt logo chỉ cần sửa mảng này — layout tự co giãn. Với AIH dùng bản logo
  * MÀU (không phải "version trang" nền trắng dành cho nền tối), vì card nền trắng.
- * NOTE: con số "20+ thương hiệu" ở EVENT_STATS là figure khách cấp, không tự đổi
+ * NOTE: con số "10+ thương hiệu" ở EVENT_STATS là figure khách cấp, không tự đổi
  * theo số logo ở đây.
  */
 export const PARTNER_TIERS = [
@@ -369,7 +457,8 @@ export const EVENT_FAQ = [
   },
   {
     q: "Mẹ có được mang bé theo không?",
-    a: "Có. Mama Ơi Day là sự kiện dành cho cả mẹ và bé. Ban tổ chức có khu vực riêng để mẹ chăm bé trong suốt chương trình.",
+    // Khách gõ "Mama Day Ơi" trong feedback 24/07; viết đúng tên sự kiện ở đây.
+    a: "Có. Mama Ơi Day là sự kiện dành cho cả Mẹ và Bé. Ban Tổ Chức có khu vực thay tã riêng để Mẹ chăm sóc Bé dễ dàng hơn.",
   },
   {
     q: "Gửi xe ở đâu?",

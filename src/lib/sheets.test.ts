@@ -173,34 +173,28 @@ describe("soLieuTuCotSheet — con số quyết định còn chỗ hay hết ch�
   // values.get trả từ dòng 1: [ghi chú], [header], [dữ liệu...].
   const col = [["⚠ Bản ghi thô..."], ["Email"], ["mai@email.com"], ["lan@email.com"]];
 
-  it("chỉ đếm ô có email, bỏ ô ghi chú và header", () => {
+  it("chỉ lấy ô có email, bỏ ô ghi chú và header", () => {
     expect(soLieuTuCotSheet(col)).toEqual({
-      soDong: 2,
       emails: new Set(["mai@email.com", "lan@email.com"]),
     });
   });
 
   /**
-   * Con số chặn là SỐ DÒNG, đúng thứ ops đếm được khi mở Sheet. Mẹ gửi lại form
-   * tạo thêm một dòng, và dòng đó ops vẫn nhìn thấy là một chỗ đã dùng — đây là
-   * cái giá đã chấp nhận để hai con số không lệch nhau.
+   * Luật khách chốt 24/07/2026: một email chỉ nhận MỘT mã QR, nên mẹ gửi lại
+   * form không được ăn thêm một chỗ trong 500.
    */
-  it("mẹ đăng ký hai lần tính HAI dòng, nhưng vẫn là một email", () => {
+  it("mẹ đăng ký hai lần vẫn chỉ là MỘT email", () => {
     const trung = [...col, ["mai@email.com"]];
-    const s = soLieuTuCotSheet(trung);
-    expect(s.soDong).toBe(3);
-    expect(s.emails.size).toBe(2);
+    expect(soLieuTuCotSheet(trung).emails.size).toBe(2);
   });
 
   /**
-   * Tập email chỉ để trả lời "mẹ này đã đăng ký chưa" nên phải gộp hoa/thường;
-   * số dòng thì vẫn đếm đủ vì Sheet có đúng ngần ấy dòng.
+   * Zod đã `.trim().toLowerCase()` trước khi ghi, nhưng ô trong Sheet sửa tay
+   * được — không gộp hoa/thường thì cùng một mẹ bị đếm thành hai QR.
    */
   it("gộp hoa/thường và khoảng trắng thừa khi so email", () => {
     const lech = [...col, ["  MAI@Email.com  "]];
-    const s = soLieuTuCotSheet(lech);
-    expect(s.soDong).toBe(3);
-    expect(s.emails.size).toBe(2);
+    expect(soLieuTuCotSheet(lech).emails.size).toBe(2);
   });
 
   /**
@@ -209,16 +203,18 @@ describe("soLieuTuCotSheet — con số quyết định còn chỗ hay hết ch�
    * đếm nhầm ô ghi chú/header thành một mẹ.
    */
   it("không phụ thuộc vị trí dòng ghi chú / header", () => {
-    expect(soLieuTuCotSheet([["mai@email.com"], ["lan@email.com"]]).soDong).toBe(2);
-    expect(soLieuTuCotSheet([["Email"], ["ghi chú"], [""]]).soDong).toBe(0);
+    expect(soLieuTuCotSheet([["mai@email.com"], ["lan@email.com"]]).emails.size).toBe(2);
+    expect(soLieuTuCotSheet([["Email"], ["ghi chú"], [""]]).emails.size).toBe(0);
   });
 
   it("chịu được ô rỗng / dòng thiếu do Google lược bỏ", () => {
-    expect(soLieuTuCotSheet([[], undefined, ["mai@email.com"], [""]]).soDong).toBe(1);
+    expect(soLieuTuCotSheet([[], undefined, ["mai@email.com"], [""]]).emails.size).toBe(
+      1,
+    );
   });
 
-  it("Sheet trống → không có dòng nào", () => {
-    expect(soLieuTuCotSheet([])).toEqual({ soDong: 0, emails: new Set() });
+  it("Sheet trống → chưa có email nào", () => {
+    expect(soLieuTuCotSheet([])).toEqual({ emails: new Set() });
   });
 });
 

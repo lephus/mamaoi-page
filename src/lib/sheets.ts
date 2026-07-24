@@ -61,7 +61,7 @@ const TIMEOUT_MS = 5_000;
  * vẫn giữ ghi chú cũ cho tới khi ops sửa tay — thuần cảnh báo, không ảnh hưởng dữ liệu.
  */
 const NOTE =
-  "⚠ Bản ghi thô, tự động — có thể có dòng trùng; cột check-in chỉ điền khi mẹ quét QR (nguồn admin không mirror sang đây). Số liệu chính thức: /admin → Xuất Excel.";
+  "⚠ Bản ghi thô, tự động — có thể có dòng trùng (một mẹ gửi lại form). Sức chứa đếm theo SỐ EMAIL KHÁC NHAU = số mã QR đã gửi, nên số dòng ở đây có thể nhiều hơn số chỗ đã dùng. Cột check-in chỉ điền khi mẹ quét QR (nguồn admin không mirror sang đây). Số liệu chính thức: /admin → Xuất Excel.";
 /** Waitlist không có check-in; chỉ cảnh báo dòng trùng do append thuần tuý. */
 const WAITLIST_NOTE =
   "⚠ Bản ghi thô, tự động — có thể có dòng trùng. Số liệu chính thức: /admin → Xuất Excel.";
@@ -275,26 +275,29 @@ export async function appendWaitlist(email: string, dongY: boolean): Promise<voi
 /**
  * Số liệu đăng ký đọc từ tab register — đầu vào của cổng chặn sức chứa.
  *
- * `soDong` là CON SỐ CHẶN: đúng số dòng đăng ký mà ops nhìn thấy khi mở Sheet.
- * `emails` chỉ để trả lời "email này đã đăng ký chưa", KHÔNG dùng để đếm.
+ * Chỉ có tập email, và `emails.size` CHÍNH LÀ con số chặn: mỗi email nhận đúng
+ * một mã QR (xem `existingCheckinCode`), nên số email khác nhau là số QR đã gửi
+ * ra. Cố tình KHÔNG kèm số dòng Sheet: có hai con số thì sớm muộn cũng có chỗ
+ * dùng nhầm con số còn lại.
  */
-export type SoLieuDangKy = { soDong: number; emails: Set<string> };
+export type SoLieuDangKy = { emails: Set<string> };
 
 /**
- * Đọc MỘT cột (cột Email) của tab register thành số liệu đăng ký.
+ * Đọc MỘT cột (cột Email) của tab register thành tập email đã đăng ký.
  *
- * ĐẾM SỐ DÒNG, không đếm email khác nhau — khách chốt: ops nhìn Sheet nên con số
- * chặn phải là đúng con số ops đếm được ở đó. Hệ quả đã biết và chấp nhận: Sheet
- * chỉ append, nên mẹ bấm gửi hai lần chiếm hai dòng, tức ăn hai ghế trong 500.
+ * ĐẾM EMAIL KHÁC NHAU, không đếm số dòng — khách chốt (feedback 24/07/2026):
+ * "unique email => 1 QR" và "ngưng nhận đơn khi đã có 500 QR được gửi ra". Sheet
+ * chỉ append nên mẹ bấm gửi lại form sinh thêm dòng, nhưng vẫn chỉ một mã QR nên
+ * chỉ được chiếm một chỗ trong 500.
  *
- * Vẫn giữ thêm tập email vì mẹ đã có chỗ thì phải LUÔN đi tiếp kể cả khi đã đầy
- * — chặn ở đó là đuổi mẹ khỏi chỗ mẹ đang giữ, chỉ vì mẹ gửi lại form để sửa số
- * điện thoại. Chuẩn hoá thường + cắt khoảng trắng vì Zod đã `.toLowerCase()
- * .trim()` email trước khi ghi, nhưng ô trong Sheet sửa tay được.
+ * Hệ quả cho ops: số dòng ops đếm bằng mắt trên Sheet LỚN HƠN số chỗ đã dùng khi
+ * có dòng trùng. Con số đúng là số email khác nhau — /admin → Xuất Excel.
+ *
+ * Chuẩn hoá thường + cắt khoảng trắng vì Zod đã `.toLowerCase().trim()` email
+ * trước khi ghi, nhưng ô trong Sheet sửa tay được.
  */
 export function soLieuTuCotSheet(colValues: (string[] | undefined)[]): SoLieuDangKy {
   const emails = new Set<string>();
-  let soDong = 0;
   for (const o of colValues) {
     const v = o?.[0]?.trim().toLowerCase();
     // Lọc theo "@" chứ KHÔNG bỏ qua hai dòng đầu theo vị trí: dòng 1 là ô ghi
@@ -302,10 +305,9 @@ export function soLieuTuCotSheet(colValues: (string[] | undefined)[]): SoLieuDan
     // tab register hiện tại thậm chí không có dòng ghi chú. Ô không có "@" thì
     // chắc chắn không phải dòng đăng ký của mẹ nào.
     if (!v || !v.includes("@")) continue;
-    soDong++;
     emails.add(v);
   }
-  return { soDong, emails };
+  return { emails };
 }
 
 /**
