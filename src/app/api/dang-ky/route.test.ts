@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { POST } from "./route";
 import * as brevo from "@/lib/brevo";
 import * as sheets from "@/lib/sheets";
@@ -56,11 +56,26 @@ function dangKyHopLe(email = "mai@email.com") {
   };
 }
 
+/** Trong hạn: 25/07/2026, ngay sau khi mở đăng ký. */
+const TRONG_HAN = new Date("2026-07-25T10:00:00+07:00");
+/** Quá hạn: 00:00 ngày 31/08/2026 giờ VN, đúng một ms sau khi đóng. */
+const QUA_HAN = new Date("2026-08-31T00:00:00+07:00");
+
 beforeEach(() => {
   vi.clearAllMocks();
   vi.mocked(supabase.supabaseConfigured).mockReturnValue(true);
   vi.mocked(sheets.sheetsConfigured).mockReturnValue(true);
   vi.mocked(sheets.docEmailDaDangKy).mockResolvedValue(new Set());
+
+  // Ghim đồng hồ cho MỌI test trong file. Route giờ có cổng chặn theo hạn
+  // 30/08/2026, nên để đồng hồ thật thì sau ngày đó toàn bộ test sức chứa nhận
+  // 409 "hết hạn" thay vì đi tới cổng sức chứa — cả file tự hỏng theo lịch.
+  vi.useFakeTimers();
+  vi.setSystemTime(TRONG_HAN);
+});
+
+afterEach(() => {
+  vi.useRealTimers();
 });
 
 describe("POST /api/dang-ky — gộp lỗi khi thiếu trangThai", () => {
@@ -86,6 +101,63 @@ describe("POST /api/dang-ky — gộp lỗi khi thiếu trangThai", () => {
     expect(fieldErrors.email).toBe("Email không hợp lệ");
     expect(fieldErrors.hoTen).toBeUndefined();
     expect(fieldErrors.trangThai).toBeUndefined();
+  });
+});
+
+describe("POST /api/dang-ky — cổng chặn hết hạn", () => {
+  it("quá hạn: trả 409 kèm closed", async () => {
+    vi.setSystemTime(QUA_HAN);
+
+    const res = await POST(post(dangKyHopLe()));
+    expect(res.status).toBe(409);
+
+    const body = await res.json();
+    expect(body.closed).toBe(true);
+    expect(body.error).toContain("Đã đóng đăng ký");
+  });
+
+  /**
+   * Cùng lý do với cổng sức chứa: đặt sau Brevo thì mẹ đã cầm email xác nhận kèm
+   * mã QR cho một sự kiện đã xong rồi mới bị báo là muộn.
+   */
+  it("quá hạn: KHÔNG chạm Brevo, không đọc Sheet, không ghi dòng nào", async () => {
+    vi.setSystemTime(QUA_HAN);
+
+    await POST(post(dangKyHopLe()));
+
+    expect(brevo.upsertContact).not.toHaveBeenCalled();
+    expect(brevo.sendEventEmail).not.toHaveBeenCalled();
+    expect(sheets.docEmailDaDangKy).not.toHaveBeenCalled();
+    expect(supabase.insertRegistration).not.toHaveBeenCalled();
+    expect(sheets.appendRegistration).not.toHaveBeenCalled();
+  });
+
+  /** 23:59:59.999 ngày 30/08 giờ VN vẫn phải nhận — hạn là HẾT ngày sự kiện. */
+  it("giây cuối cùng của ngày 30/08 vẫn đăng ký được", async () => {
+    vi.setSystemTime(new Date("2026-08-30T23:59:59.999+07:00"));
+
+    const res = await POST(post(dangKyHopLe()));
+    expect(res.status).toBe(200);
+  });
+
+  it("trong hạn: đi bình thường", async () => {
+    vi.setSystemTime(TRONG_HAN);
+
+    const res = await POST(post(dangKyHopLe()));
+    expect(res.status).toBe(200);
+    expect(brevo.upsertContact).toHaveBeenCalledOnce();
+  });
+
+  /** Waitlist app không có hạn — sự kiện xong rồi mẹ vẫn để lại email nhận tin. */
+  it("waitlist app không dính cổng hết hạn", async () => {
+    vi.setSystemTime(QUA_HAN);
+
+    const res = await POST(
+      post({ nguon: "app-waitlist", email: "mai@email.com", dongYNhanTin: true }),
+    );
+
+    expect(res.status).toBe(200);
+    expect(supabase.insertWaitlist).toHaveBeenCalledOnce();
   });
 });
 

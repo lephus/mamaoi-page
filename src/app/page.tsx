@@ -2,13 +2,14 @@ import type { Metadata } from "next";
 import Image from "next/image";
 import { Footer } from "@/components/Footer";
 import { Header } from "@/components/Header";
+import { Countdown } from "@/components/Countdown";
 import { CountUp } from "@/components/CountUp";
 import { GiftCarousel } from "@/components/GiftCarousel";
 import { Marquee } from "@/components/Marquee";
+import { NutDangKy } from "@/components/NutDangKy";
 import { RegistrationForm } from "@/components/RegistrationForm";
 import { Reveal } from "@/components/Reveal";
 import { SpeakerCard } from "@/components/SpeakerCard";
-import { AnchorButton } from "@/components/ui/Button";
 import {
   EVENT,
   EVENT_EXPERTS,
@@ -234,9 +235,10 @@ export default function EventPage() {
 
             {/* Khối chữ — canh giữa trên mobile, canh trái trên desktop. */}
             <div className="order-2 text-center md:order-1 md:text-left">
-              <span className="inline-block rounded-full bg-white px-4 py-1.5 text-sm font-bold text-primary shadow-sm">
-                Miễn phí · Giới hạn {EVENT.capacity}
-              </span>
+              {/* Đồng hồ đếm ngược thay cho badge "Miễn phí · Giới hạn 500 mẹ
+                  bỉm": badge cũ nói một sự thật không đổi nên không tạo được sức
+                  ép thời gian, mà cửa đăng ký chỉ mở đúng 37 ngày. */}
+              <Countdown />
 
               <h1 className="mt-4 text-4xl leading-tight font-extrabold text-ink sm:text-5xl">
                 Mama Ơi Day
@@ -263,7 +265,7 @@ export default function EventPage() {
               </div>
 
               <div className="mt-6">
-                <AnchorButton href="#dang-ky">Đăng ký ngay</AnchorButton>
+                <NutDangKy>Đăng ký ngay</NutDangKy>
               </div>
 
               <dl className="mt-6 grid grid-cols-2 gap-x-6 gap-y-4 lg:grid-cols-4">
@@ -631,7 +633,7 @@ export default function EventPage() {
 
               {/* Action. */}
               <div className="relative px-6 pt-8 pb-10 text-center sm:px-12">
-                <AnchorButton href="#dang-ky">Đăng ký ngay</AnchorButton>
+                <NutDangKy>Đăng ký ngay</NutDangKy>
                 <p className="mt-4 text-sm text-ink-faded">
                   Miễn phí · {EVENT.dateLabel}
                 </p>

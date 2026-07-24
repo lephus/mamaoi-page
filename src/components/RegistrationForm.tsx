@@ -6,6 +6,7 @@ import { flushSync } from "react-dom";
 import Link from "next/link";
 import {
   CHU_DE_QUAN_TAM,
+  DA_DONG,
   HET_CHO,
   NGUON_BIET_DEN,
   PROVINCES,
@@ -14,6 +15,7 @@ import {
 import { buildRegistrationPayload } from "@/lib/registration-payload";
 import { trackRegistration } from "@/lib/analytics";
 import { homNayVN } from "@/lib/time";
+import { useDaDongDangKy } from "./Countdown";
 import { Button } from "./ui/Button";
 import { Select } from "./ui/Select";
 
@@ -178,6 +180,26 @@ function scrollToFirstError() {
     ?.scrollIntoView({ block: "center", behavior: "smooth" });
 }
 
+/**
+ * Khối thay chỗ nút gửi khi form không còn nhận đăng ký nữa — dùng chung cho cả
+ * hai lý do (hết hạn, hết chỗ). Một khuôn duy nhất để hai màn hình đó không trôi
+ * lệch nhau về hình thức; chỉ chữ là khác.
+ */
+function ThongBaoDong({ tieuDe, mo, nut }: { tieuDe: string; mo: string; nut: string }) {
+  return (
+    <div role="alert" className="rounded-2xl bg-primary-faded px-5 py-6 text-center">
+      <p className="text-lg font-extrabold text-ink">{tieuDe}</p>
+      <p className="mt-1.5 text-base leading-6 text-ink-faded">{mo}</p>
+      <Link
+        href="/ung-dung#nhan-tin"
+        className="mt-4 inline-block rounded-full bg-primary px-6 py-3 text-base font-bold text-white transition-colors hover:bg-primary-hover"
+      >
+        {nut}
+      </Link>
+    </div>
+  );
+}
+
 export function RegistrationForm() {
   const router = useRouter();
   const [errors, setErrors] = useState<Errors>({});
@@ -196,6 +218,15 @@ export function RegistrationForm() {
    * "đã đủ 500 mẹ"), nên số phải đi theo từ response chứ không lấy hằng ở client.
    */
   const [hetCho, setHetCho] = useState<number | null>(null);
+  /**
+   * Server báo đã quá hạn đăng ký.
+   *
+   * Tách khỏi `useDaDongDangKy()` bên dưới vì hai nguồn khác nhau: hook đọc đồng
+   * hồ MÁY MẸ (có thể chạy sai, có thể là tab mở từ hôm trước chưa reload), còn
+   * cờ này là phán quyết của server. Server thắng.
+   */
+  const [dongTheoServer, setDongTheoServer] = useState(false);
+  const daDong = useDaDongDangKy() || dongTheoServer;
 
   // Xoá lỗi của MỘT field ngay khi mẹ vừa chỉnh nó, thay vì để thông báo đỏ đứng
   // ì tới lần submit sau. Với radio/checkbox điều này quan trọng nhất: mẹ đã bấm
@@ -242,7 +273,10 @@ export function RegistrationForm() {
           // mà thay hẳn nút gửi bằng khối thông báo riêng. `??` chứ không `||`:
           // giới hạn hợp lệ không bao giờ là 0, nhưng response thiếu field thì
           // phải rơi về hằng client chứ không hiện "đã đủ 0 mẹ".
-          if (data.full) {
+          if (data.closed) {
+            // Quá hạn: tab mở sẵn từ hôm trước, hoặc đồng hồ máy mẹ chạy chậm.
+            setDongTheoServer(true);
+          } else if (data.full) {
             setHetCho(typeof data.gioiHan === "number" ? data.gioiHan : SUC_CHUA_MAC_DINH);
           } else {
             setErrors(data.fieldErrors ?? { form: data.error ?? "Có lỗi xảy ra" });
@@ -574,23 +608,25 @@ export function RegistrationForm() {
         className="absolute left-[-9999px] h-0 w-0 opacity-0"
       />
 
-      {/* Hết chỗ thì bỏ hẳn nút gửi: để nút lại chỉ mời mẹ bấm thêm vài lần nữa
-          rồi nhận đúng câu trả lời đó. `role="alert"` để trình đọc màn hình đọc
-          ngay, và để `scrollToFirstError` cuộn tới — nó bắt theo selector này. */}
-      {hetCho !== null ? (
-        <div
-          role="alert"
-          className="rounded-2xl bg-primary-faded px-5 py-6 text-center"
-        >
-          <p className="text-lg font-extrabold text-ink">{HET_CHO.tieuDe(hetCho)}</p>
-          <p className="mt-1.5 text-base leading-6 text-ink-faded">{HET_CHO.mo}</p>
-          <Link
-            href="/ung-dung#nhan-tin"
-            className="mt-4 inline-block rounded-full bg-primary px-6 py-3 text-base font-bold text-white transition-colors hover:bg-primary-hover"
-          >
-            {HET_CHO.nut}
-          </Link>
-        </div>
+      {/* Hết hạn / hết chỗ thì bỏ hẳn nút gửi: để nút lại chỉ mời mẹ bấm thêm
+          vài lần nữa rồi nhận đúng câu trả lời đó. `role="alert"` để trình đọc
+          màn hình đọc ngay, và để `scrollToFirstError` cuộn tới — nó bắt theo
+          selector này.
+
+          Quá hạn xét TRƯỚC hết chỗ: sự kiện đã qua thì "còn chỗ hay không" không
+          còn là câu hỏi nữa, và câu mời phải hướng sang sự kiện SAU. */}
+      {daDong ? (
+        <ThongBaoDong
+          tieuDe={DA_DONG.tieuDe}
+          mo={DA_DONG.mo}
+          nut={DA_DONG.nutTin}
+        />
+      ) : hetCho !== null ? (
+        <ThongBaoDong
+          tieuDe={HET_CHO.tieuDe(hetCho)}
+          mo={HET_CHO.mo}
+          nut={HET_CHO.nut}
+        />
       ) : (
         <>
           <Button type="submit" disabled={submitting} className="w-full">

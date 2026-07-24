@@ -4,7 +4,8 @@ import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
-import { AnchorButton, ButtonLink } from "./ui/Button";
+import { NutDangKy } from "./NutDangKy";
+import { ButtonLink } from "./ui/Button";
 
 const NAV = [
   { href: "/", label: "Mama Ơi Day" },
@@ -31,10 +32,12 @@ export function Header() {
       ? { href: "#dang-ky", label: "Đăng ký ngay" }
       : { href: "/", label: "Mama Ơi Day" };
 
-  // Link hash trong cùng trang (#dang-ky) phải là <a> thuần (AnchorButton) để
-  // native scroll-behavior:smooth cuộn lại mỗi lần bấm — next/link (ButtonLink)
-  // bỏ qua khi hash không đổi. Link sang trang khác ("/") vẫn dùng router.
-  const CtaButton = cta.href.startsWith("#") ? AnchorButton : ButtonLink;
+  // Link hash trong cùng trang (#dang-ky) phải là <a> thuần (NutDangKy bọc
+  // AnchorButton) để native scroll-behavior:smooth cuộn lại mỗi lần bấm —
+  // next/link (ButtonLink) bỏ qua khi hash không đổi. Link sang trang khác ("/")
+  // vẫn dùng router, và KHÔNG tắt sau hạn: đó là điều hướng về trang sự kiện,
+  // không phải nút đăng ký.
+  const CtaButton = cta.href.startsWith("#") ? NutDangKy : ButtonLink;
 
   return (
     <header

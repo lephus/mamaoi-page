@@ -25,6 +25,17 @@ export const EVENT = {
   address: "10 Mai Chí Thọ, Thủ Thiêm, Thủ Đức, TP.HCM",
   capacity: "500 mẹ bỉm",
   registrationOpens: "25/07/2026",
+  /**
+   * Hạn đóng đăng ký: HẾT ngày 30/08/2026 giờ VN, tức 00:00 ngày 31/08 (UTC+7).
+   *
+   * Là cuối NGÀY sự kiện chứ không phải giờ sự kiện bắt đầu — khách nhận đăng ký
+   * tại chỗ suốt ngày 30/08.
+   *
+   * Viết dạng UTC có `Z` chứ KHÔNG "2026-08-30T23:59": server Vercel chạy UTC nên
+   * chuỗi không mang múi giờ bị đọc thành 23:59 UTC = 06:59 sáng 31/08 giờ VN —
+   * server đóng trễ 7 tiếng và lệch hẳn với đồng hồ trên máy mẹ.
+   */
+  dongDangKyISO: "2026-08-30T17:00:00.000Z",
 } as const;
 
 /**
@@ -52,6 +63,26 @@ export const HET_CHO = {
   tieuDe: (soCho: number) => `Rất tiếc, sự kiện đã đủ ${soCho} mẹ.`,
   mo: "Mẹ để lại email để Mama Ơi báo ngay khi có chỗ trống nhé.",
   nut: "Đăng ký nhận tin ứng dụng",
+} as const;
+
+/**
+ * Màn hình mẹ thấy sau khi hết hạn đăng ký (`EVENT.dongDangKyISO`).
+ *
+ * Khác `HET_CHO` ở chỗ không còn đường vào: hết chỗ là "đợt này đủ rồi", còn ở
+ * đây là sự kiện đã qua — nên câu mời hướng sang sự kiện SAU chứ không phải chờ
+ * chỗ trống của sự kiện này.
+ *
+ * CHƯA được khách duyệt (mọi wording khác trên trang đều là chữ khách duyệt).
+ * Khách sửa chữ thì sửa ở đây, không đụng logic.
+ */
+export const DA_DONG = {
+  /** Thay chỗ widget đếm ngược ở hero. */
+  badge: "Mama Ơi Day đã kết thúc",
+  /** Chữ trên ba nút CTA khi đã đóng. */
+  nut: "Đã đóng đăng ký",
+  tieuDe: "Đã đóng đăng ký Mama Ơi Day.",
+  mo: "Mẹ để lại email để Mama Ơi báo khi có sự kiện tiếp theo nhé.",
+  nutTin: "Đăng ký nhận tin ứng dụng",
 } as const;
 
 /**

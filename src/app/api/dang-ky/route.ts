@@ -13,7 +13,8 @@ import {
 } from "@/lib/sheets";
 import { insertRegistration, insertWaitlist, supabaseConfigured } from "@/lib/supabase";
 import { ketQuaSucChua, sucChua, type KetQuaSucChua } from "@/lib/suc-chua";
-import { HET_CHO } from "@/lib/constants";
+import { daDongDangKy } from "@/lib/countdown";
+import { DA_DONG, HET_CHO } from "@/lib/constants";
 import {
   chungSchema,
   generateCheckinCode,
@@ -93,6 +94,23 @@ export async function POST(request: Request) {
   }
 
   const warnings: string[] = [];
+
+  // ---------- Cổng chặn hết hạn ----------
+  //
+  // Nút xám ở client là chặn CÁI NÚT, không phải việc đăng ký: một tab mở sẵn từ
+  // hôm trước, một đồng hồ máy chạy chậm, hay một cú curl đều gửi được sau hạn —
+  // và vẫn nhận email xác nhận kèm mã QR cho sự kiện đã xong.
+  //
+  // Đứng TRƯỚC cả cổng sức chứa và Brevo, cùng một lý do: đặt sau thì mẹ đã cầm
+  // email xác nhận rồi mới bị báo là muộn.
+  //
+  // Waitlist app không có hạn — chỉ đăng ký sự kiện mới đóng.
+  if (isRegistration(data) && daDongDangKy(Date.now())) {
+    return NextResponse.json(
+      { error: DA_DONG.tieuDe, closed: true },
+      { status: 409 },
+    );
+  }
 
   // ---------- Cổng chặn sức chứa ----------
   //
