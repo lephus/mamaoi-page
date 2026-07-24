@@ -3,6 +3,7 @@ import { rowsToSheet, waitlistToSheet } from "@/lib/export-rows";
 import {
   buildCheckinUpdate,
   colLetter,
+  emailsTuCotSheet,
   findCheckinRows,
   registrationToSheetRow,
   VALUE_INPUT_OPTION,
@@ -165,6 +166,47 @@ describe("findCheckinRows", () => {
 
   it("chịu được ô rỗng / dòng thiếu do Google lược bỏ", () => {
     expect(findCheckinRows([[], undefined, ["MO-23456A"]], "MO-23456A")).toEqual([3]);
+  });
+});
+
+describe("emailsTuCotSheet — con số quyết định còn chỗ hay hết chỗ", () => {
+  // values.get trả từ dòng 1: [ghi chú], [header], [dữ liệu...].
+  const col = [["⚠ Bản ghi thô..."], ["Email"], ["mai@email.com"], ["lan@email.com"]];
+
+  it("chỉ lấy ô có email, bỏ ô ghi chú và header", () => {
+    expect(emailsTuCotSheet(col)).toEqual(new Set(["mai@email.com", "lan@email.com"]));
+  });
+
+  /**
+   * Đây là lý do đếm email khác nhau chứ không đếm số dòng: Sheet chỉ append,
+   * mẹ bấm gửi hai lần là hai dòng của CÙNG một mẹ. Đếm dòng thì mẹ đó ăn hai
+   * ghế và mẹ thứ 500 bị báo hết chỗ trong khi hội trường còn trống.
+   */
+  it("mẹ đăng ký hai lần chỉ tính MỘT chỗ", () => {
+    const trung = [...col, ["mai@email.com"]];
+    expect(emailsTuCotSheet(trung).size).toBe(2);
+  });
+
+  it("gộp hoa/thường và khoảng trắng thừa về một email", () => {
+    const lech = [...col, ["  MAI@Email.com  "]];
+    expect(emailsTuCotSheet(lech).size).toBe(2);
+  });
+
+  /**
+   * Ops chèn/xoá dòng đầu là chuyện thường. Lọc theo "@" nên vị trí trôi bao
+   * nhiêu cũng không đếm nhầm ô ghi chú thành một mẹ.
+   */
+  it("không phụ thuộc vị trí dòng ghi chú / header", () => {
+    expect(emailsTuCotSheet([["mai@email.com"], ["lan@email.com"]]).size).toBe(2);
+    expect(emailsTuCotSheet([["Email"], ["ghi chú"], [""]]).size).toBe(0);
+  });
+
+  it("chịu được ô rỗng / dòng thiếu do Google lược bỏ", () => {
+    expect(emailsTuCotSheet([[], undefined, ["mai@email.com"], [""]]).size).toBe(1);
+  });
+
+  it("Sheet trống → không có mẹ nào", () => {
+    expect(emailsTuCotSheet([]).size).toBe(0);
   });
 });
 

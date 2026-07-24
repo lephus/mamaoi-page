@@ -8,6 +8,7 @@ import { formatCheckinTime, ngayVN } from "./time";
  * nhét vào HEADERS bên dưới: đổi tên cột ở đây là đổi cả HEADERS lẫn nơi ghi,
  * hai bên không bao giờ lệch tên.
  */
+export const HEADER_EMAIL = "Email";
 export const HEADER_CODE = "Mã check-in";
 export const HEADER_DA_CHECKIN = "Đã check-in";
 export const HEADER_GIO_CHECKIN = "Giờ check-in";
@@ -20,7 +21,7 @@ export const HEADER_NGUON_CHECKIN = "Nguồn check-in";
  */
 const HEADERS = [
   "Họ tên",
-  "Email",
+  HEADER_EMAIL,
   "SĐT",
   "Facebook",
   "Thành phố",

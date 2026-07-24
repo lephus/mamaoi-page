@@ -1,10 +1,22 @@
 import { SUC_CHUA_MAC_DINH } from "./constants";
 
 /**
- * Sức chứa sự kiện + cách route phản ứng với kết quả giữ chỗ.
+ * Sức chứa sự kiện: còn chỗ hay đã đầy, quyết định từ SỐ EMAIL trong Google
+ * Sheet (tab register).
  *
- * Tách khỏi `supabase.ts` và `route.ts` để test được toàn bộ phần quyết định mà
- * không cần Postgres thật — repo chạy vitest ở env `node`, không có DB trong test.
+ * Nguồn đếm là Sheet theo yêu cầu của khách — ops nhìn Sheet nên con số chặn
+ * phải là đúng con số ops nhìn thấy. Hai hệ quả đã biết và chấp nhận:
+ *
+ *  1. KHÔNG nguyên tử. Dòng Sheet chỉ được append ở CUỐI route (sau Brevo), nên
+ *     hai mẹ submit trong cùng một nhịp đều đọc ra cùng một con số và cùng đi
+ *     qua — sự kiện có thể nhận dôi vài chỗ quanh mốc 500. Bản cũ đếm-và-ghi
+ *     trong một transaction Postgres nên không hở; đổi nguồn đếm là mất tính đó.
+ *  2. Lượt ghi Sheet hỏng thì mẹ đó đăng ký thành công nhưng KHÔNG được đếm —
+ *     ghế của mẹ vẫn bán tiếp cho người sau. Route log cảnh báo `sheets` khi việc
+ *     đó xảy ra.
+ *
+ * Tách khỏi `sheets.ts` và `route.ts` để test được toàn bộ phần quyết định mà
+ * không cần gọi Google — repo chạy vitest ở env `node`, không có mạng trong test.
  */
 
 /**
@@ -26,40 +38,33 @@ export function sucChua(raw: string | undefined = process.env.EVENT_CAPACITY): n
   return n > 0 ? n : SUC_CHUA_MAC_DINH;
 }
 
-/** Kết quả một lượt giữ chỗ — ba giá trị đầu do function `giu_cho_dang_ky` trả về. */
-export type KetQuaGiuCho =
+export type KetQuaSucChua =
+  /** Còn chỗ, email chưa có trong Sheet. */
   | "moi"
+  /** Email đã có dòng trong Sheet — mẹ này đang giữ chỗ của chính mẹ. */
   | "da_dang_ky"
+  /** Đã đủ số chỗ: route trả 409, mẹ KHÔNG được gửi email xác nhận. */
   | "het_cho"
+  /** Đọc Sheet hỏng — fail open. */
   | "loi"
-  | "khong_cau_hinh"
-  | (string & {});
+  /** Chưa cấu hình Google Sheets (dev): không có gì để đếm. */
+  | "khong_cau_hinh";
 
-export type QuyetDinh =
-  /** Trả 409, không chạy bước nào phía sau — mẹ KHÔNG được gửi email xác nhận. */
-  | { chan: true }
-  /** Đi tiếp. `ghiLai` = route có phải gọi `insertRegistration` nữa không. */
-  | { chan: false; ghiLai: boolean };
-
-export function quyetDinhSucChua(ket: KetQuaGiuCho): QuyetDinh {
-  switch (ket) {
-    case "het_cho":
-      return { chan: true };
-    // RPC đã insert xong trong chính transaction giữ chỗ. Gọi thêm upsert ở
-    // route là một lượt ghi thừa ngay sau lượt vừa xong.
-    case "moi":
-      return { chan: false, ghiLai: false };
-    // Mẹ gửi lại form (vd. sửa số điện thoại). RPC cố tình không đụng dòng cũ,
-    // nên upsert ở route mới là chỗ làm mới thông tin.
-    case "da_dang_ky":
-      return { chan: false, ghiLai: true };
-    // Chưa cấu hình Supabase (dev): không có gì để đếm và cũng không có gì để ghi.
-    case "khong_cau_hinh":
-      return { chan: false, ghiLai: false };
-    // "loi" và mọi chuỗi lạ: fail open. Không đọc được sức chứa là sự cố của
-    // mình, không phải lỗi của mẹ — vẫn cố ghi để dòng kịp vào bảng nếu DB
-    // chỉ chập một nhịp; hỏng nữa thì route ghi warnings["supabase"].
-    default:
-      return { chan: false, ghiLai: true };
-  }
+/**
+ * `emails` là tập email đã có trong Sheet (xem `emailsTuCotSheet`).
+ *
+ * Email đã đăng ký LUÔN đi tiếp, kể cả khi đã đủ 500: mẹ này không chiếm thêm
+ * ghế nào — chặn ở đây là đuổi mẹ khỏi chỗ mẹ đang giữ, chỉ vì mẹ bấm gửi lại
+ * form để sửa số điện thoại.
+ *
+ * So sánh `>=` chứ không `>`: đủ 500 email trong Sheet là ĐÃ hết chỗ, mẹ tiếp
+ * theo là người thứ 501.
+ */
+export function ketQuaSucChua(
+  emails: Set<string>,
+  email: string,
+  gioiHan: number,
+): KetQuaSucChua {
+  if (emails.has(email.trim().toLowerCase())) return "da_dang_ky";
+  return emails.size >= gioiHan ? "het_cho" : "moi";
 }

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { SUC_CHUA_MAC_DINH } from "./constants";
-import { quyetDinhSucChua, sucChua } from "./suc-chua";
+import { ketQuaSucChua, sucChua } from "./suc-chua";
 
 describe("sucChua — đọc giới hạn từ env", () => {
   it("không đặt env thì dùng mặc định", () => {
@@ -15,9 +15,9 @@ describe("sucChua — đọc giới hạn từ env", () => {
   });
 
   /**
-   * Env rác KHÔNG được rơi về NaN. `NaN >= p_gioi_han` trong Postgres trả null,
-   * nhánh `if` không chạy, và cổng chặn im lặng không chặn gì — đúng thứ hỏng
-   * mà không ai phát hiện cho tới khi sự kiện quá tải.
+   * Env rác KHÔNG được rơi về NaN. Mọi so sánh với NaN đều false, nên
+   * `emails.size >= NaN` không bao giờ đúng và cổng chặn im lặng không chặn gì —
+   * đúng thứ hỏng mà không ai phát hiện cho tới khi sự kiện quá tải.
    */
   it("giá trị rác rơi về mặc định chứ không phải NaN", () => {
     for (const rac of ["abc", "0", "-5", "5.5", "1e3", "500 mẹ", " "]) {
@@ -26,33 +26,42 @@ describe("sucChua — đọc giới hạn từ env", () => {
   });
 });
 
-describe("quyetDinhSucChua — kết quả RPC thành hành động của route", () => {
-  it("hết chỗ thì chặn", () => {
-    expect(quyetDinhSucChua("het_cho")).toEqual({ chan: true });
+describe("ketQuaSucChua — số email trong Sheet thành quyết định", () => {
+  const tap = (...e: string[]) => new Set(e);
+
+  it("còn chỗ thì cho đi tiếp", () => {
+    expect(ketQuaSucChua(tap("a@x.y", "b@x.y"), "moi@x.y", 500)).toBe("moi");
   });
 
-  it("chỗ mới: đi tiếp, KHÔNG ghi lại vì RPC đã insert", () => {
-    expect(quyetDinhSucChua("moi")).toEqual({ chan: false, ghiLai: false });
+  it("đủ số chỗ thì chặn", () => {
+    expect(ketQuaSucChua(tap("a@x.y", "b@x.y"), "moi@x.y", 2)).toBe("het_cho");
   });
 
-  it("email đã đăng ký: đi tiếp VÀ ghi lại để làm mới thông tin", () => {
-    expect(quyetDinhSucChua("da_dang_ky")).toEqual({ chan: false, ghiLai: true });
-  });
-
-  it("Supabase lỗi: fail open, vẫn cố ghi lại", () => {
-    expect(quyetDinhSucChua("loi")).toEqual({ chan: false, ghiLai: true });
-  });
-
-  it("chưa cấu hình Supabase: đi tiếp, không có gì để ghi", () => {
-    expect(quyetDinhSucChua("khong_cau_hinh")).toEqual({ chan: false, ghiLai: false });
+  /** `>=` chứ không `>`: đủ 2 email là đã hết, mẹ tiếp theo là người thứ 3. */
+  it("mốc cuối: còn thiếu đúng một chỗ thì vẫn nhận", () => {
+    expect(ketQuaSucChua(tap("a@x.y"), "moi@x.y", 2)).toBe("moi");
   });
 
   /**
-   * Function trong DB sửa được độc lập với code này. Nếu ai đó thêm một giá trị
-   * trả về mới, mặc định phải là CHO ĐI TIẾP — chặn nhầm mẹ thật vì một chuỗi lạ
-   * tệ hơn nhiều so với nhận dư một chỗ ở sự kiện miễn phí.
+   * Mẹ đã có chỗ mà bị chặn thì hoá ra bị đuổi khỏi chỗ mình đang giữ, chỉ vì
+   * gửi lại form để sửa số điện thoại.
    */
-  it("chuỗi lạ từ DB thì fail open chứ không chặn", () => {
-    expect(quyetDinhSucChua("gi_do_moi")).toEqual({ chan: false, ghiLai: true });
+  it("email đã có trong Sheet vẫn qua được dù đang đầy", () => {
+    expect(ketQuaSucChua(tap("a@x.y", "b@x.y"), "a@x.y", 2)).toBe("da_dang_ky");
+  });
+
+  /**
+   * Zod đã `.trim().toLowerCase()` email trước khi ghi, nhưng ô trong Sheet sửa
+   * tay được — không chuẩn hoá thì mẹ viết hoa bị tính thành người thứ hai và
+   * ăn thêm một ghế.
+   */
+  it("so khớp bỏ hoa/thường và khoảng trắng thừa", () => {
+    expect(ketQuaSucChua(tap("mai@email.com"), "  MAI@Email.com ", 500)).toBe(
+      "da_dang_ky",
+    );
+  });
+
+  it("Sheet trống thì mẹ đầu tiên là chỗ mới", () => {
+    expect(ketQuaSucChua(new Set(), "mai@x.y", 500)).toBe("moi");
   });
 });

@@ -5,14 +5,14 @@ import {
   sendWaitlistEmail,
   upsertContact,
 } from "@/lib/brevo";
-import { appendRegistration, appendWaitlist, sheetsConfigured } from "@/lib/sheets";
 import {
-  giuChoDangKy,
-  insertRegistration,
-  insertWaitlist,
-  supabaseConfigured,
-} from "@/lib/supabase";
-import { quyetDinhSucChua, sucChua } from "@/lib/suc-chua";
+  appendRegistration,
+  appendWaitlist,
+  docEmailDaDangKy,
+  sheetsConfigured,
+} from "@/lib/sheets";
+import { insertRegistration, insertWaitlist, supabaseConfigured } from "@/lib/supabase";
+import { ketQuaSucChua, sucChua, type KetQuaSucChua } from "@/lib/suc-chua";
 import { HET_CHO } from "@/lib/constants";
 import {
   chungSchema,
@@ -99,42 +99,44 @@ export async function POST(request: Request) {
   // PHẢI đứng TRƯỚC Brevo. Đặt sau thì mẹ đã nhận email xác nhận kèm mã QR rồi
   // mới bị báo hết chỗ — không rút lại được.
   //
+  // Đếm từ Google Sheet (tab register) theo yêu cầu của khách: ops nhìn Sheet
+  // nên con số chặn phải là đúng con số ops nhìn thấy. Đánh đổi đã biết — xem
+  // doc đầu suc-chua.ts: không nguyên tử như bản đếm trong transaction Postgres,
+  // hai mẹ submit cùng nhịp có thể cùng lọt qua mốc cuối.
+  //
   // Chỉ áp cho đăng ký sự kiện; waitlist app không giới hạn số lượng.
   const gioiHan = sucChua();
-  let lamMoiDongCu = false;
 
   if (isRegistration(data)) {
-    // Không cấu hình Supabase (dev) thì không có gì để đếm — cho đi tiếp.
-    let ket = "khong_cau_hinh";
-    if (supabaseConfigured()) {
+    // Chưa cấu hình Sheets (dev) thì không có gì để đếm — cho đi tiếp.
+    let ket: KetQuaSucChua = "khong_cau_hinh";
+    if (sheetsConfigured()) {
       try {
-        ket = await giuChoDangKy(data, checkinCode!, gioiHan);
+        ket = ketQuaSucChua(await docEmailDaDangKy(), data.email, gioiHan);
       } catch (err) {
-        console.error("[dang-ky] giữ chỗ thất bại:", data.email, err);
+        console.error("[dang-ky] đếm chỗ trên Sheet thất bại:", data.email, err);
         ket = "loi";
       }
     }
 
-    const quyetDinh = quyetDinhSucChua(ket);
-    if (quyetDinh.chan) {
+    if (ket === "het_cho") {
       return NextResponse.json(
         { error: HET_CHO.tieuDe(gioiHan), full: true, gioiHan },
         { status: 409 },
       );
     }
-    lamMoiDongCu = quyetDinh.ghiLai;
 
-    // Cảnh báo RIÊNG, không gộp vào "supabase": ở đây nghĩa là lượt đăng ký này
-    // KHÔNG được đếm vào sức chứa (fail open), khác hẳn với việc ghi dòng hỏng.
+    // Cảnh báo RIÊNG, không gộp vào "sheets": ở đây nghĩa là lượt đăng ký này đi
+    // qua mà KHÔNG đối chiếu được sức chứa (fail open) — không đọc được Sheet là
+    // sự cố của mình, không phải lỗi của mẹ. Khác hẳn với việc ghi dòng hỏng.
     if (ket === "loi") warnings.push("suc-chua");
   }
 
   // Brevo holds the member record. If this fails, the registration genuinely
   // did not happen — surface a real error rather than a comforting lie.
   //
-  // Chỗ đã giữ ở trên KHÔNG được nhả lại: mẹ bấm gửi lại thì RPC trả
-  // 'da_dang_ky' nên không tốn ghế thứ hai, còn nhả ra ở đây sẽ mở cửa cho
-  // đúng khoảng trống mà cái khoá kia sinh ra để bịt.
+  // Brevo hỏng ở đây thì cổng chặn ở trên không phải dọn gì: ghế chỉ thực sự bị
+  // chiếm khi dòng Sheet được append ở cuối route, mà tới đó thì không còn.
   try {
     await upsertContact(data, checkinCode);
   } catch (err) {
@@ -171,10 +173,8 @@ export async function POST(request: Request) {
   if (supabaseConfigured()) {
     try {
       if (isRegistration(data)) {
-        // Cổng chặn ở trên đã insert xong ở nhánh 'moi'. Chỉ ghi thêm khi email
-        // đã có dòng cũ cần làm mới (mẹ gửi lại form để sửa số điện thoại) —
-        // gọi vô điều kiện là một lượt ghi thừa ngay sau lượt vừa xong.
-        if (lamMoiDongCu) await insertRegistration(data, checkinCode!);
+        // Upsert theo email nên mẹ gửi lại form chỉ làm mới đúng dòng cũ.
+        await insertRegistration(data, checkinCode!);
       } else {
         await insertWaitlist(data.email, data.dongYNhanTin);
       }

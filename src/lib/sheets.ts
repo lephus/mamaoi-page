@@ -2,6 +2,7 @@ import {
   checkinCells,
   HEADER_CODE,
   HEADER_DA_CHECKIN,
+  HEADER_EMAIL,
   HEADER_GIO_CHECKIN,
   HEADER_NGUON_CHECKIN,
   rowsToSheet,
@@ -269,6 +270,48 @@ export async function appendRegistration(
 export async function appendWaitlist(email: string, dongY: boolean): Promise<void> {
   await ensureHeader(WAITLIST_TAB, [[WAITLIST_NOTE], waitlistToSheet([]).headers]);
   await appendValues(WAITLIST_TAB, [waitlistToSheetRow(email, dongY)]);
+}
+
+/**
+ * Tập email đã đăng ký, đọc từ MỘT cột của tab register. Đây là con số quyết
+ * định sự kiện còn chỗ hay không (xem `ketQuaSucChua` trong suc-chua.ts).
+ *
+ * Đếm EMAIL KHÁC NHAU chứ không đếm số dòng: Sheet chỉ append, mẹ bấm gửi hai
+ * lần là hai dòng của CÙNG một mẹ. Đếm dòng thì hai lần bấm nhầm của một mẹ ăn
+ * mất hai ghế, và mẹ thứ 500 bị báo hết chỗ trong khi hội trường còn chỗ trống.
+ *
+ * Chuẩn hoá thường + cắt khoảng trắng vì Zod đã `.toLowerCase().trim()` email
+ * trước khi ghi, nhưng ô trong Sheet sửa tay được.
+ */
+export function emailsTuCotSheet(colValues: (string[] | undefined)[]): Set<string> {
+  const emails = new Set<string>();
+  for (const o of colValues) {
+    const v = o?.[0]?.trim().toLowerCase();
+    // Lọc theo "@" chứ KHÔNG bỏ qua hai dòng đầu theo vị trí: dòng 1 là ô ghi
+    // chú, dòng 2 là header, nhưng ops chèn/xoá dòng thì vị trí trôi ngay. Ô
+    // không có "@" thì chắc chắn không phải email của mẹ nào.
+    if (v && v.includes("@")) emails.add(v);
+  }
+  return emails;
+}
+
+/**
+ * Đọc cột Email của tab register về thành tập email.
+ *
+ * Cột suy ra từ `headers` chứ KHÔNG hardcode "B": đổi thứ tự cột ở export-rows.ts
+ * vẫn đọc đúng cột, còn cột bị đổi tên thì ném lỗi ngay thay vì đếm nhầm cột
+ * khác ra 0 và mở toang cổng chặn.
+ */
+export async function docEmailDaDangKy(): Promise<Set<string>> {
+  const headers = rowsToSheet([]).headers;
+  const i = headers.indexOf(HEADER_EMAIL);
+  if (i < 0) throw new Error(`Sheet thiếu cột "${HEADER_EMAIL}"`);
+  const col = colLetter(i);
+  const res = await sheetsFetch(
+    `/values/${encodeURIComponent(REGISTER_TAB)}%21${col}1:${col}`,
+  );
+  const data = (await res.json()) as { values?: string[][] };
+  return emailsTuCotSheet(data.values ?? []);
 }
 
 /**
