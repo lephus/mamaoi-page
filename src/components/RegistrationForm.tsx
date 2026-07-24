@@ -15,6 +15,7 @@ import { buildRegistrationPayload } from "@/lib/registration-payload";
 import { trackRegistration } from "@/lib/analytics";
 import { homNayVN } from "@/lib/time";
 import { Button } from "./ui/Button";
+import { Select } from "./ui/Select";
 
 type Errors = Record<string, string>;
 
@@ -186,6 +187,7 @@ export function RegistrationForm() {
   >("");
   const [chuDe, setChuDe] = useState<string[]>([]);
   const [nguon, setNguon] = useState("");
+  const [tinhThanh, setTinhThanh] = useState("");
   /**
    * Số chỗ của sự kiện khi server báo đã hết — `null` là còn chỗ.
    *
@@ -330,22 +332,22 @@ export function RegistrationForm() {
           </Field>
 
           <Field label="Thành phố" htmlFor="tinhThanh" error={errors.tinhThanh} required>
-            <select
+            <Select
               id="tinhThanh"
               name="tinhThanh"
-              defaultValue=""
-              className={`${inputBase} ${ring("tinhThanh")} cursor-pointer`}
-              {...err("tinhThanh")}
-            >
-              <option value="" disabled>
-                Chọn thành phố
-              </option>
-              {PROVINCES.map((p) => (
-                <option key={p} value={p}>
-                  {p}
-                </option>
-              ))}
-            </select>
+              value={tinhThanh}
+              onChange={(v) => {
+                setTinhThanh(v);
+                clearError("tinhThanh");
+              }}
+              options={PROVINCES}
+              placeholder="Chọn thành phố"
+              timPlaceholder="Tìm tỉnh/thành..."
+              khongThayLabel="Không tìm thấy tỉnh/thành"
+              invalid={Boolean(errors.tinhThanh)}
+              describedBy={errors.tinhThanh ? "tinhThanh-error" : undefined}
+              className={`${inputBase} ${ring("tinhThanh")}`}
+            />
           </Field>
         </div>
       </Nhom>
