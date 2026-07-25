@@ -1,8 +1,14 @@
 import Image from "next/image";
-import { EVENT, GIO_MO_CHECK_IN, trangThaiLabel } from "@/lib/constants";
+import {
+  CHUA_MO_CHECKIN,
+  EVENT,
+  GIO_MO_CHECK_IN,
+  trangThaiLabel,
+} from "@/lib/constants";
 import type { RegistrationRow } from "@/lib/supabase";
 import { formatCheckinTime, ngayVN } from "@/lib/time";
 import { CheckinButton } from "./CheckinButton";
+import { Button } from "./ui/Button";
 
 /**
  * Giờ mở check-in lấy thẳng từ timeline chính thức — không hard-code lệch nguồn.
@@ -39,16 +45,46 @@ function DetailRow({ label, value }: { label: string; value: string }) {
 }
 
 /**
+ * Chỗ của nút check-in khi chưa tới ngày sự kiện.
+ *
+ * Nút thật chứ không phải chữ suông: mẹ mở vé sớm phải thấy ngay là "có nút,
+ * nhưng chưa tới lúc", chứ không phải một cái vé thiếu mất chỗ hành động và
+ * tưởng vé mình hỏng. `disabled` để trình đọc màn hình cũng nghe đúng điều đó.
+ */
+function ChuaMoCheckin() {
+  return (
+    <div>
+      <Button type="button" disabled className="w-full">
+        {CHUA_MO_CHECKIN.nut}
+      </Button>
+      <p className="mt-2.5 text-center text-sm leading-6 text-ink-faded">
+        {CHUA_MO_CHECKIN.mo}
+      </p>
+    </div>
+  );
+}
+
+/**
  * Vé check-in điện tử của mẹ. Server dựng cả hai trạng thái từ `row.checked_in`:
  * chưa check-in (QR sáng + nút) và đã check-in (QR mờ + dấu). Nút bấm xong gọi
  * `router.refresh()` để server dựng lại đúng trạng thái đã check-in.
+ *
+ * `daMoCheckin` là THAM SỐ chứ không đọc `Date.now()` tại đây: đọc đồng hồ trong
+ * lúc render là hàm không thuần, React Compiler cấm — và cấm đúng, vì kết quả
+ * render sẽ khác nhau giữa hai lần chạy cùng một props. Page tính rồi truyền
+ * xuống, theo đồng hồ SERVER (trang là `force-dynamic` nên mỗi lượt mở vé đều
+ * tính lại) chứ không theo đồng hồ máy mẹ — một điện thoại đặt sai ngày không mở
+ * sớm được nút này.
  */
 export function CheckinPass({
   row,
   qrDataUrl,
+  daMoCheckin,
 }: {
   row: RegistrationRow;
   qrDataUrl: string | null;
+  /** Đã tới ngày cho mẹ tự check-in chưa — page tính, xem doc ngay trên. */
+  daMoCheckin: boolean;
 }) {
   const checkedIn = row.checked_in;
   const daSinh = row.trang_thai === "da_sinh";
@@ -166,8 +202,10 @@ export function CheckinPass({
                 {row.checked_in_at ? ` lúc ${formatCheckinTime(row.checked_in_at)}` : ""}
               </p>
             </div>
-          ) : (
+          ) : daMoCheckin ? (
             <CheckinButton code={row.checkin_code} />
+          ) : (
+            <ChuaMoCheckin />
           )}
         </div>
       </div>

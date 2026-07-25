@@ -12,7 +12,13 @@ import {
   sheetsConfigured,
 } from "@/lib/sheets";
 import { insertRegistration, insertWaitlist, supabaseConfigured } from "@/lib/supabase";
-import { choConLai, ketQuaSucChua, sucChua, type KetQuaSucChua } from "@/lib/suc-chua";
+import {
+  choConLai,
+  daDayThuCong,
+  ketQuaSucChua,
+  sucChua,
+  type KetQuaSucChua,
+} from "@/lib/suc-chua";
 import type { SoLieuDangKy } from "@/lib/sheets";
 import { daDongDangKy } from "@/lib/countdown";
 import { DA_DONG, HET_CHO } from "@/lib/constants";
@@ -125,6 +131,20 @@ export async function POST(request: Request) {
   //
   // Chỉ áp cho đăng ký sự kiện; waitlist app không giới hạn số lượng.
   const gioiHan = sucChua();
+
+  // Ops đóng đăng ký thủ công (`DANG_KY_DA_DAY`). Đứng TRƯỚC lượt đọc Sheet: đây
+  // là quyết định của khách, không phụ thuộc con số đếm được — và mỗi đơn bị từ
+  // chối cũng khỏi tốn một lượt gọi Google.
+  //
+  // Khác cổng đếm bên dưới ở đúng một điểm: KHÔNG có ngoại lệ cho email đã đăng
+  // ký. Ngoại lệ đó tồn tại để mẹ đang giữ chỗ vẫn sửa được thông tin của mình;
+  // khi đăng ký đã đóng hẳn thì không đơn nào được nhận nữa, kể cả đơn sửa.
+  if (isRegistration(data) && daDayThuCong()) {
+    return NextResponse.json(
+      { error: HET_CHO.tieuDe(gioiHan), full: true, gioiHan },
+      { status: 409 },
+    );
+  }
 
   /**
    * Số liệu đọc được ở cổng chặn, giữ lại tới cuối route để tính `conLai` trả về

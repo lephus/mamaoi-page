@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { boNhoTamTheoThoiGian } from "@/lib/bo-nho-tam";
 import { docSoLieuDangKy, sheetsConfigured } from "@/lib/sheets";
-import { choConLai, sucChua } from "@/lib/suc-chua";
+import { choConLai, daDayThuCong, sucChua } from "@/lib/suc-chua";
 
 /**
  * Số chỗ còn lại, cho widget "Còn N/500 chỗ" trên landing.
@@ -28,6 +28,16 @@ const docCoNhoTam = boNhoTamTheoThoiGian(docSoLieuDangKy, TTL_MS);
 
 export async function GET() {
   const gioiHan = sucChua();
+
+  // Ops đã đóng đăng ký thủ công: trả 0 chỗ mà không đọc Sheet — cùng con số
+  // mà `/api/dang-ky` sẽ dùng để từ chối, nên widget và form không bao giờ nói
+  // hai điều khác nhau.
+  //
+  // KHÔNG kèm `Cache-Control`: cờ này là công tắc ops bật/tắt trong ngày, để CDN
+  // giữ 30 giây thì lúc mở lại vẫn còn một nhịp trang báo hết chỗ.
+  if (daDayThuCong()) {
+    return NextResponse.json({ gioiHan, conLai: 0 });
+  }
 
   if (!sheetsConfigured()) {
     return NextResponse.json({ gioiHan, conLai: null });

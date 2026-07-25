@@ -1,3 +1,5 @@
+import { CHUA_MO_CHECKIN } from "@/lib/constants";
+import { daMoCheckin } from "@/lib/countdown";
 import { markCheckedInInSheet, sheetsConfigured } from "@/lib/sheets";
 import { checkinByCode } from "@/lib/supabase";
 import { isValidCheckinCode } from "@/lib/validation";
@@ -22,6 +24,21 @@ export async function POST(request: Request) {
   const code = (body as { code?: string })?.code?.trim().toUpperCase() ?? "";
   if (!isValidCheckinCode(code)) {
     return Response.json({ error: "Mã không hợp lệ" }, { status: 400 });
+  }
+
+  // ---------- Cổng chặn giờ mở check-in ----------
+  //
+  // Nút xám trên vé chặn CÁI NÚT, không chặn việc check-in: một tab mở sẵn, một
+  // cú curl, hay một máy đặt sai ngày đều gửi được. Mốc thật nằm ở đây, đọc theo
+  // đồng hồ SERVER.
+  //
+  // Đứng TRƯỚC lượt ghi Supabase: sau đó thì mã đã mang dấu "đã check-in" và
+  // không rút lại được — mẹ tới cổng ngày 30/08 sẽ bị báo là đã vào rồi.
+  //
+  // Nhân viên check-in hộ qua `/admin` KHÔNG đi qua route này, nên cổng này
+  // không trói tay ops nếu có tình huống phải mở sớm.
+  if (!daMoCheckin(Date.now())) {
+    return Response.json({ error: CHUA_MO_CHECKIN.loi }, { status: 409 });
   }
 
   try {

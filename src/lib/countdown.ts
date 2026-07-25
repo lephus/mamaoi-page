@@ -69,3 +69,19 @@ export function conLai(nowMs: number, hanMs: number = HAN_DANG_KY): ConLai | nul
 export function daDongDangKy(nowMs: number, hanMs: number = HAN_DANG_KY): boolean {
   return nowMs >= hanMs;
 }
+
+/** Mốc mở check-in, dạng epoch ms. Xem `EVENT.moCheckinISO` để biết vì sao UTC. */
+export const MO_CHECKIN = Date.parse(EVENT.moCheckinISO);
+
+/**
+ * Đã tới giờ cho mẹ tự check-in chưa.
+ *
+ * Đúng ms mốc đã tính là MỞ — đối xứng với `daDongDangKy`, và biên nào cũng phải
+ * thuộc hẳn về một phía chứ không rơi vào khe giữa hai hàm.
+ *
+ * Chỉ áp cho self check-in bằng QR/link của mẹ. Nhân viên check-in hộ trong
+ * `/admin` KHÔNG đi qua đây: khoá tay ops là khoá đúng người đang cứu tình huống.
+ */
+export function daMoCheckin(nowMs: number, mocMs: number = MO_CHECKIN): boolean {
+  return nowMs >= mocMs;
+}

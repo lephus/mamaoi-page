@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState, useSyncExternalStore } from "react";
 import { flushSync } from "react-dom";
 import Link from "next/link";
 import {
@@ -13,7 +13,13 @@ import {
   SUC_CHUA_MAC_DINH,
 } from "@/lib/constants";
 import { buildRegistrationPayload } from "@/lib/registration-payload";
-import { datSauDangKy } from "@/lib/kho-cho-trong";
+import {
+  daHetCho,
+  datSauDangKy,
+  docKho,
+  taiKhoLanDau,
+  theoDoiKho,
+} from "@/lib/kho-cho-trong";
 import { trackRegistration } from "@/lib/analytics";
 import { homNayVN } from "@/lib/time";
 import { useDaDongDangKy } from "./Countdown";
@@ -212,13 +218,30 @@ export function RegistrationForm() {
   const [nguon, setNguon] = useState("");
   const [tinhThanh, setTinhThanh] = useState("");
   /**
-   * Số chỗ của sự kiện khi server báo đã hết — `null` là còn chỗ.
+   * Số chỗ của sự kiện khi server từ chối vì đã hết — `null` là còn chỗ.
    *
    * Giữ CON SỐ chứ không giữ boolean: câu thông báo phải đọc đúng giới hạn
    * server đang áp dụng (ops nâng `EVENT_CAPACITY` lên 550 thì không được nói
    * "đã đủ 500 mẹ"), nên số phải đi theo từ response chứ không lấy hằng ở client.
    */
-  const [hetCho, setHetCho] = useState<number | null>(null);
+  const [hetChoTheoResponse, setHetChoTheoResponse] = useState<number | null>(null);
+  /**
+   * Số chỗ đọc lúc mở trang (`/api/cho-trong`, qua kho dùng chung).
+   *
+   * Nhờ nó mà form biết mình đã hết chỗ TRƯỚC khi mẹ điền — thay vì để mẹ gõ hết
+   * hai chục ô rồi mới nhận câu từ chối. Cũng là đường mà cờ đóng thủ công
+   * `DANG_KY_DA_DAY` đi tới client: endpoint đó trả `conLai: 0` khi cờ bật.
+   *
+   * Ảnh chụp phía server là `null` — `/` sinh HTML lúc build, không con số nào
+   * đúng để nướng vào đó — nên lượt render đầu luôn còn nút gửi. Đoán sai theo
+   * hướng chặn nhầm mẹ tệ hơn hẳn hiện thừa một nút sống trong một nhịp.
+   */
+  const soChoTuKho = useSyncExternalStore(theoDoiKho, docKho, () => null);
+  const hetCho = hetChoTheoResponse ?? daHetCho(soChoTuKho);
+
+  useEffect(() => {
+    void taiKhoLanDau();
+  }, []);
   /**
    * Server báo đã quá hạn đăng ký.
    *
@@ -280,7 +303,7 @@ export function RegistrationForm() {
           } else if (data.full) {
             const gioiHan =
               typeof data.gioiHan === "number" ? data.gioiHan : SUC_CHUA_MAC_DINH;
-            setHetCho(gioiHan);
+            setHetChoTheoResponse(gioiHan);
             // Server vừa nói đã đầy — widget "Còn N/500 chỗ" trên trang phải đổi
             // theo ngay, chứ không đứng mời đăng ký bên trên một khối báo hết chỗ.
             datSauDangKy({ gioiHan, conLai: 0 });

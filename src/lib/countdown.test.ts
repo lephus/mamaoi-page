@@ -1,6 +1,14 @@
 import { describe, expect, it } from "vitest";
 import { EVENT } from "./constants";
-import { CHUA_BIET, conLai, daDongDangKy, giayConLai, HAN_DANG_KY } from "./countdown";
+import {
+  CHUA_BIET,
+  conLai,
+  daDongDangKy,
+  daMoCheckin,
+  giayConLai,
+  HAN_DANG_KY,
+  MO_CHECKIN,
+} from "./countdown";
 
 const GIAY = 1_000;
 const PHUT = 60 * GIAY;
@@ -30,6 +38,46 @@ describe("HAN_DANG_KY — đúng cuối ngày 30/08/2026 giờ VN", () => {
   /** Chuỗi trong constants phải giữ đuôi Z — không có nó là lệch múi giờ. */
   it("dongDangKyISO viết ở dạng UTC", () => {
     expect(EVENT.dongDangKyISO).toMatch(/Z$/);
+  });
+});
+
+describe("MO_CHECKIN — đúng đầu ngày 30/08/2026 giờ VN", () => {
+  /**
+   * Cùng loại bẫy với `HAN_DANG_KY`: thiếu đuôi `Z` là server Vercel (chạy UTC)
+   * đọc lệch 7 tiếng. Ở đây lệch theo hướng nguy hiểm nhất — mở check-in trễ tới
+   * 7:00 sáng ngày sự kiện, đúng lúc mẹ đang xếp hàng ở cổng.
+   */
+  it("mốc mở chính là 00:00 ngày 30/08/2026 giờ VN", () => {
+    expect(MO_CHECKIN).toBe(Date.parse("2026-08-30T00:00:00+07:00"));
+  });
+
+  it("23:59:59.999 ngày 29/08 giờ VN vẫn CHƯA mở", () => {
+    expect(daMoCheckin(Date.parse("2026-08-29T23:59:59.999+07:00"))).toBe(false);
+  });
+
+  it("00:00 ngày 30/08 giờ VN là đã mở", () => {
+    expect(daMoCheckin(Date.parse("2026-08-30T00:00:00+07:00"))).toBe(true);
+  });
+
+  /** Ngày mở đăng ký (25/07) — mẹ nhận QR hơn một tháng trước sự kiện. */
+  it("lúc mẹ vừa nhận email xác nhận thì nút còn khoá", () => {
+    expect(daMoCheckin(Date.parse("2026-07-25T10:00:00+07:00"))).toBe(false);
+  });
+
+  /** Giờ đón khách thật (8:00 ngày 30/08) và sau sự kiện đều phải check-in được. */
+  it("trong ngày sự kiện và sau đó thì check-in bình thường", () => {
+    expect(daMoCheckin(Date.parse("2026-08-30T08:00:00+07:00"))).toBe(true);
+    expect(daMoCheckin(Date.parse("2026-08-30T15:00:00+07:00"))).toBe(true);
+    expect(daMoCheckin(Date.parse("2026-09-05T09:00:00+07:00"))).toBe(true);
+  });
+
+  it("moCheckinISO viết ở dạng UTC", () => {
+    expect(EVENT.moCheckinISO).toMatch(/Z$/);
+  });
+
+  /** Nhãn trên nút và mốc thật phải là cùng một ngày. */
+  it("nhãn ngày khớp với mốc thật", () => {
+    expect(EVENT.moCheckinLabel).toBe("30/08/2026");
   });
 });
 

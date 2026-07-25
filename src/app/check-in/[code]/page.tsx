@@ -4,6 +4,7 @@ import { CheckinPass } from "@/components/CheckinPass";
 import { Footer } from "@/components/Footer";
 import { Header } from "@/components/Header";
 import { checkinUrl } from "@/lib/checkin-url";
+import { daMoCheckin } from "@/lib/countdown";
 import { findByCode, type RegistrationRow } from "@/lib/supabase";
 import { isValidCheckinCode } from "@/lib/validation";
 
@@ -43,6 +44,19 @@ export default async function CheckinPage({
 }) {
   const { code: raw } = await params;
   const code = decodeURIComponent(raw).trim().toUpperCase();
+
+  // Đồng hồ đọc MỘT lần ở đây rồi truyền xuống, thay vì để `CheckinPass` tự gọi:
+  // giờ mở check-in phải theo đồng hồ SERVER, không theo đồng hồ máy mẹ (một
+  // điện thoại đặt sai ngày không được mở sớm cái nút này).
+  //
+  // `react-hooks/purity` cấm đọc đồng hồ trong lúc render vì kết quả render sẽ
+  // khác nhau giữa hai lần chạy cùng một props — đúng với component được memo
+  // hoá, nhưng đây là trang `force-dynamic`: nó KHÔNG được tái dùng, mỗi request
+  // dựng lại từ đầu, và "bây giờ là lúc nào" chính là thứ nó cần biết. Bọc lời
+  // gọi vào một hàm ở `lib` cũng làm rule im, nhưng đó là qua mắt bộ phân tích
+  // chứ không phải giải quyết — nên nói thẳng ra ở đây.
+  // eslint-disable-next-line react-hooks/purity -- xem đoạn ngay trên
+  const nowMs = Date.now();
 
   if (!isValidCheckinCode(code)) {
     return (
@@ -100,7 +114,11 @@ export default async function CheckinPage({
 
   return (
     <Shell>
-      <CheckinPass row={row} qrDataUrl={qrDataUrl} />
+      <CheckinPass
+        row={row}
+        qrDataUrl={qrDataUrl}
+        daMoCheckin={daMoCheckin(nowMs)}
+      />
     </Shell>
   );
 }

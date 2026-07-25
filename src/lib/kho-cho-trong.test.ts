@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
+  daHetCho,
   datLaiKho,
   datSauDangKy,
   datTuServer,
@@ -70,5 +71,27 @@ describe("kho-cho-trong", () => {
   it("đọc hai lần liên tiếp trả về CÙNG một tham chiếu", () => {
     datTuServer({ gioiHan: 500, conLai: 137 });
     expect(docKho()).toBe(docKho());
+  });
+});
+
+describe("daHetCho — kho thành quyết định đóng form", () => {
+  it("còn chỗ thì không đóng", () => {
+    expect(daHetCho({ gioiHan: 500, conLai: 1 })).toBeNull();
+    expect(daHetCho({ gioiHan: 500, conLai: 137 })).toBeNull();
+  });
+
+  /** Trả về GIỚI HẠN chứ không phải `true`: câu thông báo phải đọc đúng số đó. */
+  it("hết chỗ thì trả về giới hạn đang áp dụng", () => {
+    expect(daHetCho({ gioiHan: 500, conLai: 0 })).toBe(500);
+    expect(daHetCho({ gioiHan: 550, conLai: 0 })).toBe(550);
+  });
+
+  /**
+   * Chưa biết (chưa gọi API xong, hoặc đọc Sheet hỏng) KHÔNG được coi là hết
+   * chỗ: chặn nhầm mẹ vì mạng chớp một nhịp tệ hơn hẳn hiện thừa một nút sống.
+   */
+  it("chưa biết thì coi như còn chỗ", () => {
+    expect(daHetCho(null)).toBeNull();
+    expect(daHetCho({ gioiHan: 500, conLai: null })).toBeNull();
   });
 });

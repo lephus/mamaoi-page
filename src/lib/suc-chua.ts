@@ -47,6 +47,29 @@ export function sucChua(raw: string | undefined = process.env.EVENT_CAPACITY): n
   return n > 0 ? n : SUC_CHUA_MAC_DINH;
 }
 
+/**
+ * Cờ đóng đăng ký thủ công (`DANG_KY_DA_DAY`): bật là coi như ĐÃ ĐỦ CHỖ, bất kể
+ * Sheet đang đếm ra bao nhiêu.
+ *
+ * Tồn tại vì việc ngưng nhận đơn là một QUYẾT ĐỊNH của khách, không phải hệ quả
+ * của con số: khách chốt "đủ rồi, đóng đi" trong khi Sheet mới có 480 dòng thì
+ * không có cách nào diễn đạt điều đó bằng `EVENT_CAPACITY` mà không nói dối về
+ * giới hạn (hạ xuống 480 là câu từ chối đọc thành "sự kiện đã đủ 480 mẹ").
+ *
+ * Là biến môi trường chứ không phải hằng trong code: ops bật/tắt trên Vercel,
+ * áp dụng ngay, không cần deploy lại — và mở lại cũng nhanh như đóng.
+ *
+ * CHỈ nhận "1"/"true". KHÔNG dùng `Boolean(process.env.X)`: mọi giá trị env đều
+ * là chuỗi, nên `"0"` và `"false"` — đúng hai thứ ops gõ vào để TẮT — đều là
+ * truthy và sẽ đóng đăng ký thay vì mở.
+ */
+export function daDayThuCong(
+  raw: string | undefined = process.env.DANG_KY_DA_DAY,
+): boolean {
+  const s = raw?.trim().toLowerCase();
+  return s === "1" || s === "true";
+}
+
 export type KetQuaSucChua =
   /** Còn chỗ, email chưa có trong Sheet. */
   | "moi"

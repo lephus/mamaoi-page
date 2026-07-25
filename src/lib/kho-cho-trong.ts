@@ -60,4 +60,44 @@ export function datLaiKho(): void {
   soCho = null;
   coSoSauDangKy = false;
   nguoiNghe.clear();
+  dangDoc = null;
+}
+
+/**
+ * Nhiều mảnh trên trang cùng cần con số này (widget "Còn N/500 chỗ", nút CTA,
+ * form đăng ký), nhưng chỉ được gọi API MỘT lần cho mỗi lượt mở trang — nhớ
+ * promise ở cấp module để mọi component dùng chung.
+ */
+let dangDoc: Promise<void> | null = null;
+
+/**
+ * Đọc số chỗ từ server đúng một lần rồi đẩy vào kho.
+ *
+ * Nằm ở đây chứ không trong component vì đã có ba nơi cần gọi; để trong một
+ * component thì hai cái còn lại phải import chéo vào nó chỉ để lấy hàm fetch.
+ *
+ * Đọc hỏng thì NUỐT lỗi và không ghi gì: kho giữ nguyên `null` = "chưa biết", và
+ * mọi chỗ dùng đều coi đó là còn chỗ. Chặn nhầm mẹ vì mạng chớp một nhịp tệ hơn
+ * nhiều so với hiện thừa một nút sống.
+ */
+export function taiKhoLanDau(): Promise<void> {
+  dangDoc ??= fetch("/api/cho-trong")
+    .then((res) => (res.ok ? (res.json() as Promise<SoCho>) : null))
+    .then((so) => {
+      // `datTuServer` tự nhường nếu đã có số mới hơn từ lượt đăng ký.
+      if (so) datTuServer(so);
+    })
+    .catch(() => {});
+  return dangDoc;
+}
+
+/**
+ * Đã hết chỗ chưa, theo con số đang giữ trong kho — trả về GIỚI HẠN đang áp dụng
+ * để câu thông báo đọc đúng số đó, hoặc `null` khi chưa biết / vẫn còn chỗ.
+ *
+ * `conLai === 0` là hết chỗ, dù chỗ đó hết vì đủ 500 mã QR hay vì ops bật cờ
+ * đóng thủ công — client không cần phân biệt, cả hai đều là "đừng mời mẹ nữa".
+ */
+export function daHetCho(so: SoCho | null): number | null {
+  return so?.conLai === 0 ? so.gioiHan : null;
 }

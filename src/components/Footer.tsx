@@ -1,6 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
-import { BUILT_BY, SITE } from "@/lib/constants";
+import { BUILT_BY, BUILT_BY_URL, SITE } from "@/lib/constants";
 
 export function Footer() {
   return (
@@ -57,7 +57,16 @@ export function Footer() {
 
       <div className="border-t border-line/60 py-5 text-center text-xs text-ink-faded">
         <p>© {new Date().getFullYear()} {SITE.company}. Bảo lưu mọi quyền.</p>
-        <p className="mt-1">{BUILT_BY}</p>
+        <p className="mt-1">
+          <a
+            href={BUILT_BY_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="hover:text-primary"
+          >
+            {BUILT_BY}
+          </a>
+        </p>
       </div>
     </footer>
   );

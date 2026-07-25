@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { SUC_CHUA_MAC_DINH } from "./constants";
-import { choConLai, ketQuaSucChua, sucChua } from "./suc-chua";
+import { choConLai, daDayThuCong, ketQuaSucChua, sucChua } from "./suc-chua";
 
 describe("sucChua — đọc giới hạn từ env", () => {
   it("không đặt env thì dùng mặc định", () => {
@@ -22,6 +22,30 @@ describe("sucChua — đọc giới hạn từ env", () => {
   it("giá trị rác rơi về mặc định chứ không phải NaN", () => {
     for (const rac of ["abc", "0", "-5", "5.5", "1e3", "500 mẹ", " "]) {
       expect(sucChua(rac)).toBe(SUC_CHUA_MAC_DINH);
+    }
+  });
+});
+
+describe("daDayThuCong — cờ ops đóng đăng ký", () => {
+  it("không đặt env thì đăng ký vẫn mở", () => {
+    expect(daDayThuCong(undefined)).toBe(false);
+    expect(daDayThuCong("")).toBe(false);
+  });
+
+  it("bật bằng 1 hoặc true", () => {
+    for (const bat of ["1", "true", "TRUE", " true ", "True"]) {
+      expect(daDayThuCong(bat)).toBe(true);
+    }
+  });
+
+  /**
+   * Chỗ dễ hỏng nhất của mọi cờ đọc từ env: `Boolean(process.env.X)` coi "0" và
+   * "false" là truthy — đúng hai chuỗi ops gõ vào để TẮT lại đóng sập đăng ký.
+   * Đây là lý do hàm so sánh chuỗi chứ không ép kiểu.
+   */
+  it("mọi giá trị khác đều là TẮT, kể cả 0 và false", () => {
+    for (const tat of ["0", "false", "no", "off", "yes", "on", "abc", " "]) {
+      expect(daDayThuCong(tat)).toBe(false);
     }
   });
 });

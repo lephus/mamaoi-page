@@ -1,12 +1,7 @@
 "use client";
 
 import { useEffect, useSyncExternalStore } from "react";
-import {
-  datTuServer,
-  docKho,
-  theoDoiKho,
-  type SoCho,
-} from "@/lib/kho-cho-trong";
+import { docKho, taiKhoLanDau, theoDoiKho } from "@/lib/kho-cho-trong";
 import { useDaDongDangKy } from "./Countdown";
 
 /**
@@ -25,23 +20,6 @@ import { useDaDongDangKy } from "./Countdown";
  * này vẫn sống, và mẹ bấm quay lại `/` sẽ thấy đúng con số mới.
  */
 
-/**
- * Nhiều chỗ trên trang cùng hiện con số này, nhưng chỉ được gọi API MỘT lần cho
- * mỗi lượt mở trang — nhớ promise ở cấp module để mọi instance dùng chung.
- */
-let dangDoc: Promise<void> | null = null;
-
-function taiLanDau(): Promise<void> {
-  dangDoc ??= fetch("/api/cho-trong")
-    .then((res) => (res.ok ? (res.json() as Promise<SoCho>) : null))
-    .then((so) => {
-      // `datTuServer` tự nhường nếu đã có số mới hơn từ lượt đăng ký.
-      if (so) datTuServer(so);
-    })
-    .catch(() => {});
-  return dangDoc;
-}
-
 export function ChoConLai({ className = "" }: { className?: string }) {
   // Ảnh chụp phía server là `null`: `/` sinh HTML lúc build, không có con số nào
   // đúng để nướng vào đó.
@@ -49,7 +27,7 @@ export function ChoConLai({ className = "" }: { className?: string }) {
   const daDong = useDaDongDangKy();
 
   useEffect(() => {
-    void taiLanDau();
+    void taiKhoLanDau();
   }, []);
 
   // Chưa có số, đọc hỏng, hoặc đã đóng đăng ký: không hiện gì. Chỗ này thà trống

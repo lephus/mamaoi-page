@@ -15,6 +15,7 @@ export const SITE = {
 
 /** Agency credit in the footer bottom bar. */
 export const BUILT_BY = "Built by Digital Unicorn";
+export const BUILT_BY_URL = "https://digitalunicorn.fr";
 
 export const EVENT = {
   name: "Mama Ơi Day – Hành trình 1 năm đầu đời cùng con",
@@ -42,6 +43,22 @@ export const EVENT = {
    * server đóng trễ 7 tiếng và lệch hẳn với đồng hồ trên máy mẹ.
    */
   dongDangKyISO: "2026-08-30T17:00:00.000Z",
+  /**
+   * Giờ MỞ check-in: 00:00 ngày 30/08/2026 giờ VN (UTC+7), tức đầu ngày sự kiện.
+   *
+   * Có mốc này vì mẹ nhận email kèm mã QR ngay sau khi đăng ký — trước sự kiện
+   * hơn một tháng. Không khoá thì mẹ mở link ngày hôm đó là tự check-in xong,
+   * và tới cổng vé đã mang dấu "đã check-in" trong khi mẹ chưa hề tới nơi.
+   *
+   * Mở từ ĐẦU ngày chứ không phải 8:00 (giờ đón khách): ban tổ chức cần chạy thử
+   * và mở cổng sớm, khoá tới đúng 8:00 là tự trói mình.
+   *
+   * Viết dạng UTC có `Z` — xem `dongDangKyISO` ngay trên để biết vì sao chuỗi
+   * không mang múi giờ làm lệch 7 tiếng.
+   */
+  moCheckinISO: "2026-08-29T17:00:00.000Z",
+  /** Ngày mở check-in, dạng ngắn cho nhãn nút. */
+  moCheckinLabel: "30/08/2026",
 } as const;
 
 /**
@@ -69,6 +86,11 @@ export const HET_CHO = {
   tieuDe: (soCho: number) => `Rất tiếc, sự kiện đã đủ ${soCho} mẹ.`,
   mo: "Mẹ để lại email để Mama Ơi báo ngay khi có chỗ trống nhé.",
   nut: "Đăng ký nhận tin ứng dụng",
+  /**
+   * Chữ trên các nút CTA "Đăng ký ngay" khi đã hết chỗ — đối xứng với
+   * `DA_DONG.nut`. Ngắn vì phải vừa một nút, kể cả nút trên header điện thoại.
+   */
+  nutCta: (soCho: number) => `Đã đủ ${soCho} mẹ`,
 } as const;
 
 /**
@@ -89,6 +111,22 @@ export const DA_DONG = {
   tieuDe: "Đã đóng đăng ký Mama Ơi Day.",
   mo: "Mẹ để lại email để Mama Ơi báo khi có sự kiện tiếp theo nhé.",
   nutTin: "Đăng ký nhận tin ứng dụng",
+} as const;
+
+/**
+ * Chữ mẹ thấy khi mở vé TRƯỚC ngày sự kiện (xem `EVENT.moCheckinISO`).
+ *
+ * Nói rõ "vé đã sẵn sàng" trước khi nói "chưa mở": mẹ mở link từ email và thấy
+ * một cái nút xám sẽ nghĩ vé mình hỏng, chứ không tự hiểu là mình tới sớm.
+ *
+ * CHƯA được khách duyệt (mọi wording khác trên trang đều là chữ khách duyệt).
+ * Khách sửa chữ thì sửa ở đây, không đụng logic.
+ */
+export const CHUA_MO_CHECKIN = {
+  nut: `Check-in mở ngày ${EVENT.moCheckinLabel}`,
+  mo: "Vé của mẹ đã sẵn sàng. Mẹ giữ lại mã QR này và đưa cho nhân viên tại quầy vào ngày sự kiện nhé.",
+  /** Câu API trả về khi có người gọi thẳng endpoint trước giờ mở. */
+  loi: `Check-in chỉ mở từ ngày ${EVENT.moCheckinLabel}. Mẹ giữ mã QR và đưa cho nhân viên tại quầy nhé.`,
 } as const;
 
 /**
