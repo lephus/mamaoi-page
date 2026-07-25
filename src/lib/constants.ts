@@ -431,6 +431,13 @@ export const PARTNER_TIERS = [
     tier: "Vàng",
     logos: [
       { name: "Hippy", src: "/images/partners/hippy.png" },
+      { name: "BioGaia", src: "/images/partners/biogaia.png" },
+    ],
+  },
+  {
+    tier: "Bạc",
+    logos: [
+      { name: "Sebamed", src: "/images/partners/sebamed.png" },
     ],
   },
   {
@@ -472,6 +479,18 @@ export const EVENT_FAQ = [
     q: "Đi cùng chồng có được không?",
     a: "Được. Mẹ vui lòng tick vào ô \"Đi cùng chồng\" trong form đăng ký để ban tổ chức chuẩn bị đủ chỗ.",
   },
+] as const;
+
+/**
+ * Luật mã QR — đặt ngay trên form đăng ký để mẹ đọc TRƯỚC khi điền, vì hai
+ * dòng giữa quyết định mẹ tick "Đi cùng chồng" hay bảo người đi cùng đăng ký
+ * riêng. Wording khách duyệt, giữ nguyên từng chữ.
+ */
+export const QUY_DINH_MA_QR = [
+  "Mỗi mã QR tương ứng với 01 người tham dự và chỉ sử dụng một lần.",
+  "Ba của bé được chào đón tham gia cùng Mẹ (chung 01 mã QR của Mẹ đã đăng ký). Nếu đi cùng ba, các Mẹ nhớ tích chọn mục “Đi cùng chồng” trong form đăng ký để Ban Tổ Chức chuẩn bị chu đáo.",
+  "Nếu đi cùng ông bà, chị em, bạn bè (ngoài Ba của bé), người đi cùng vui lòng đăng ký riêng để nhận mã QR của mình.",
+  "Mỗi email/số điện thoại đăng ký được 01 mã QR duy nhất.",
 ] as const;
 
 /** 63 tỉnh/thành — used by the Tỉnh/Thành select on the registration form. */

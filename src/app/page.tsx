@@ -22,6 +22,7 @@ import {
   EVENT_STATS,
   EVENT_TIMELINE,
   PARTNER_TIERS,
+  QUY_DINH_MA_QR,
   SUC_CHUA_MAC_DINH,
 } from "@/lib/constants";
 
@@ -830,16 +831,22 @@ export default function EventPage() {
           <div className="mx-auto max-w-6xl">
             <SectionHeading eyebrow="Đối tác" title="Đồng hành cùng Mama Ơi" />
             {/*
-              Logo khách gửi, đọc từ PARTNER_TIERS. Card to dần theo hạng (Kim
-              cương > Vàng > Tiêu chuẩn) để thứ bậc tài trợ đọc ra ngay.
+              Logo khách gửi, đọc từ PARTNER_TIERS. Card nhỏ dần theo hạng (Kim
+              cương > Vàng > Bạc > Tiêu chuẩn) để thứ bậc tài trợ đọc ra ngay.
+              Tra theo TÊN hạng chứ không theo index: thêm/đổi thứ tự hạng trong
+              constants là chuyện sẽ xảy ra, và index lệch thì card mất hẳn size.
             */}
             <div className="mt-12 space-y-10">
-              {PARTNER_TIERS.map((tier, i) => {
-                const box = [
-                  "h-28 w-56 sm:h-32 sm:w-72", // Kim cương
-                  "h-32 w-44 sm:h-36 sm:w-52", // Vàng — cao/vuông hơn cho logo square (Hippy)
-                  "h-20 w-40 sm:h-24 sm:w-44", // Tiêu chuẩn
-                ][i];
+              {PARTNER_TIERS.map((tier) => {
+                const box =
+                  {
+                    "Kim cương": "h-28 w-56 sm:h-32 sm:w-72",
+                    // Vàng/Bạc cao hơn Kim cương vì logo hạng này gần vuông
+                    // (Hippy, Sebamed) — box bẹt thì logo bị co lại rất nhỏ.
+                    "Vàng": "h-32 w-44 sm:h-36 sm:w-52",
+                    "Bạc": "h-28 w-40 sm:h-32 sm:w-48",
+                    "Tiêu chuẩn": "h-20 w-40 sm:h-24 sm:w-44",
+                  }[tier.tier] ?? "h-20 w-40 sm:h-24 sm:w-44";
                 const card = (logo: { name: string; src: string }) => (
                   <div
                     className={`flex ${box} items-center justify-center rounded-2xl border border-line bg-white p-4 shadow-sm`}
@@ -919,6 +926,22 @@ export default function EventPage() {
               Điền thông tin bên dưới. Mẹ sẽ nhận email xác nhận kèm mã QR
               check-in.
             </SectionHeading>
+
+            {/* Luật mã QR — canh trái dù heading canh giữa: đây là bốn câu mẹ
+                phải ĐỌC (một câu quyết định có tick "Đi cùng chồng" hay không),
+                mà văn bản dài canh giữa thì mắt khó bắt đầu dòng. */}
+            <Reveal className="mt-6">
+              <ul className="mx-auto max-w-xl space-y-1.5 text-left text-base leading-6 text-ink-faded italic">
+                {QUY_DINH_MA_QR.map((dong) => (
+                  <li key={dong} className="flex gap-2">
+                    <span aria-hidden="true" className="text-primary">
+                      -
+                    </span>
+                    <span>{dong}</span>
+                  </li>
+                ))}
+              </ul>
+            </Reveal>
 
             <div className="mt-10 rounded-3xl bg-white p-6 shadow-[var(--shadow-card)] sm:p-8">
               <RegistrationForm />
