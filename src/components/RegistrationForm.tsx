@@ -188,7 +188,7 @@ function scrollToFirstError() {
 }
 
 /**
- * Khối thay chỗ nút gửi khi form không còn nhận đăng ký nữa — dùng chung cho cả
+ * Khối thay chỗ TOÀN BỘ form khi không còn nhận đăng ký nữa — dùng chung cho cả
  * hai lý do (hết hạn, hết chỗ). Một khuôn duy nhất để hai màn hình đó không trôi
  * lệch nhau về hình thức; chỉ chữ là khác.
  */
@@ -341,6 +341,33 @@ export function RegistrationForm() {
       : {};
   const ring = (k: string) =>
     errors[k] ? "border-danger" : "border-line";
+
+  /*
+   * Hết hạn / hết chỗ: KHÔNG render form nữa, chỉ còn khối thông báo.
+   *
+   * Trước đây chỉ nút gửi bị thay, hai chục ô nhập vẫn đứng nguyên bên trên —
+   * mẹ đọc câu "đã đủ 500 mẹ" xong vẫn thấy một cái form đầy đủ thì hiểu là
+   * form hỏng, hoặc cứ điền tiếp rồi đi tìm nút gửi không tồn tại.
+   *
+   * Đặt SAU toàn bộ hook (kể cả `useDaDongDangKy` ở trên) — return sớm trước
+   * hook là đổi số hook giữa các lượt render, React ném lỗi ngay.
+   *
+   * `role="alert"` nằm trong `ThongBaoDong`: trình đọc màn hình đọc ngay, và
+   * `scrollToFirstError` cuộn tới được vì nó bắt theo đúng selector đó — quan
+   * trọng khi server từ chối lúc mẹ vừa bấm gửi, form biến mất và không còn gì
+   * để cuộn nếu khối này không tự nhận vai trò đó.
+   *
+   * Quá hạn xét TRƯỚC hết chỗ: sự kiện đã qua thì "còn chỗ hay không" không còn
+   * là câu hỏi nữa, và câu mời phải hướng sang sự kiện SAU.
+   */
+  if (daDong) {
+    return <ThongBaoDong tieuDe={DA_DONG.tieuDe} mo={DA_DONG.mo} nut={DA_DONG.nutTin} />;
+  }
+  if (hetCho !== null) {
+    return (
+      <ThongBaoDong tieuDe={HET_CHO.tieuDe(hetCho)} mo={HET_CHO.mo} nut={HET_CHO.nut} />
+    );
+  }
 
   return (
     <form onSubmit={onSubmit} noValidate className="space-y-5">
@@ -645,37 +672,14 @@ export function RegistrationForm() {
         className="absolute left-[-9999px] h-0 w-0 opacity-0"
       />
 
-      {/* Hết hạn / hết chỗ thì bỏ hẳn nút gửi: để nút lại chỉ mời mẹ bấm thêm
-          vài lần nữa rồi nhận đúng câu trả lời đó. `role="alert"` để trình đọc
-          màn hình đọc ngay, và để `scrollToFirstError` cuộn tới — nó bắt theo
-          selector này.
+      <Button type="submit" disabled={submitting} className="w-full">
+        {submitting ? "Đang gửi..." : "Đăng ký ngay"}
+      </Button>
 
-          Quá hạn xét TRƯỚC hết chỗ: sự kiện đã qua thì "còn chỗ hay không" không
-          còn là câu hỏi nữa, và câu mời phải hướng sang sự kiện SAU. */}
-      {daDong ? (
-        <ThongBaoDong
-          tieuDe={DA_DONG.tieuDe}
-          mo={DA_DONG.mo}
-          nut={DA_DONG.nutTin}
-        />
-      ) : hetCho !== null ? (
-        <ThongBaoDong
-          tieuDe={HET_CHO.tieuDe(hetCho)}
-          mo={HET_CHO.mo}
-          nut={HET_CHO.nut}
-        />
-      ) : (
-        <>
-          <Button type="submit" disabled={submitting} className="w-full">
-            {submitting ? "Đang gửi..." : "Đăng ký ngay"}
-          </Button>
-
-          <p className="text-center text-xs leading-4 text-ink-faded">
-            Sự kiện miễn phí, giới hạn {SUC_CHUA_MAC_DINH} mẹ. Mẹ sẽ nhận email xác nhận
-            kèm mã QR check-in.
-          </p>
-        </>
-      )}
+      <p className="text-center text-xs leading-4 text-ink-faded">
+        Sự kiện miễn phí, giới hạn {SUC_CHUA_MAC_DINH} mẹ. Mẹ sẽ nhận email xác nhận
+        kèm mã QR check-in.
+      </p>
     </form>
   );
 }
