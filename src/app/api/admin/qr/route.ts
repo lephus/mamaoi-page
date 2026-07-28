@@ -1,18 +1,20 @@
 import QRCode from "qrcode";
-import { isAdmin } from "@/lib/admin-auth";
 import { checkinUrl } from "@/lib/checkin-url";
 import { isValidCheckinCode } from "@/lib/validation";
 
 /**
  * QR sinh ở server (không ở trình duyệt): tái dùng đúng thư viện `qrcode` mà
  * email đang dùng, không phình bundle admin, và không rủi ro bundle `qrcode`
- * cho browser. Ảnh chỉ chứa URL check-in — nhưng URL đó chính là thứ dùng để
- * check-in, nên route vẫn phải chặn 401 như mọi route admin khác.
+ * cho browser.
+ *
+ * Route này CÔNG KHAI (không `isAdmin()`), dù nằm dưới `/api/admin/`: nó là một
+ * bộ mã hoá thuần `code -> ảnh`, không đọc DB, không trả về dữ liệu mẹ nào. Đầu
+ * vào là mã check-in mà người gọi ĐÃ có, đầu ra là đúng mã đó vẽ thành ảnh của
+ * `checkinUrl(code)` — mà `/check-in/[code]` vốn đã là trang công khai cho mẹ
+ * quét. Chặn 401 ở đây không giấu được gì, chỉ chặn việc dán thẳng link ảnh QR
+ * cho mẹ / cho bên in ấn.
  */
 export async function GET(request: Request) {
-  if (!(await isAdmin())) {
-    return Response.json({ error: "Chưa đăng nhập" }, { status: 401 });
-  }
   const code = new URL(request.url).searchParams.get("code") ?? "";
   if (!isValidCheckinCode(code)) {
     return Response.json({ error: "Mã không hợp lệ" }, { status: 400 });
@@ -26,7 +28,9 @@ export async function GET(request: Request) {
     return new Response(new Uint8Array(png), {
       headers: {
         "Content-Type": "image/png",
-        "Cache-Control": "private, max-age=3600",
+        // Ảnh chỉ phụ thuộc `code` (và base URL) nên cache được ở CDN — vừa
+        // nhanh cho mẹ, vừa chặn việc mỗi lượt quét lại tốn một lần sinh PNG.
+        "Cache-Control": "public, max-age=3600, s-maxage=86400",
       },
     });
   } catch (err) {
