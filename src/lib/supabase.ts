@@ -16,7 +16,12 @@ export type RegistrationRow = {
   sdt: string;
   facebook: string | null;
   tinh_thanh: string;
-  trang_thai: "chuan_bi_mang_thai" | "ivf" | "mang_thai" | "da_sinh";
+  /**
+   * `null` chỉ có ở dòng ops TẠO TAY từ /admin (khi chỉ có email + họ tên).
+   * Mọi lượt đăng ký qua form đều có giá trị — schema bắt buộc. Chỗ hiển thị
+   * phải đi qua `trangThaiLabel`, hàm này đã quy `null` thành "--".
+   */
+  trang_thai: "chuan_bi_mang_thai" | "ivf" | "mang_thai" | "da_sinh" | null;
   thai_tuan: number | null;
   ten_be: string | null;
   /** Dạng "YYYY-MM-DD" — cột `date` của Postgres, không có phần giờ. */
@@ -115,6 +120,45 @@ export async function insertRegistration(data: Registration, code: string): Prom
     .from("registrations")
     .upsert(registrationToRow(data, code, new Date()), { onConflict: "email" });
   if (error) throw new Error(`Supabase insert failed: ${error.message}`);
+}
+
+/**
+ * Dòng đăng ký của một email, hoặc null.
+ *
+ * Dùng bởi cổng chặn trùng của `/api/admin/them-dang-ky`: ops gõ một email đã
+ * có đăng ký thì phải BỊ TỪ CHỐI kèm mã cũ, chứ không được ghi đè — đăng ký thật
+ * của mẹ có SĐT và tỉnh/thành thật, ghi đè bằng bản tạo tay là biến chúng thành
+ * "--" và không có đường lấy lại.
+ *
+ * Email đã được schema hạ về chữ thường trước khi tới đây.
+ */
+export async function findByEmail(email: string): Promise<RegistrationRow | null> {
+  const { data, error } = await db()
+    .from("registrations")
+    .select("*")
+    .eq("email", email)
+    .maybeSingle();
+  if (error) throw new Error(`Supabase findByEmail failed: ${error.message}`);
+  return (data as RegistrationRow | null) ?? null;
+}
+
+/**
+ * Ghi một dòng đăng ký ops tạo tay.
+ *
+ * `insert` THUẦN, không upsert — khác hẳn `insertRegistration` ở trên. Upsert ở
+ * đây nghĩa là gõ trùng một email đã đăng ký sẽ ghi đè SĐT/tỉnh/thành thật của
+ * mẹ thành "--". Cổng chặn trùng ở route đã bắt hầu hết; unique index trên
+ * `email` là lưới cuối cho trường hợp hai tab admin bấm cùng lúc, và nó phải
+ * NÉM LỖI chứ không âm thầm ghi đè.
+ */
+export async function insertRegistrationThuCong(
+  row: Omit<
+    RegistrationRow,
+    "id" | "created_at" | "checked_in" | "checked_in_at" | "checked_in_source"
+  >,
+): Promise<void> {
+  const { error } = await db().from("registrations").insert(row);
+  if (error) throw new Error(`Supabase insert (thủ công) failed: ${error.message}`);
 }
 
 export async function findByCode(code: string): Promise<RegistrationRow | null> {

@@ -601,16 +601,43 @@ const TRANG_THAI_MAP = new Map<string, string>(
   TRANG_THAI.map((t) => [t.value, t.label]),
 );
 
+/**
+ * Chỗ của một thông tin CHƯA HỎI, không phải một thông tin rỗng.
+ *
+ * Dùng cho đăng ký ops tạo tay ở /admin, khi trong tay chỉ có email + họ tên.
+ * Hiện ra chứ không để trống: một ô trắng trong bảng 500 dòng đọc như lỗi hiển
+ * thị, còn "--" nói rõ là chưa ai hỏi mẹ câu đó.
+ */
+export const THIEU = "--";
+
 /** Giá trị lạ trả về chính nó — export không bao giờ được nuốt mất dữ liệu. */
 export function chuDeLabel(value: string): string {
   return CHU_DE_MAP.get(value) ?? value;
 }
 
-export function nguonBietDenLabel(value: string): string {
+/**
+ * Cả mảng chủ đề thành một chuỗi. Mảng RỖNG thành `THIEU`, không thành chuỗi
+ * rỗng: form đăng ký bắt buộc chọn ít nhất một chủ đề, nên rỗng chỉ xảy ra ở
+ * dòng ops tạo tay — đúng nghĩa "chưa hỏi", không phải "mẹ không quan tâm gì".
+ */
+export function chuDeGopLabel(values: readonly string[]): string {
+  if (values.length === 0) return THIEU;
+  return values.map(chuDeLabel).join(", ");
+}
+
+/**
+ * Hai hàm dưới nhận cả `null`: cột `nguon_biet_den` và `trang_thai` để trống ở
+ * dòng ops tạo tay. Quy đổi thành `THIEU` NGAY TẠI ĐÂY chứ không ở từng nơi
+ * hiển thị — bảng admin, modal chi tiết, vé check-in và file Excel đều kết thúc
+ * bằng đúng hai hàm này, nên một chỗ sửa là cả bốn nói cùng một thứ.
+ */
+export function nguonBietDenLabel(value: string | null | undefined): string {
+  if (!value) return THIEU;
   return NGUON_MAP.get(value) ?? value;
 }
 
 /** Nhãn ngắn của tình trạng cho /admin và Excel. Giá trị lạ trả về chính nó. */
-export function trangThaiLabel(value: string): string {
+export function trangThaiLabel(value: string | null | undefined): string {
+  if (!value) return THIEU;
   return TRANG_THAI_MAP.get(value) ?? value;
 }

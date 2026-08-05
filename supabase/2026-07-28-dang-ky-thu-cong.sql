@@ -1,0 +1,19 @@
+-- Cho phép `trang_thai` để trống, phục vụ đăng ký TẠO TAY từ /admin.
+--
+-- Ops thêm một mẹ khi trong tay chỉ có email + họ tên (mẹ đăng ký qua điện
+-- thoại/Zalo/quầy offline, hoặc lượt đăng ký thật bị mất do sự cố). Các cột text
+-- nhận "--"; riêng `trang_thai` là field PHÂN KHÚC có kiểu — nhét "--" hay chọn
+-- đại một giá trị thật ('mang_thai'…) là nói dối đúng cái mà phân khúc sinh ra
+-- để đo. Để trống mới là sự thật: chưa hỏi.
+--
+-- KHÔNG cần đụng CHECK constraint `registrations_trang_thai_check`: CHECK chỉ
+-- chặn khi biểu thức trả FALSE, mà `null in ('mang_thai',...)` trả NULL nên đi
+-- qua. Constraint vẫn giữ nguyên tác dụng với mọi giá trị KHÁC null.
+--
+-- `nguon_biet_den` đã nullable từ trước (file 2026-07-20-form-v2.sql), không
+-- phải làm gì thêm.
+--
+-- CHẠY TAY trong Supabase SQL editor TRƯỚC KHI deploy code mới. Chỉ nới, không
+-- đụng dữ liệu cũ (mọi dòng hiện có đều đã có `trang_thai` hợp lệ), an toàn
+-- chạy lại nhiều lần.
+alter table registrations alter column trang_thai drop not null;

@@ -20,7 +20,12 @@ import { VN_OFFSET_MS } from "./time";
  * định điều đó. Ẩn field ở form chỉ là phép lịch sự; đây mới là hàng rào.
  */
 
-const VN_PHONE = /^(0|\+84)[1-9]\d{8}$/;
+/**
+ * Export để đường tạo tay ở `/admin/them-dang-ky` dùng CHUNG một định nghĩa.
+ * Hai bản sao của "thế nào là số điện thoại hợp lệ" sẽ trôi lệch nhau, và bảng
+ * đăng ký sẽ có hai loại số theo hai luật khác nhau mà không ai biết.
+ */
+export const VN_PHONE = /^(0|\+84)[1-9]\d{8}$/;
 
 /**
  * Số tháng tròn từ ngày sinh tới mốc. Chỉ đếm tháng ĐÃ QUA đủ ngày: bé sinh

@@ -3,6 +3,7 @@ import {
   CHUA_MO_CHECKIN,
   EVENT,
   GIO_MO_CHECK_IN,
+  THIEU,
   trangThaiLabel,
 } from "@/lib/constants";
 import type { RegistrationRow } from "@/lib/supabase";
@@ -175,10 +176,17 @@ export function CheckinPass({
           </div>
         </div>
 
-        {/* Thông tin đăng ký */}
+        {/* Thông tin đăng ký.
+            Ô "--" bị ẨN ở đây, khác hẳn /admin và file Excel nơi nó phải hiện.
+            Đây là trang MẸ đọc, và việc của nó là tấm QR — "Tình trạng: --" chỉ
+            làm mẹ tưởng vé mình hỏng. Dòng "--" chỉ có ở đăng ký ops tạo tay,
+            nơi thông tin đó chưa từng được hỏi. Với ops thì "chưa hỏi" là thông
+            tin cần biết; với mẹ thì không. */}
         <div className="mt-5 divide-y divide-line rounded-2xl bg-cream px-4">
-          <DetailRow label="Tình trạng" value={statusText(row)} />
-          <DetailRow label="Tỉnh/thành" value={row.tinh_thanh} />
+          {row.trang_thai && <DetailRow label="Tình trạng" value={statusText(row)} />}
+          {row.tinh_thanh !== THIEU && (
+            <DetailRow label="Tỉnh/thành" value={row.tinh_thanh} />
+          )}
           {daSinh && beName && <DetailRow label="Bé" value={beName} />}
           {daSinh && row.be_ngay_sinh && (
             <DetailRow label="Ngày sinh bé" value={ngayVN(row.be_ngay_sinh)} />

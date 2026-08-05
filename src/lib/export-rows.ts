@@ -1,4 +1,4 @@
-import { chuDeLabel, nguonBietDenLabel, trangThaiLabel } from "./constants";
+import { chuDeGopLabel, nguonBietDenLabel, trangThaiLabel } from "./constants";
 import type { RegistrationRow, WaitlistRow } from "./supabase";
 import { formatCheckinTime, ngayVN } from "./time";
 
@@ -88,9 +88,9 @@ export function rowsToSheet(rows: RegistrationRow[]): {
       ngayVN(r.be_ngay_sinh),
       r.be_gioi_tinh === "nam" ? "Nam" : r.be_gioi_tinh === "nu" ? "Nữ" : "",
       r.be_thang_tuoi ?? "",
-      r.chu_de_quan_tam.map(chuDeLabel).join(", "),
+      chuDeGopLabel(r.chu_de_quan_tam),
       r.chu_de_khac ?? "",
-      r.nguon_biet_den ? nguonBietDenLabel(r.nguon_biet_den) : "",
+      nguonBietDenLabel(r.nguon_biet_den),
       yesNo(r.di_cung_chong),
       yesNo(r.dong_y_nhan_tin),
       r.checkin_code,
