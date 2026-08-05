@@ -46,18 +46,26 @@ describe("choDienLa", () => {
   });
 
   /**
-   * Ngoặc không khớp — thiếu đóng hoặc thiếu mở. Nếu không chặn thì regex
-   * thay thế ở task 2 cũng không khớp, email sẽ mang chữ `{{ten}` nguyên si.
-   * Phải báo chúng giống cách báo chỗ điền sai, để không có "lỗi lặn".
+   * Ngoặc không khớp (cụ thể là {{ hoặc }} từng đôi) — thiếu đóng hoặc thiếu mở.
+   * Nếu không chặn thì regex thay thế ở task 2 cũng không khớp, email sẽ mang chữ
+   * `{{ten}` nguyên si. Phải báo chúng giống cách báo chỗ điền sai, để không có
+   * "lỗi lặn". Nhưng { hay } riêng lẻ là prose thường (CSS, JSON, emoticon), không
+   * phải lỗi — báo chúng sẽ khiến admin bỏ qua cảnh báo.
    */
-  it("ngoặc không khớp → báo stray braces", () => {
-    expect(choDienLa("{ten}}")).toEqual(["{", "}}"]);
-    expect(choDienLa("{{ten}")).toEqual(["{{", "}"]);
+  it("ngoặc không khớp → báo stray {{ hoặc }}", () => {
+    expect(choDienLa("{ten}}")).toEqual(["}}"]);
+    expect(choDienLa("{{ten}")).toEqual(["{{"]);
     expect(choDienLa("{{")).toEqual(["{{"]);
   });
 
-  it("trộn chỗ điền đúng và stray braces → báo riêng từng loại", () => {
+  it("prose bình thường với { hay } riêng lẻ → không cảnh báo", () => {
+    expect(choDienLa("body { color: red }")).toEqual([]);
+    expect(choDienLa(":{")).toEqual([]);
+    expect(choDienLa("Giá: 100k }")).toEqual([]);
+  });
+
+  it("trộn chỗ điền đúng và stray {{ → báo riêng từng loại", () => {
     expect(choDienLa("Chào {{ten}}, điểm {score} tại {{address}}"))
-      .toEqual(["{{address}}", "{", "}"]);
+      .toEqual(["{{address}}"]);
   });
 });

@@ -33,27 +33,20 @@ export function choDienLa(s: string): string[] {
   // Loại bỏ TẤT CẢ cụm `{{...}}` hoàn chỉnh (đúng lẫn sai), rồi kiểm stray braces.
   // Nếu để `{{ten}` hoặc `{ten}}` qua, regex thay thế ở task 2 cũng không khớp,
   // 500 email sẽ mang chữ `{{ten}` nguyên si — lỗi không sửa được.
+  // CHỈ báo {{ hoặc }} từng đôi — các { hay } riêng lẻ là prose thường (CSS, JSON,
+  // emoticon), không phải lỗi. Báo chúng sẽ khiến admin bỏ qua cảnh báo và bỏ lỡ
+  // cái typo `{{ten}` thật — mục đích của hàm sẽ bị phá hoại.
   const cleaned = s.replace(/\{\{[^}]*\}\}/g, "");
 
-  // Tìm {{ hoặc }} từng đôi, và các { hay } riêng lẻ trong chuỗi "sạch".
+  // Tìm {{ hoặc }} trong chuỗi "sạch", bỏ qua { hay } riêng lẻ.
   let i = 0;
   while (i < cleaned.length) {
-    if (cleaned[i] === "{") {
-      if (i + 1 < cleaned.length && cleaned[i + 1] === "{") {
-        la.push("{{");
-        i += 2;
-      } else {
-        la.push("{");
-        i += 1;
-      }
-    } else if (cleaned[i] === "}") {
-      if (i + 1 < cleaned.length && cleaned[i + 1] === "}") {
-        la.push("}}");
-        i += 2;
-      } else {
-        la.push("}");
-        i += 1;
-      }
+    if (cleaned[i] === "{" && i + 1 < cleaned.length && cleaned[i + 1] === "{") {
+      la.push("{{");
+      i += 2;
+    } else if (cleaned[i] === "}" && i + 1 < cleaned.length && cleaned[i + 1] === "}") {
+      la.push("}}");
+      i += 2;
     } else {
       i += 1;
     }
