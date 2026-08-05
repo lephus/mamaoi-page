@@ -174,7 +174,12 @@ export async function existingCheckinCode(email: string): Promise<string | null>
   return typeof code === "string" && code.length > 0 ? code : null;
 }
 
-function escapeHtml(s: string): string {
+/**
+ * Năm khai báo dưới đây được export để `mail-hang-loat.ts` dựng email gửi hàng
+ * loạt bằng ĐÚNG khung này. Dựng khung thứ hai ở file khác là mầm mống hai email
+ * cùng thương hiệu mà trông khác nhau, và không ai phát hiện cho tới khi mẹ hỏi.
+ */
+export function escapeHtml(s: string): string {
   return s.replace(
     /[&<>"']/g,
     (c) =>
@@ -190,7 +195,7 @@ function escapeHtml(s: string): string {
  * tên hai lần liên tiếp. Bỏ trống = giữ nguyên chữ ký cũ, nên mail xác nhận
  * đang chạy production không đổi một ký tự nào.
  */
-function shell(inner: string, footnote: string, kyTen?: string): string {
+export function shell(inner: string, footnote: string, kyTen?: string): string {
   // Styles are inlined because email clients strip <style> blocks.
   return `
 <div style="margin:0;padding:24px;background:#fdf8f4;font-family:'Nunito',Arial,sans-serif;color:#292929;">
@@ -269,10 +274,10 @@ function nutCheckin(code: string): string {
     </p>`;
 }
 
-const P = 'style="margin:0 0 16px;font-size:16px;line-height:24px;"';
+export const P = 'style="margin:0 0 16px;font-size:16px;line-height:24px;"';
 /** Chữ ký BTC soạn cho hai mẫu gửi lại. `&` phải escape để HTML hợp lệ. */
-const KY_TEN_BTC = "Trân trọng &amp; Cảm ơn,<br>Mama Ơi Team";
-const FOOTNOTE_BTC = `Bạn nhận được email này vì đã đăng ký tham dự ${EVENT.shortName}.`;
+export const KY_TEN_BTC = "Trân trọng &amp; Cảm ơn,<br>Mama Ơi Team";
+export const FOOTNOTE_BTC = `Bạn nhận được email này vì đã đăng ký tham dự ${EVENT.shortName}.`;
 
 /**
  * Nội dung ba mẫu email. Tách khỏi việc GỬI để `/admin/gui-mail` xem trước được
