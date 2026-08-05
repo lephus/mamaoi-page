@@ -70,12 +70,24 @@ export function QuetQrTool() {
 
   const quetTiep = useCallback(() => {
     huyHen();
+    const scanner = scannerRef.current;
+    if (!scanner) {
+      // Không còn scanner để resume — ca hay gặp nhất là nhân viên làm việc
+      // hoàn toàn bằng ô nhập tay (camera bị từ chối quyền hoặc mở lỗi ngay từ
+      // đầu, nên chưa từng có scanner sống). Về "cho" để nút "Bật camera" còn
+      // đó, đừng bỏ nhân viên trước một ô đen không lối ra. KHÔNG tự gọi
+      // batCamera() ở đây: hàm này còn được gọi từ setTimeout (tự quét tiếp
+      // sau màn xanh) — không phải cử chỉ người dùng, iOS Safari sẽ chặn
+      // getUserMedia.
+      setMan({ loai: "cho" });
+      return;
+    }
     setMan({ loai: "quet" });
     // `.start()` resume có thể fail (stream đã bị hệ điều hành thu hồi, quyền
     // camera mất giữa chừng…) — không bắt thì màn hình đứng ở "quet" trong khi
     // camera thật ra đã tắt mà không nói gì. Dọn scanner hỏng rồi trả về "loi"
     // để nhân viên còn thấy ô nhập mã tay ngay bên dưới.
-    scannerRef.current?.start().catch(() => {
+    scanner.start().catch(() => {
       dungScanner();
       setMan({
         loai: "loi",
@@ -87,6 +99,11 @@ export function QuetQrTool() {
   /** Tra mã ở server. Gọi mỗi lượt quét — xem doc `/api/admin/tra-ma`. */
   const traMa = useCallback(
     async (ma: string) => {
+      // Ô nhập tay sống ở MỌI trạng thái, kể cả "xong" — một mẹ khác có thể
+      // gõ mã ngay trong 2 giây màn xanh đang đếm ngược. Không huỷ hẹn ở đây
+      // thì đúng lúc nhân viên đang xem thẻ xác nhận (hoặc lỗi) của mẹ này,
+      // hẹn giờ cũ của mẹ trước bắn ra, kéo màn hình về "quet" giữa chừng.
+      huyHen();
       scannerRef.current?.pause();
       setMan({ loai: "dangTra", ma });
       try {
@@ -111,7 +128,7 @@ export function QuetQrTool() {
         setMan({ loai: "loi", text: "Không kết nối được. Kiểm tra mạng rồi thử lại.", ma });
       }
     },
-    [router],
+    [huyHen, router],
   );
 
   const nhanMa = useCallback(
@@ -254,6 +271,9 @@ export function QuetQrTool() {
       // lại") tạo thêm một scanner mới đè lên mà không tắt cái cũ — rò rỉ y hệt
       // ca `start()` fail ở `batCamera`.
       dungScanner();
+      // Huỷ hẹn giờ tự quét tiếp cùng lý do ở `traMa`: gõ sai ngay trong 2
+      // giây màn xanh không được để hẹn giờ của mẹ trước xoá mất lỗi này.
+      huyHen();
       setMan({ loai: "loi", text: `Mã "${maGoTay.trim()}" không đúng định dạng MO-XXXXXX.` });
       return;
     }
