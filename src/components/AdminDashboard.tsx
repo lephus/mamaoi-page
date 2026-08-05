@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { trangThaiLabel } from "@/lib/constants";
+import { nguonCheckinLabel, trangThaiLabel } from "@/lib/constants";
 import type { RegistrationRow, WaitlistRow } from "@/lib/supabase";
 import { isoToVNLocalInput, vnLocalInputToISO } from "@/lib/time";
 import { AdminDetailModal } from "./AdminDetailModal";
@@ -397,14 +397,23 @@ export function AdminDashboard({
                         </td>
                         <td className="px-4 py-3">
                           {r.checked_in ? (
-                            <input
-                              type="datetime-local"
-                              defaultValue={
-                                r.checked_in_at ? isoToVNLocalInput(r.checked_in_at) : ""
-                              }
-                              onChange={(e) => editTime(r, e.target.value)}
-                              className="rounded-lg border border-line bg-white px-2 py-1 text-xs text-ink focus:outline-none focus:ring-2 focus:ring-primary"
-                            />
+                            <>
+                              <input
+                                type="datetime-local"
+                                defaultValue={
+                                  r.checked_in_at ? isoToVNLocalInput(r.checked_in_at) : ""
+                                }
+                                onChange={(e) => editTime(r, e.target.value)}
+                                className="rounded-lg border border-line bg-white px-2 py-1 text-xs text-ink focus:outline-none focus:ring-2 focus:ring-primary"
+                              />
+                              {/* Chú thích AI ghi cái giờ đang nằm ngay trên —
+                                  đúng câu hỏi người đọc đang có khi nhìn ô này.
+                                  Đặt ở đây thay vì thành cột thứ 8 vì bảng đã
+                                  min-w-[760px] và phải cuộn ngang sẵn. */}
+                              <div className="mt-1 text-xs text-ink-faded">
+                                {nguonCheckinLabel(r.checked_in_source)}
+                              </div>
+                            </>
                           ) : (
                             <span className="text-xs text-ink-placeholder">—</span>
                           )}
