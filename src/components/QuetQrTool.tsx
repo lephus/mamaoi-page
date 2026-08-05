@@ -33,6 +33,19 @@ export function QuetQrTool() {
     manRef.current = man;
   }, [man]);
 
+  // Dừng và giải phóng hẳn scanner đang giữ (nếu có). Gọi ở MỌI lối thoát khỏi
+  // "quet" không phải do đọc mã thành công, và trước khi tạo scanner mới:
+  // `pause()` mà `nhanMa` dùng cho ca đọc-mã-thành-công đã đủ, vì bản thân
+  // thư viện tự tắt stream ~300ms sau đó — nhưng khi `start()` ném lỗi (đúng ca
+  // Safari iOS reject `play()` sau khi stream đã gán vào <video>), qr-scanner
+  // KHÔNG tự dừng stream đó (đã soi trong mã nguồn `qr-scanner.min.js`). Không
+  // destroy tay ở những chỗ này thì đèn camera vẫn sáng dù màn hình đang báo
+  // lỗi — đúng thứ effect dọn dẹp lúc rời trang bên dưới đang cố tránh.
+  const dungScanner = useCallback(() => {
+    scannerRef.current?.destroy();
+    scannerRef.current = null;
+  }, []);
+
   const nhanMa = useCallback((ma: string) => {
     scannerRef.current?.pause();
     setMan({ loai: "docDuoc", ma });
@@ -62,6 +75,11 @@ export function QuetQrTool() {
         return;
       }
 
+      // Dọn instance cũ trước khi tạo cái mới — phòng một lượt "Bật camera"
+      // trước đó đã gán scanner vào ref rồi hỏng giữa chừng mà chưa kịp destroy
+      // (ví dụ đúng nhánh lỗi bên dưới, hoặc ca gõ tay sai lúc đang quét).
+      dungScanner();
+
       const scanner = new QrScanner(
         videoRef.current,
         (kq: { data: string }) => {
@@ -86,6 +104,11 @@ export function QuetQrTool() {
       await scanner.start();
       setMan({ loai: "quet" });
     } catch {
+      // `start()` có thể ném lỗi SAU KHI đã gán MediaStream vào <video>.srcObject
+      // (đúng ca Safari iOS reject `play()`) — thư viện không tự dừng stream
+      // trong nhánh này, nên phải destroy tay, không thì camera vẫn sáng dù
+      // màn hình đang báo lỗi "Không mở được".
+      dungScanner();
       setMan({
         loai: "loi",
         text: "Không mở được camera. Kiểm tra quyền camera trong Cài đặt trình duyệt, hoặc nhập mã bằng tay ở dưới.",
@@ -93,20 +116,24 @@ export function QuetQrTool() {
     } finally {
       setDangBat(false);
     }
-  }, [dangBat, nhanMa]);
+  }, [dangBat, nhanMa, dungScanner]);
 
   // Tắt camera khi rời trang — không để đèn camera sáng suốt buổi.
   useEffect(() => {
     return () => {
-      scannerRef.current?.destroy();
-      scannerRef.current = null;
+      dungScanner();
     };
-  }, []);
+  }, [dungScanner]);
 
   function guiMaGoTay(e: React.FormEvent) {
     e.preventDefault();
     const ma = maTuQr(maGoTay);
     if (!ma) {
+      // Gõ sai ngay lúc camera đang "quet": destroy luôn, không thì stream vẫn
+      // sống dưới màn báo lỗi này, và lượt "Bật camera" kế tiếp (đi từ "Thử
+      // lại") tạo thêm một scanner mới đè lên mà không tắt cái cũ — rò rỉ y hệt
+      // ca `start()` fail ở `batCamera`.
+      dungScanner();
       setMan({ loai: "loi", text: `Mã "${maGoTay.trim()}" không đúng định dạng MO-XXXXXX.` });
       return;
     }
@@ -167,7 +194,18 @@ export function QuetQrTool() {
             <button
               onClick={() => {
                 setMan({ loai: "quet" });
-                void scannerRef.current?.start();
+                // `.start()` resume có thể fail (stream đã bị hệ điều hành thu
+                // hồi, quyền camera mất giữa chừng…) — không bắt thì màn hình
+                // đứng ở "quet" trong khi camera thật ra đã tắt mà không nói gì.
+                // Dọn scanner hỏng rồi trả về "loi" để nhân viên còn thấy ô
+                // nhập mã tay ngay bên dưới.
+                scannerRef.current?.start().catch(() => {
+                  dungScanner();
+                  setMan({
+                    loai: "loi",
+                    text: "Không mở lại được camera. Bấm Thử lại, hoặc nhập mã bằng tay ở dưới.",
+                  });
+                });
               }}
               className="mt-4 w-full rounded-full border border-line px-6 py-3 text-base font-bold text-ink"
             >
