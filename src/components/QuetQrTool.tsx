@@ -18,6 +18,19 @@ type Scanner = {
 /** Bao lâu thì màn báo thành công tự nhường chỗ cho camera. */
 const NGHI_SAU_KHI_XONG_MS = 2000;
 
+// Hạn chờ cho MỌI request của màn này. Wifi hội trường có kiểu hỏng khó chịu
+// hơn "mất mạng": DNS vẫn phân giải, kết nối vẫn mở, rồi treo vô hạn — `fetch`
+// mặc định KHÔNG tự bỏ cuộc. Không có hạn chờ thì màn "dangTra" (không có nút
+// nào của riêng nó) và "dangGhi" (mọi nút trên thẻ đều bị disable) treo cứng,
+// nhân viên chỉ còn ô nhập tay và link "← Danh sách". Có hạn chờ thì cú treo
+// rơi vào đúng nhánh catch sẵn có → hiện lỗi kèm nút "Thử lại".
+//
+// Dùng thẳng `AbortSignal.timeout` chứ không tự dựng AbortController +
+// setTimeout: nó có từ Safari 16.0, trong khi sàn trình duyệt của chính Next 16
+// đã là Safari 16.4 (node_modules/next/dist/docs/03-architecture/supported-browsers.md)
+// — máy nào chạy nổi trang này thì chắc chắn có nó.
+const TIMEOUT_MANG_MS = 15000;
+
 type Man =
   | { loai: "cho" }
   | { loai: "quet" }
@@ -45,17 +58,56 @@ export function QuetQrTool() {
     manRef.current = man;
   }, [man]);
 
+  // Số thứ tự "lượt làm việc": tăng ở ĐẦU mỗi lần tra mã / ghi check-in, và ở
+  // mỗi thao tác mà nhân viên chủ động bỏ lượt đang dở (quét tiếp, gõ tay sai
+  // định dạng). Mỗi lượt nhớ số của mình rồi so lại SAU MỖI await — số đã đổi
+  // nghĩa là màn hình giờ đang thuộc về một lượt khác, phản hồi này về muộn thì
+  // im lặng bỏ, KHÔNG được setMan đè lên.
+  //
+  // Vì sao cần: ô nhập tay sống ở MỌI trạng thái (có chủ đích, xem ghi chú ở
+  // form dưới cùng), nên hai lượt tra hoàn toàn có thể chồng nhau. Nhân viên
+  // quét mẹ A, wifi hội trường treo; chờ mãi không thấy gì nên gõ mã mẹ B, tra
+  // ra ngay, thẻ hiện B; đúng lúc đó phản hồi của A mới về và đè thẻ B thành
+  // thẻ A. Nhân viên bấm "✓ Xác nhận check-in" tin rằng mình đang xác nhận B —
+  // A được check-in, B thì không, và không ai biết cho tới lúc B bị chặn ở cửa.
+  //
+  // Guard PHẢI kiểm lúc ÁP phản hồi, không phải lúc bắn request — y hệt lý do
+  // đã viết dài ở `fetchSeqRef`/`appliedSeqRef` trong AdminDashboard.tsx:
+  // khoảng cách giữa lúc gọi fetch và lúc phản hồi về mới là chỗ lượt khác chen
+  // vào được.
+  const luotRef = useRef(0);
+
   // Dừng và giải phóng hẳn scanner đang giữ (nếu có). Gọi ở MỌI lối thoát khỏi
   // "quet" không phải do đọc mã thành công, và trước khi tạo scanner mới:
   // `pause()` mà `nhanMa` dùng cho ca đọc-mã-thành-công đã đủ, vì bản thân
   // thư viện tự tắt stream ~300ms sau đó — nhưng khi `start()` ném lỗi (đúng ca
   // Safari iOS reject `play()` sau khi stream đã gán vào <video>), qr-scanner
-  // KHÔNG tự dừng stream đó (đã soi trong mã nguồn `qr-scanner.min.js`). Không
-  // destroy tay ở những chỗ này thì đèn camera vẫn sáng dù màn hình đang báo
-  // lỗi — đúng thứ effect dọn dẹp lúc rời trang bên dưới đang cố tránh.
+  // KHÔNG tự dừng stream đó.
+  //
+  // Và `destroy()` KHÔNG dọn hộ được ca đó, dù nghe tên thì tưởng là có. Soi
+  // `qr-scanner.min.js` 1.4.2:
+  //
+  //   start(){ ... catch(a){ if(!this._paused) throw this._active=!1, a; } }
+  //   stop(){ this.pause(); this._active=!1 }
+  //   pause(){ this._paused=!0; if(!this._active) return !0; /* dọn stream ở dưới */ }
+  //
+  // `start()` ném lỗi thì nó tự đặt `_active = false` TRƯỚC khi ném. Sau đó
+  // `destroy()` → `stop()` → `pause()` gặp `!_active` là return ngay, phần dọn
+  // stream nằm phía sau không bao giờ chạy. Kết quả: `<video>.srcObject` vẫn
+  // giữ một MediaStream sống, đèn camera trên điện thoại RIÊNG của nhân viên
+  // vẫn sáng, và tệ hơn: lượt "Bật camera" kế tiếp dựng scanner mới trên đúng
+  // thẻ <video> này, `start()` thấy `srcObject` còn đó nên chỉ `play()` lại
+  // stream CŨ, không hề gọi getUserMedia lần nữa — nếu stream cũ đã chết thì
+  // "Thử lại" chỉ phát lại cái xác đó, chỉ tải lại trang mới thoát được. Nên
+  // phải tự tay tắt track ở đây, đừng tin `destroy()`.
   const dungScanner = useCallback(() => {
     scannerRef.current?.destroy();
     scannerRef.current = null;
+    const video = videoRef.current;
+    if (video && video.srcObject instanceof MediaStream) {
+      video.srcObject.getTracks().forEach((track) => track.stop());
+      video.srcObject = null;
+    }
   }, []);
 
   const router = useRouter();
@@ -70,6 +122,10 @@ export function QuetQrTool() {
 
   const quetTiep = useCallback(() => {
     huyHen();
+    // Quay lại camera là "bỏ lượt đang dở": nếu còn một lần tra/ghi đang bay,
+    // phản hồi của nó không được phép kéo màn hình về thẻ xác nhận cũ khi
+    // nhân viên đã chuyển sang quét mẹ khác.
+    luotRef.current += 1;
     const scanner = scannerRef.current;
     if (!scanner) {
       // Không còn scanner để resume — ca hay gặp nhất là nhân viên làm việc
@@ -105,9 +161,16 @@ export function QuetQrTool() {
       // hẹn giờ cũ của mẹ trước bắn ra, kéo màn hình về "quet" giữa chừng.
       huyHen();
       scannerRef.current?.pause();
+      const luot = ++luotRef.current;
       setMan({ loai: "dangTra", ma });
       try {
-        const res = await fetch(`/api/admin/tra-ma?code=${encodeURIComponent(ma)}`);
+        const res = await fetch(`/api/admin/tra-ma?code=${encodeURIComponent(ma)}`, {
+          signal: AbortSignal.timeout(TIMEOUT_MANG_MS),
+        });
+        // Hàng cũ về muộn (xem `luotRef`) — kể cả nhánh 401: phiên hết hạn thật
+        // thì lượt mới nhất cũng sẽ 401, đừng để một phản hồi cũ đá nhân viên
+        // ra trang đăng nhập giữa lúc thẻ của mẹ khác đang hiện.
+        if (luotRef.current !== luot) return;
         if (res.status === 401) {
           router.replace("/admin/login");
           return;
@@ -121,10 +184,14 @@ export function QuetQrTool() {
           return;
         }
         const data = (await res.json()) as { row: ThongTinQuet };
+        // Đọc body cũng là một await — lượt khác chen vào được ở đây nữa.
+        if (luotRef.current !== luot) return;
         setMan({ loai: "xacNhan", row: data.row });
       } catch {
+        if (luotRef.current !== luot) return;
         // Giữ `ma` để nút "Thử lại" tra đúng mã đó — mẹ không phải giơ điện
-        // thoại lên lần nữa chỉ vì wifi hội trường rớt một nhịp.
+        // thoại lên lần nữa chỉ vì wifi hội trường rớt một nhịp. Quá hạn chờ
+        // TIMEOUT_MANG_MS cũng rơi vào đây (AbortSignal.timeout reject).
         setMan({ loai: "loi", text: "Không kết nối được. Kiểm tra mạng rồi thử lại.", ma });
       }
     },
@@ -147,6 +214,7 @@ export function QuetQrTool() {
    */
   const ghiCheckin = useCallback(
     async (row: ThongTinQuet) => {
+      const luot = ++luotRef.current;
       setMan({ loai: "dangGhi", row });
       try {
         const res = await fetch("/api/admin/checkin", {
@@ -157,7 +225,12 @@ export function QuetQrTool() {
             checkedIn: true,
             checkedInAt: new Date().toISOString(),
           }),
+          signal: AbortSignal.timeout(TIMEOUT_MANG_MS),
         });
+        // Hàng cũ về muộn (xem `luotRef`). Bỏ áp CHỨ KHÔNG bỏ ghi: request đã
+        // tới server rồi, mẹ này vẫn được check-in — chỉ là màn hình giờ thuộc
+        // về mẹ khác nên không được giật màn xanh của lượt này lên đè.
+        if (luotRef.current !== luot) return;
         if (res.status === 401) {
           router.replace("/admin/login");
           return;
@@ -175,6 +248,7 @@ export function QuetQrTool() {
         setMan({ loai: "xong", hoTen: row.ho_ten });
         hensRef.current = setTimeout(quetTiep, NGHI_SAU_KHI_XONG_MS);
       } catch {
+        if (luotRef.current !== luot) return;
         setMan({
           loai: "loi",
           text: "Không kết nối được. Chưa ghi được check-in — bấm Thử lại.",
@@ -201,13 +275,14 @@ export function QuetQrTool() {
     try {
       const { default: QrScanner } = await import("qr-scanner");
 
-      if (!(await QrScanner.hasCamera())) {
-        setMan({
-          loai: "loi",
-          text: "Máy này không có camera dùng được. Nhập mã bằng tay ở dưới.",
-        });
-        return;
-      }
+      // KHÔNG chặn trước bằng `QrScanner.hasCamera()`. Hàm đó chỉ lọc
+      // `enumerateDevices()` theo kind === "videoinput", KHÔNG gọi getUserMedia
+      // trước — mà WebKit giấu bớt danh sách thiết bị khi origin chưa từng được
+      // cấp quyền quay. Trên một iPhone mới tinh nó rất dễ trả về rỗng, và nhân
+      // viên nhận câu "Máy này không có camera dùng được" trên chiếc máy đang
+      // có camera sờ sờ, rồi phải gõ tay suốt ca. Cứ để `start()` chạy: nó hỏng
+      // thì nhánh catch bên dưới đã có sẵn thông báo đúng việc (kiểm tra quyền
+      // camera) cùng đường thoát gõ tay y hệt.
 
       // Dọn instance cũ trước khi tạo cái mới — phòng một lượt "Bật camera"
       // trước đó đã gán scanner vào ref rồi hỏng giữa chừng mà chưa kịp destroy
@@ -235,13 +310,29 @@ export function QuetQrTool() {
         },
       );
       scannerRef.current = scanner as unknown as Scanner;
-      await scanner.start();
+      // Chuyển sang "quet" TRƯỚC `start()`, rồi lùi về "loi" ở catch nếu hỏng —
+      // KHÔNG phải sau, dù đọc xuôi tai hơn (`quetTiep` cũng theo thứ tự này).
+      // Khung <video> nằm trong một div mang class `hidden` khi màn chưa phải
+      // "quet", nên start() ở thứ tự cũ luôn chạy trên một <video> đang
+      // display:none. qr-scanner CÓ chốt chặn cho đúng ca này, nhưng nó soi
+      // `getComputedStyle($video)` — chính thẻ video, không phải cha nó — mà
+      // thẻ video tự nó vẫn `display: block`, nên chốt chặn im lặng không nổ.
+      // Hậu quả: `_onPlay` đo offsetWidth/offsetHeight ra 0 nên khung vàng chỉ
+      // vùng quét thành 0×0 (chỉ tính lại khi resize/loadedmetadata — đều đã
+      // bắn xong lúc div bỏ `hidden`), và trên Safari iOS thì playback của một
+      // <video> không được vẽ hay bị dừng thẳng (đúng thứ cảnh báo trong thư
+      // viện nói tới), `_scanFrame` gặp `$video.paused` là thoát — nhân viên
+      // nhìn một ô đen ở màn "quet" mà KHÔNG có lỗi nào hiện ra.
       setMan({ loai: "quet" });
+      await scanner.start();
     } catch {
+      // Một nhánh lỗi DUY NHẤT cho cả lượt: nạp thư viện hỏng, dựng scanner
+      // hỏng, hay `start()` hỏng đều về đây.
+      //
       // `start()` có thể ném lỗi SAU KHI đã gán MediaStream vào <video>.srcObject
       // (đúng ca Safari iOS reject `play()`) — thư viện không tự dừng stream
-      // trong nhánh này, nên phải destroy tay, không thì camera vẫn sáng dù
-      // màn hình đang báo lỗi "Không mở được".
+      // trong nhánh này, nên phải dungScanner() tay, không thì camera vẫn sáng
+      // dù màn hình đang báo lỗi "Không mở được".
       dungScanner();
       setMan({
         loai: "loi",
@@ -266,14 +357,24 @@ export function QuetQrTool() {
     e.preventDefault();
     const ma = maTuQr(maGoTay);
     if (!ma) {
-      // Gõ sai ngay lúc camera đang "quet": destroy luôn, không thì stream vẫn
-      // sống dưới màn báo lỗi này, và lượt "Bật camera" kế tiếp (đi từ "Thử
-      // lại") tạo thêm một scanner mới đè lên mà không tắt cái cũ — rò rỉ y hệt
-      // ca `start()` fail ở `batCamera`.
-      dungScanner();
+      // CHỈ destroy khi camera đang thật sự chạy. Gõ sai ngay lúc màn là "quet"
+      // thì phải destroy, không thì stream vẫn sống dưới màn báo lỗi này, và
+      // lượt "Bật camera" kế tiếp (đi từ "Thử lại") tạo thêm một scanner mới đè
+      // lên mà không tắt cái cũ — rò rỉ y hệt ca `start()` fail ở `batCamera`.
+      //
+      // Nhưng ở "xong"/"dangTra"/"xacNhan" thì scanner chỉ đang PAUSE, không
+      // quét. Destroy ở đó là bắt nhân viên xin lại quyền camera từ đầu sau MỖI
+      // lần gõ nhầm trên bàn phím điện thoại ngay tại cửa — trong khi chỉ cần
+      // để nó pause là `quetTiep` resume được ngay. (Tiện thể chặn luôn việc
+      // mỗi vòng destroy→dựng lại đẻ thêm một div overlay trong thẻ cha của
+      // <video>: `destroy()` của qr-scanner không gỡ `$overlay` đi.)
+      if (man.loai === "quet") dungScanner();
       // Huỷ hẹn giờ tự quét tiếp cùng lý do ở `traMa`: gõ sai ngay trong 2
       // giây màn xanh không được để hẹn giờ của mẹ trước xoá mất lỗi này.
       huyHen();
+      // Và cũng bỏ luôn lượt tra/ghi đang bay (nếu có) — xem `luotRef`: phản
+      // hồi về muộn không được phép xoá mất thông báo gõ sai này.
+      luotRef.current += 1;
       setMan({ loai: "loi", text: `Mã "${maGoTay.trim()}" không đúng định dạng MO-XXXXXX.` });
       return;
     }
@@ -369,15 +470,16 @@ export function QuetQrTool() {
                 if (ma) {
                   void traMa(ma);
                 } else if (scannerRef.current) {
-                  // Scanner còn sống, chỉ đang pause (ca "Không tìm thấy mã") —
+                  // Scanner còn sống, chỉ đang pause (ca "Không tìm thấy mã",
+                  // và ca gõ tay sai định dạng lúc màn KHÔNG phải "quet") —
                   // resume thẳng, khỏi bắt nhân viên bấm "Bật camera" lại.
                   quetTiep();
                 } else {
-                  // Các lỗi còn lại (mở camera thất bại, gõ tay sai định dạng,
-                  // resume thất bại) đều đã dungScanner() — hết scanner để
-                  // resume, phải xin quyền camera lại từ đầu. Vẫn nằm trong
-                  // đúng cú bấm này nên iOS Safari vẫn tính là cử chỉ người
-                  // dùng hợp lệ cho getUserMedia.
+                  // Các lỗi còn lại (mở camera thất bại, gõ tay sai định dạng
+                  // ngay lúc đang quét, resume thất bại) đều đã dungScanner() —
+                  // hết scanner để resume, phải xin quyền camera lại từ đầu.
+                  // Vẫn nằm trong đúng cú bấm này nên iOS Safari vẫn tính là cử
+                  // chỉ người dùng hợp lệ cho getUserMedia.
                   void batCamera();
                 }
               }}
@@ -484,10 +586,16 @@ function TheXacNhan({
             </p>
           </div>
           {/* "Check-in lại" là nút PHỤ, có chủ đích. Quét trùng vô ý không được
-              phép ghi đè mất giờ đúng — ghi đè phải là hành động cố ý. */}
+              phép ghi đè mất giờ đúng — ghi đè phải là hành động cố ý.
+              Nút chính bên dưới cũng `disabled` khi đang ghi, giống ba nút anh
+              em: bấm nó giữa lúc lượt "Check-in lại" còn bay sẽ nhảy về "quet",
+              rồi phản hồi về sau đó loé màn xanh đè lên camera và bật hẹn giờ
+              tự quét tiếp — chưa kể đó là một lối nữa dẫn vào ca hai lượt ghi
+              chồng nhau. */}
           <button
             onClick={onBoQua}
-            className="mt-4 w-full rounded-full bg-primary px-6 py-3 text-base font-bold text-white"
+            disabled={dangGhi}
+            className="mt-4 w-full rounded-full bg-primary px-6 py-3 text-base font-bold text-white disabled:opacity-60"
           >
             Quét mẹ tiếp theo
           </button>
