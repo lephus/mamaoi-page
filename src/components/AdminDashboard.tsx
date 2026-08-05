@@ -255,6 +255,12 @@ export function AdminDashboard({
           <h1 className="text-2xl font-extrabold text-ink">Mama Ơi — Admin</h1>
           <div className="flex flex-wrap gap-2">
             <Link
+              href="/admin/quet-qr"
+              className="rounded-full bg-primary px-5 py-2.5 text-sm font-semibold text-white hover:bg-primary-hover"
+            >
+              Quét QR
+            </Link>
+            <Link
               href="/admin/them-dang-ky"
               className="rounded-full border border-line bg-white px-5 py-2.5 text-sm font-semibold text-ink hover:bg-primary-faded-hover"
             >
