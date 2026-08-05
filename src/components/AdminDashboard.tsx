@@ -266,6 +266,12 @@ export function AdminDashboard({
             >
               Gửi lại email QR
             </Link>
+            <Link
+              href="/admin/gui-mail-hang-loat"
+              className="rounded-full border border-line bg-white px-5 py-2.5 text-sm font-semibold text-ink hover:bg-primary-faded-hover"
+            >
+              Gửi mail hàng loạt
+            </Link>
             <button
               onClick={logout}
               className="rounded-full border border-line bg-white px-5 py-2.5 text-sm font-semibold text-ink-faded hover:bg-primary-faded-hover"
