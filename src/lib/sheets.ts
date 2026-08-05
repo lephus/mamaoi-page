@@ -23,12 +23,13 @@ import type { Registration } from "./validation";
  * nên tab thiếu / gõ sai tên sẽ làm lượt ghi lỗi — nhưng non-fatal (Brevo giữ
  * lead), route chỉ log cảnh báo.
  *
- * Chủ yếu là append lúc đăng ký. NGOẠI LỆ DUY NHẤT: khi mẹ quét QR check-in,
- * `markCheckedInInSheet` cập nhật TẠI CHỖ ba cột check-in — các cột đăng ký khác
- * không bao giờ bị sửa. Hệ quả đã chấp nhận: mẹ submit hai lần thì Sheet có hai
- * dòng CÙNG một mã (mã của một email được giữ cố định, xem `existingCheckinCode`),
- * và khi mẹ quét QR thì CẢ HAI dòng cùng mã đó đều được đánh dấu check-in. Số
- * liệu chính thức vẫn lấy ở /admin → Xuất Excel.
+ * Chủ yếu là append lúc đăng ký. NGOẠI LỆ DUY NHẤT: check-in (mẹ tự quét QR hoặc
+ * admin thao tác ở /admin) khiến `ghiCheckinVaoSheet` cập nhật TẠI CHỖ ba cột
+ * check-in — các cột đăng ký khác không bao giờ bị sửa. Hệ quả đã chấp nhận: mẹ
+ * submit hai lần thì Sheet có hai dòng CÙNG một mã (mã của một email được giữ cố
+ * định, xem `existingCheckinCode`), và một lượt check-in/xoá check-in thì CẢ HAI
+ * dòng cùng mã đó đều được cập nhật theo. Số liệu chính thức vẫn lấy ở /admin →
+ * Xuất Excel.
  */
 
 const SCOPE = "https://www.googleapis.com/auth/spreadsheets";
@@ -110,8 +111,8 @@ export function hangDbToSheetRow(
     id: "", // rowsToSheet không xuất id — giá trị này không bao giờ được đọc
     created_at: moc.toISOString(), // giờ server, lệch vài ms so với Postgres
     ...hang,
-    // Lúc append, ba cột check-in để rỗng; `markCheckedInInSheet` điền sau khi
-    // mẹ quét QR.
+    // Lúc append, ba cột check-in để rỗng; `ghiCheckinVaoSheet` điền sau khi mẹ
+    // quét QR hoặc admin thao tác ở /admin.
     checked_in: false,
     checked_in_at: null,
     checked_in_source: null,
@@ -404,15 +405,19 @@ export function findCheckinRows(
  * ra từ `headers` (KHÔNG hardcode T/U/V) nên đổi thứ tự cột ở export-rows.ts vẫn
  * ghi đúng ô; cột bị đổi tên → ném lỗi ngay thay vì ghi nhầm ô. Giá trị lấy từ
  * `checkinCells`, dùng chung phép định dạng với file Excel.
+ *
+ * `checkedInAt === null` nghĩa là XOÁ check-in (ops bỏ tick ở /admin): ba ô về
+ * đúng bộ mà `hangDbToSheetRow` ghi cho một dòng vừa append, nên Sheet sạch
+ * hẳn chứ không để lại giờ ma.
  */
 export function buildCheckinUpdate(
   tab: string,
   headers: string[],
   rowNumber: number,
-  checkedInAt: string,
-  source: "qr" | "admin",
+  checkedInAt: string | null,
+  source: "qr" | "admin" | null,
 ): { range: string; values: string[][] }[] {
-  const [da, gio, nguon] = checkinCells(true, checkedInAt, source);
+  const [da, gio, nguon] = checkinCells(checkedInAt !== null, checkedInAt, source);
   const cell = (header: string, value: string) => {
     const i = headers.indexOf(header);
     if (i < 0) throw new Error(`Sheet thiếu cột "${header}"`);
@@ -426,19 +431,25 @@ export function buildCheckinUpdate(
 }
 
 /**
- * Cập nhật ba cột check-in vào MỌI dòng của mẹ trong tab register khi mẹ quét QR
- * — ngoại lệ có chủ đích với "chỉ append" (xem doc đầu file). Đọc cột "Mã
- * check-in", tìm mọi dòng trùng mã (đăng ký lại giữ nguyên mã nên có thể có nhiều
- * dòng), rồi `values:batchUpdate` ba ô cho từng dòng.
+ * Ghi ba cột check-in vào MỌI dòng của mẹ trong tab register — ngoại lệ có chủ
+ * đích với "chỉ append" (xem doc đầu file). Đọc cột "Mã check-in", tìm mọi dòng
+ * trùng mã (đăng ký lại giữ nguyên mã nên có thể có nhiều dòng), rồi
+ * `values:batchUpdate` ba ô cho từng dòng.
+ *
+ * Dùng bởi CẢ HAI đường: mẹ tự quét QR (`/api/check-in`) và admin thao tác ở
+ * /admin (`/api/admin/checkin` — quét hộ, tick tay, sửa giờ, bỏ tick).
+ *
+ * `checkedInAt === null` + `source === null` là lượt XOÁ. Tên hàm nói "ghi"
+ * chứ không nói "mark", vì nó làm cả hai việc.
  *
  * Ném lỗi nếu KHÔNG thấy dòng nào (thường do Sheet append lỗi lúc đăng ký) —
- * route gọi hàm này BẮT lỗi và chỉ log, vì check-in đã ghi xong ở Supabase (nguồn
- * chính thức); Sheet lệch là non-fatal.
+ * mọi nơi gọi hàm này đều BẮT lỗi và chỉ log, vì check-in đã ghi xong ở Supabase
+ * (nguồn chính thức); Sheet lệch là non-fatal.
  */
-export async function markCheckedInInSheet(
+export async function ghiCheckinVaoSheet(
   code: string,
-  checkedInAt: string,
-  source: "qr" | "admin",
+  checkedInAt: string | null,
+  source: "qr" | "admin" | null,
 ): Promise<void> {
   const headers = rowsToSheet([]).headers;
   const codeIdx = headers.indexOf(HEADER_CODE);

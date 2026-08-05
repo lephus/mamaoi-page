@@ -279,6 +279,40 @@ describe("buildCheckinUpdate", () => {
   it("cột bị đổi tên → ném lỗi thay vì ghi nhầm ô", () => {
     expect(() => buildCheckinUpdate("register", ["x", "y"], 5, iso, "qr")).toThrow();
   });
+
+  /**
+   * Bỏ tick ở /admin phải trả ba ô Sheet về ĐÚNG trạng thái của một dòng vừa
+   * append (`hangDbToSheetRow` ghi checked_in: false, at: null, source: null).
+   * Nếu chỉ xoá giờ mà để lại chữ "Có" ở cột "Đã check-in", Sheet sẽ mãi mãi
+   * nói một mẹ đã vào cửa trong khi Supabase nói chưa.
+   */
+  it("xoá check-in: ba ô về đúng trạng thái dòng chưa từng check-in", () => {
+    const byRange = Object.fromEntries(
+      buildCheckinUpdate("register", HEADERS, 5, null, null).map((d) => [
+        d.range,
+        d.values[0][0],
+      ]),
+    );
+    expect(byRange["register!T5"]).toBe("—");
+    expect(byRange["register!U5"]).toBe("");
+    expect(byRange["register!V5"]).toBe("");
+  });
+
+  it("admin check-in hộ: cột nguồn ghi '(Admin CheckIn)'", () => {
+    const byRange = Object.fromEntries(
+      buildCheckinUpdate("register", HEADERS, 5, iso, "admin").map((d) => [
+        d.range,
+        d.values[0][0],
+      ]),
+    );
+    expect(byRange["register!T5"]).toBe("Có");
+    expect(byRange["register!U5"]).toBe("09:15 30/08/2026");
+    expect(byRange["register!V5"]).toBe("(Admin CheckIn)");
+  });
+
+  it("xoá check-in vẫn chỉ đụng đúng ba cột", () => {
+    expect(buildCheckinUpdate("register", HEADERS, 5, null, null)).toHaveLength(3);
+  });
 });
 
 describe("VALUE_INPUT_OPTION", () => {
