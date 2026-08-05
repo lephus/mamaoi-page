@@ -641,3 +641,20 @@ export function trangThaiLabel(value: string | null | undefined): string {
   if (!value) return THIEU;
   return TRANG_THAI_MAP.get(value) ?? value;
 }
+
+/**
+ * Nhãn cột "Nguồn check-in" — dùng chung cho file Excel, Google Sheet, bảng
+ * /admin và modal chi tiết. Bốn nơi, một chỗ khai.
+ *
+ * KHÁC hai hàm ngay trên: `null` ở đây trả CHUỖI RỖNG chứ không phải `THIEU`.
+ * "--" nghĩa là "có hỏi mà chưa có câu trả lời"; mẹ chưa check-in thì không có
+ * gì để nói. Ô trống cũng đúng bằng ô mà `hangDbToSheetRow` ghi cho một dòng
+ * vừa append (sheets.ts) — nhờ vậy "bỏ tick" trả Sheet về đúng trạng thái sạch.
+ */
+export function nguonCheckinLabel(
+  value: "qr" | "admin" | null | undefined,
+): string {
+  if (value === "qr") return "(QR)";
+  if (value === "admin") return "(Admin CheckIn)";
+  return "";
+}

@@ -225,7 +225,43 @@ Tra theo từng lượt quét là cách duy nhất để trạng thái trên th�
 
 **Nhân viên phải đăng nhập `/admin` vào sáng ngày 30/08.** Cookie phiên sống 12 giờ (`login/route.ts:28`); ai đăng nhập từ tối hôm trước sẽ bị đá ra giữa lúc hàng đang dài, và mất luôn camera đang mở.
 
-## 11. Ngoài phạm vi
+## 11. Trạng thái đã biết sau khi code xong (cập nhật 05/08/2026)
+
+Đã triển khai xong trên nhánh `feat/quet-qr-checkin` (11 commit, 293 test xanh).
+Review toàn nhánh đã chạy và các lỗi Critical/Important đã sửa. Dưới đây là những
+gì **cố ý để lại**, ghi ra để không ai tưởng là bỏ sót.
+
+**Ba chỗ SPEC/PLAN NÀY VIẾT SAI, code đã sửa khác đi.** Đừng chép lại từ plan:
+
+1. **`QrScanner.hasCamera()` đã bị BỎ.** Nó gọi `enumerateDevices()` mà chưa xin
+   quyền; WebKit giấu danh sách thiết bị trước khi có quyền, nên iPhone thật sẽ
+   báo "Máy này không có camera dùng được" và khoá cả ca vào ô nhập tay. Để
+   `start()` hỏng rồi báo lỗi thật thì đúng hơn.
+2. **`setMan({loai:"quet"})` phải chạy TRƯỚC `await scanner.start()`.** Khung
+   `<video>` nằm trong thẻ cha có `hidden`; `qr-scanner` có lớp bảo vệ cho Safari
+   nhưng nó đọc `getComputedStyle` của **chính thẻ video**, không đọc thẻ cha —
+   nên bị vô hiệu im lặng, overlay đo 0×0 và iOS nhiều khả năng dừng phát.
+3. **`destroy()` KHÔNG đủ để tắt camera.** `start()` đặt `_active = false` trước
+   khi ném lỗi, nên `destroy()` → `stop()` → `pause()` thoát sớm và không chạy
+   đoạn tắt stream. Phải tự `getTracks().forEach(t => t.stop())` và `srcObject =
+   null`, nếu không lượt "Bật camera" sau sẽ phát lại stream chết.
+
+**Hai điểm chấp nhận sống chung**, đều hỏng theo hướng an toàn:
+
+- `.start().catch()` trong `quetTiep` và hai chỗ `setMan` trong `batCamera` không
+  nằm sau bộ chặn thứ tự phản hồi. Xấu nhất: thẻ của một mẹ bị màn báo lỗi camera
+  đè lên và phải quét lại. **Không bao giờ** check-in nhầm mẹ, **không bao giờ**
+  hiện màn xanh giả.
+- `ghiCheckin` hết 15 giây sẽ báo "Chưa ghi được check-in" kể cả khi server đã ghi
+  xong. Bấm "Thử lại" đọc lại DB và hiện đúng "Đã check-in lúc …".
+
+**Chưa làm:** 13 mục thử tay trên máy thật ở §9 — iPhone thật, Android thật, QR in
+giấy, bật chế độ máy bay. Đây là điều kiện bắt buộc trước 30/08 và không có test
+tự động nào thay được: `vitest.config.ts` chạy `environment: "node"` và chỉ nhận
+`src/**/*.test.ts`, nên toàn bộ component `.tsx` không có test — quyết định có chủ
+đích, xem §9.
+
+## 12. Ngoài phạm vi
 
 - Bảng lịch sử check-in / audit log (quyết định #5).
 - Chế độ offline hoặc hàng đợi ghi khi mất mạng.

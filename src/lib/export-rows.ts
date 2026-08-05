@@ -1,4 +1,9 @@
-import { chuDeGopLabel, nguonBietDenLabel, trangThaiLabel } from "./constants";
+import {
+  chuDeGopLabel,
+  nguonBietDenLabel,
+  nguonCheckinLabel,
+  trangThaiLabel,
+} from "./constants";
 import type { RegistrationRow, WaitlistRow } from "./supabase";
 import { formatCheckinTime, ngayVN } from "./time";
 
@@ -50,19 +55,19 @@ const yesNo = (v: boolean) => (v ? "Có" : "—");
 
 /**
  * Ba ô check-in (Đã check-in, Giờ check-in, Nguồn check-in) — MỘT phép định dạng
- * dùng chung cho cả file Excel (`rowsToSheet`) lẫn lượt cập nhật Sheet khi mẹ quét
- * QR (`markCheckedInInSheet` trong sheets.ts). Hai đường ghi tách rời sẽ trôi lệch
- * nhau, mà Sheet là nơi lệch đó khó phát hiện nhất — nên chỉ được có một chỗ.
+ * dùng chung cho cả file Excel (`rowsToSheet`) lẫn lượt cập nhật Sheet khi check-in
+ * (`ghiCheckinVaoSheet` trong sheets.ts). Hai đường ghi tách rời sẽ trôi lệch nhau,
+ * mà Sheet là nơi lệch đó khó phát hiện nhất — nên chỉ được có một chỗ.
  */
 export function checkinCells(
   checkedIn: boolean,
   checkedInAt: string | null,
-  source: string | null,
+  source: "qr" | "admin" | null,
 ): [string, string, string] {
   return [
     yesNo(checkedIn),
     checkedInAt ? formatCheckinTime(checkedInAt) : "",
-    source ?? "",
+    nguonCheckinLabel(source),
   ];
 }
 

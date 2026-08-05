@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
-import { chuDeGopLabel, nguonBietDenLabel, trangThaiLabel } from "@/lib/constants";
+import { chuDeGopLabel, nguonBietDenLabel, nguonCheckinLabel, trangThaiLabel } from "@/lib/constants";
 import type { RegistrationRow } from "@/lib/supabase";
 import { formatCheckinTime, isoToVNLocalInput, ngayVN } from "@/lib/time";
 
@@ -119,7 +119,7 @@ export function AdminDetailModal({
           <Field label="Đồng ý nhận tin" value={row.dong_y_nhan_tin ? "Có" : "—"} />
           <Field label="Nguồn đăng ký" value={row.nguon} />
           <Field label="Thời điểm đăng ký" value={formatCheckinTime(row.created_at)} />
-          <Field label="Nguồn check-in" value={row.checked_in_source ?? ""} />
+          <Field label="Nguồn check-in" value={nguonCheckinLabel(row.checked_in_source)} />
         </div>
 
         <div className="mt-5 flex flex-wrap items-center gap-3">

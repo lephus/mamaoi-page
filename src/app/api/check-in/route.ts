@@ -1,6 +1,6 @@
 import { CHUA_MO_CHECKIN } from "@/lib/constants";
 import { daMoCheckin } from "@/lib/countdown";
-import { markCheckedInInSheet, sheetsConfigured } from "@/lib/sheets";
+import { ghiCheckinVaoSheet, sheetsConfigured } from "@/lib/sheets";
 import { checkinByCode } from "@/lib/supabase";
 import { isValidCheckinCode } from "@/lib/validation";
 
@@ -53,7 +53,7 @@ export async function POST(request: Request) {
     // (nguồn chính thức /admin); Sheet lệch chỉ log để ops back-fill.
     if (result.status === "ok" && sheetsConfigured()) {
       try {
-        await markCheckedInInSheet(code, result.time, "qr");
+        await ghiCheckinVaoSheet(code, result.time, "qr");
       } catch (err) {
         console.error("[check-in] Sheets update failed:", code, err);
       }
