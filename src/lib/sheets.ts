@@ -88,10 +88,28 @@ export function registrationToSheetRow(
   code: string,
 ): (string | number)[] {
   const now = new Date();
+  return hangDbToSheetRow(registrationToRow(data, code, now), now);
+}
+
+/**
+ * Một hàng DB đã dựng sẵn → đúng 22 ô theo thứ tự cột của file .xlsx.
+ *
+ * Tách ra khỏi `registrationToSheetRow` để đăng ký ops TẠO TAY dùng lại: hàng
+ * của nó do `thuCongToRow` dựng, không có `Registration` nào để truyền vào. Hai
+ * đường ghi vì thế vẫn đi qua CÙNG một phép ánh xạ ra cột — thứ tự cột chỉ được
+ * phép tồn tại một chỗ (HEADERS trong export-rows.ts).
+ */
+export function hangDbToSheetRow(
+  hang: Omit<
+    RegistrationRow,
+    "id" | "created_at" | "checked_in" | "checked_in_at" | "checked_in_source"
+  >,
+  moc: Date = new Date(),
+): (string | number)[] {
   const row: RegistrationRow = {
     id: "", // rowsToSheet không xuất id — giá trị này không bao giờ được đọc
-    created_at: now.toISOString(), // giờ server, lệch vài ms so với Postgres
-    ...registrationToRow(data, code, now),
+    created_at: moc.toISOString(), // giờ server, lệch vài ms so với Postgres
+    ...hang,
     // Lúc append, ba cột check-in để rỗng; `markCheckedInInSheet` điền sau khi
     // mẹ quét QR.
     checked_in: false,
@@ -265,6 +283,23 @@ export async function appendRegistration(
 ): Promise<void> {
   await ensureHeader(REGISTER_TAB, [[NOTE], rowsToSheet([]).headers]);
   await appendValues(REGISTER_TAB, [registrationToSheetRow(data, code)]);
+}
+
+/**
+ * Append một hàng DB dựng sẵn vào tab register — đăng ký ops tạo tay.
+ *
+ * CÓ ghi Sheet chứ không bỏ qua: sức chứa 500 đếm số email khác nhau ở cột Email
+ * của chính tab này (`docSoLieuDangKy`). Không ghi thì mẹ được tạo tay không
+ * chiếm chỗ nào, và con số ops nhìn thấy trên Sheet nói ít hơn số QR đã phát ra.
+ */
+export async function appendRegistrationThuCong(
+  hang: Omit<
+    RegistrationRow,
+    "id" | "created_at" | "checked_in" | "checked_in_at" | "checked_in_source"
+  >,
+): Promise<void> {
+  await ensureHeader(REGISTER_TAB, [[NOTE], rowsToSheet([]).headers]);
+  await appendValues(REGISTER_TAB, [hangDbToSheetRow(hang)]);
 }
 
 export async function appendWaitlist(email: string, dongY: boolean): Promise<void> {

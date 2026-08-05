@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { trangThaiLabel } from "@/lib/constants";
@@ -252,12 +253,32 @@ export function AdminDashboard({
       <div className="mx-auto max-w-6xl px-4 py-8">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <h1 className="text-2xl font-extrabold text-ink">Mama Ơi — Admin</h1>
-          <button
-            onClick={logout}
-            className="rounded-full border border-line bg-white px-5 py-2.5 text-sm font-semibold text-ink-faded hover:bg-primary-faded-hover"
-          >
-            Đăng xuất
-          </button>
+          <div className="flex flex-wrap gap-2">
+            <Link
+              href="/admin/them-dang-ky"
+              className="rounded-full border border-line bg-white px-5 py-2.5 text-sm font-semibold text-ink hover:bg-primary-faded-hover"
+            >
+              + Thêm đăng ký
+            </Link>
+            <Link
+              href="/admin/gui-mail"
+              className="rounded-full border border-line bg-white px-5 py-2.5 text-sm font-semibold text-ink hover:bg-primary-faded-hover"
+            >
+              Gửi lại email QR
+            </Link>
+            <Link
+              href="/admin/gui-mail-hang-loat"
+              className="rounded-full border border-line bg-white px-5 py-2.5 text-sm font-semibold text-ink hover:bg-primary-faded-hover"
+            >
+              Gửi mail hàng loạt
+            </Link>
+            <button
+              onClick={logout}
+              className="rounded-full border border-line bg-white px-5 py-2.5 text-sm font-semibold text-ink-faded hover:bg-primary-faded-hover"
+            >
+              Đăng xuất
+            </button>
+          </div>
         </div>
 
         {/* Hai nguồn đăng ký hoàn toàn khác nhau: mẹ giữ chỗ sự kiện (có mã

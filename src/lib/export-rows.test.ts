@@ -149,9 +149,39 @@ describe("rowsToSheet", () => {
     expect(rows[0][headers.indexOf("Ngày sinh bé")]).toBe("20/01/2026");
   });
 
-  it("chủ đề rỗng thành chuỗi rỗng", () => {
+  // Form bắt buộc chọn ít nhất một chủ đề, nên mảng rỗng CHỈ có ở dòng ops tạo
+  // tay — "--" nói đúng điều đó, còn ô trắng đọc như lỗi xuất file.
+  it("chủ đề rỗng thành '--' (dòng tạo tay), không phải ô trắng", () => {
     const { headers, rows } = rowsToSheet([{ ...base, chu_de_quan_tam: [] }]);
-    expect(rows[0][headers.indexOf("Chủ đề quan tâm")]).toBe("");
+    expect(rows[0][headers.indexOf("Chủ đề quan tâm")]).toBe("--");
+  });
+
+  /**
+   * Dòng ops tạo tay ở /admin: chỉ có email + họ tên, phần còn lại chưa hỏi.
+   * `trang_thai`/`nguon_biet_den` để null (không bịa giá trị phân khúc),
+   * `sdt`/`tinh_thanh` mang "--" vì hai cột đó NOT NULL. Cả bảng phải đọc ra
+   * "--" chứ không ra ô trắng hay chữ "null".
+   */
+  it("dòng tạo tay: mọi ô chưa hỏi đều xuất ra '--'", () => {
+    const { headers, rows } = rowsToSheet([
+      {
+        ...base,
+        sdt: "--",
+        tinh_thanh: "--",
+        trang_thai: null,
+        thai_tuan: null,
+        chu_de_quan_tam: [],
+        nguon_biet_den: null,
+      },
+    ]);
+    for (const cot of ["SĐT", "Thành phố", "Tình trạng", "Chủ đề quan tâm", "Nguồn biết đến"]) {
+      expect(rows[0][headers.indexOf(cot)]).toBe("--");
+    }
+    expect(rows[0]).not.toContain("null");
+    // Cột định danh vẫn phải là dữ liệu thật, không bị "--" nuốt mất.
+    expect(rows[0][headers.indexOf("Họ tên")]).toBe("Nguyễn Thị Lan");
+    expect(rows[0][headers.indexOf("Email")]).toBe("lan@example.com");
+    expect(rows[0][headers.indexOf("Mã check-in")]).toBe("MO-23456A");
   });
 
   it("có 22 cột, 'Chủ đề khác' ngay sau 'Chủ đề quan tâm'", () => {

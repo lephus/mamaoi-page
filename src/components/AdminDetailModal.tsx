@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
-import { chuDeLabel, nguonBietDenLabel, trangThaiLabel } from "@/lib/constants";
+import { chuDeGopLabel, nguonBietDenLabel, trangThaiLabel } from "@/lib/constants";
 import type { RegistrationRow } from "@/lib/supabase";
 import { formatCheckinTime, isoToVNLocalInput, ngayVN } from "@/lib/time";
 
@@ -112,12 +112,9 @@ export function AdminDetailModal({
               />
             </>
           )}
-          <Field label="Chủ đề quan tâm" value={row.chu_de_quan_tam.map(chuDeLabel).join(", ")} />
+          <Field label="Chủ đề quan tâm" value={chuDeGopLabel(row.chu_de_quan_tam)} />
           {row.chu_de_khac != null && <Field label="Chủ đề khác" value={row.chu_de_khac} />}
-          <Field
-            label="Nguồn biết đến"
-            value={row.nguon_biet_den ? nguonBietDenLabel(row.nguon_biet_den) : ""}
-          />
+          <Field label="Nguồn biết đến" value={nguonBietDenLabel(row.nguon_biet_den)} />
           <Field label="Đi cùng chồng" value={row.di_cung_chong ? "Có" : "—"} />
           <Field label="Đồng ý nhận tin" value={row.dong_y_nhan_tin ? "Có" : "—"} />
           <Field label="Nguồn đăng ký" value={row.nguon} />
