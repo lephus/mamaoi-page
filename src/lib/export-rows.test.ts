@@ -105,7 +105,27 @@ describe("rowsToSheet", () => {
       { ...base, checked_in: true, checked_in_at: "2026-08-30T02:30:00.000Z", checked_in_source: "qr" },
     ]);
     expect(rows[0][headers.indexOf("Giờ check-in")]).toBe("09:30 30/08/2026");
-    expect(rows[0][headers.indexOf("Nguồn check-in")]).toBe("qr");
+    expect(rows[0][headers.indexOf("Nguồn check-in")]).toBe("(QR)");
+  });
+
+  it("admin check-in hộ thì cột nguồn ghi '(Admin CheckIn)'", () => {
+    const { headers, rows } = rowsToSheet([
+      {
+        ...base,
+        checked_in: true,
+        checked_in_at: "2026-08-30T02:30:00.000Z",
+        checked_in_source: "admin",
+      },
+    ]);
+    expect(rows[0][headers.indexOf("Nguồn check-in")]).toBe("(Admin CheckIn)");
+  });
+
+  /* Chưa check-in thì ô nguồn phải TRỐNG, không phải "--". Khác hẳn các cột
+     "chưa hỏi" ở trên: mẹ chưa tới quầy thì không có nguồn nào để nói, và ô
+     trống đúng bằng ô của dòng Sheet vừa append. */
+  it("chưa check-in thì cột nguồn để trống, KHÔNG phải '--'", () => {
+    const { headers, rows } = rowsToSheet([base]);
+    expect(rows[0][headers.indexOf("Nguồn check-in")]).toBe("");
   });
 
   it("danh sách rỗng vẫn trả header", () => {

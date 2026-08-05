@@ -231,7 +231,7 @@ describe("buildCheckinUpdate", () => {
     );
     expect(byRange["register!T5"]).toBe("Có");
     expect(byRange["register!U5"]).toBe("09:15 30/08/2026");
-    expect(byRange["register!V5"]).toBe("qr");
+    expect(byRange["register!V5"]).toBe("(QR)");
   });
 
   it("chỉ đụng đúng ba cột check-in, không hơn", () => {

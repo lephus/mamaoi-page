@@ -1,4 +1,9 @@
-import { chuDeGopLabel, nguonBietDenLabel, trangThaiLabel } from "./constants";
+import {
+  chuDeGopLabel,
+  nguonBietDenLabel,
+  nguonCheckinLabel,
+  trangThaiLabel,
+} from "./constants";
 import type { RegistrationRow, WaitlistRow } from "./supabase";
 import { formatCheckinTime, ngayVN } from "./time";
 
@@ -57,12 +62,12 @@ const yesNo = (v: boolean) => (v ? "Có" : "—");
 export function checkinCells(
   checkedIn: boolean,
   checkedInAt: string | null,
-  source: string | null,
+  source: "qr" | "admin" | null,
 ): [string, string, string] {
   return [
     yesNo(checkedIn),
     checkedInAt ? formatCheckinTime(checkedInAt) : "",
-    source ?? "",
+    nguonCheckinLabel(source),
   ];
 }
 
