@@ -1,5 +1,5 @@
-import { describe, expect, it } from "vitest";
-import { noiDungEmail } from "./brevo";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { guiHangLoat, noiDungEmail } from "./brevo";
 import { MAU_THU_TU } from "./mau-email";
 
 const MA = "MO-ABC234";
@@ -94,5 +94,100 @@ describe("noiDungEmail", () => {
     const { html } = noiDungEmail("xacNhan", '<img src=x onerror="alert(1)">', MA);
     expect(html).toContain("&lt;img");
     expect(html).not.toContain("<img src=x");
+  });
+});
+
+describe("guiHangLoat", () => {
+  const goi = vi.fn();
+
+  beforeEach(() => {
+    goi.mockReset();
+    goi.mockResolvedValue({ ok: true, status: 201, text: async () => "" });
+    vi.stubGlobal("fetch", goi);
+    process.env.BREVO_API_KEY = "xkeysib-test";
+    process.env.BREVO_SENDER_EMAIL = "hello@mamaoi.vn";
+    process.env.BREVO_SENDER_NAME = "Mama Ơi";
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  const ban = (n: number) =>
+    Array.from({ length: n }, (_, i) => ({
+      email: `me${i}@example.com`,
+      hoTen: `Mẹ ${i}`,
+      subject: `Tiêu đề ${i}`,
+      html: `<p>Nội dung ${i}</p>`,
+    }));
+
+  /** Đọc body JSON của lượt gọi fetch thứ `i`. */
+  const body = (i: number) => JSON.parse(goi.mock.calls[i][1].body as string);
+
+  it("gửi đúng endpoint transactional của Brevo", async () => {
+    await guiHangLoat(ban(2));
+    expect(goi).toHaveBeenCalledTimes(1);
+    expect(goi.mock.calls[0][0]).toBe("https://api.brevo.com/v3/smtp/email");
+  });
+
+  /**
+   * Tính chất quan trọng nhất của hàm này. Một trường `to` mang 500 địa chỉ là
+   * lộ email của cả 500 mẹ cho nhau — sự cố riêng tư thật, không phải chi tiết
+   * kỹ thuật.
+   */
+  it("mỗi mẹ một messageVersion riêng, mỗi bản đúng MỘT người nhận", async () => {
+    await guiHangLoat(ban(3));
+    const v = body(0).messageVersions;
+    expect(v).toHaveLength(3);
+    for (const [i, ban1] of v.entries()) {
+      expect(ban1.to).toHaveLength(1);
+      expect(ban1.to[0].email).toBe(`me${i}@example.com`);
+      expect(ban1.subject).toBe(`Tiêu đề ${i}`);
+      expect(ban1.htmlContent).toBe(`<p>Nội dung ${i}</p>`);
+    }
+  });
+
+  it("500 mẹ vẫn đúng MỘT lượt gọi — sức chứa sự kiện nằm gọn trong một lô", async () => {
+    expect(await guiHangLoat(ban(500))).toBe(500);
+    expect(goi).toHaveBeenCalledTimes(1);
+  });
+
+  /**
+   * Brevo giới hạn 1000 messageVersions mỗi lượt. Vòng chia lô tồn tại để ngày
+   * nào đó EVENT_CAPACITY được nâng lên thì hệ thống không ÂM THẦM cắt bớt
+   * người nhận — im lặng bỏ rơi 500 mẹ là kiểu hỏng tệ nhất ở đây.
+   */
+  it("1500 mẹ chia đúng 2 lô, không bỏ sót ai", async () => {
+    expect(await guiHangLoat(ban(1500))).toBe(1500);
+    expect(goi).toHaveBeenCalledTimes(2);
+    expect(body(0).messageVersions).toHaveLength(1000);
+    expect(body(1).messageVersions).toHaveLength(500);
+  });
+
+  it("danh sách rỗng thì không gọi Brevo", async () => {
+    expect(await guiHangLoat([])).toBe(0);
+    expect(goi).not.toHaveBeenCalled();
+  });
+
+  it("Brevo từ chối → ném lỗi kèm nguyên văn phản hồi, không báo thành công giả", async () => {
+    goi.mockResolvedValue({
+      ok: false,
+      status: 400,
+      text: async () => '{"message":"Invalid sender"}',
+    });
+    await expect(guiHangLoat(ban(2))).rejects.toThrow("Invalid sender");
+  });
+
+  it("hỏng ở lô thứ hai thì lỗi nói rõ đã gửi được bao nhiêu", async () => {
+    goi
+      .mockResolvedValueOnce({ ok: true, status: 201, text: async () => "" })
+      .mockResolvedValueOnce({ ok: false, status: 500, text: async () => "boom" });
+    await expect(guiHangLoat(ban(1500))).rejects.toThrow("1000/1500");
+  });
+
+  it("thiếu BREVO_SENDER_EMAIL → lỗi rõ ràng, không gọi Brevo", async () => {
+    delete process.env.BREVO_SENDER_EMAIL;
+    await expect(guiHangLoat(ban(1))).rejects.toThrow("BREVO_SENDER_EMAIL");
+    expect(goi).not.toHaveBeenCalled();
   });
 });

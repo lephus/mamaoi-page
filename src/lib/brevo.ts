@@ -408,3 +408,63 @@ export async function sendWaitlistEmail(data: Submission): Promise<void> {
 
   await send({ email: data.email }, `Chào mừng mẹ đến với ${SITE.name}!`, html);
 }
+
+/** Giới hạn messageVersions mỗi lượt gọi — luật của Brevo, không phải con số tuỳ chọn. */
+const TOI_DA_MOI_LO = 1000;
+
+export type BanGuiMot = {
+  email: string;
+  hoTen: string;
+  subject: string;
+  html: string;
+};
+
+/**
+ * Gửi hàng loạt qua API GIAO DỊCH của Brevo, mỗi người nhận một bản riêng.
+ *
+ * KHÔNG dùng `send()` ở trên: nó đi qua SMTP relay, mỗi lần một email tuần tự —
+ * 500 mẹ là 500 lượt bắt tay SMTP, không sống nổi trong giới hạn thời gian một
+ * hàm trên Vercel.
+ *
+ * KHÔNG nhét nhiều địa chỉ vào một trường `to`: làm thế là lộ email của cả 500
+ * mẹ cho nhau. `messageVersions` cho mỗi bản một `to` riêng.
+ *
+ * Chia lô 1000 (giới hạn Brevo). Với sức chứa 500 hiện tại thì luôn đúng một
+ * lượt gọi; vòng lặp tồn tại chỉ để ngày nào đó EVENT_CAPACITY được nâng lên
+ * thì hệ thống không ÂM THẦM cắt bớt người nhận.
+ *
+ * Ném lỗi kèm nguyên văn phản hồi Brevo VÀ số đã gửi được. Báo "đã gửi" khi
+ * chưa gửi được nghĩa là không ai gửi lại, và 500 mẹ không biết tin.
+ */
+export async function guiHangLoat(ban: BanGuiMot[]): Promise<number> {
+  if (ban.length === 0) return 0;
+
+  const senderEmail = process.env.BREVO_SENDER_EMAIL;
+  const senderName = process.env.BREVO_SENDER_NAME ?? SITE.name;
+  if (!senderEmail) throw new Error("BREVO_SENDER_EMAIL chưa được cấu hình");
+
+  let daGui = 0;
+  for (let i = 0; i < ban.length; i += TOI_DA_MOI_LO) {
+    const lo = ban.slice(i, i + TOI_DA_MOI_LO);
+    const res = await brevo("/smtp/email", {
+      sender: { name: senderName, email: senderEmail },
+      // Bản gốc chỉ là chỗ dựa cho payload; mỗi messageVersion tự mang
+      // subject/htmlContent riêng và đó mới là thứ tới hộp thư của mẹ.
+      subject: lo[0].subject,
+      htmlContent: lo[0].html,
+      messageVersions: lo.map((b) => ({
+        to: [{ email: b.email, name: b.hoTen }],
+        subject: b.subject,
+        htmlContent: b.html,
+      })),
+    });
+    if (!res.ok) {
+      const chiTiet = await res.text().catch(() => "");
+      throw new Error(
+        `Brevo từ chối (đã gửi ${daGui}/${ban.length}): ${res.status} ${chiTiet}`.trim(),
+      );
+    }
+    daGui += lo.length;
+  }
+  return daGui;
+}
