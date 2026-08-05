@@ -2,12 +2,21 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { choDienLa } from "@/lib/cho-dien";
 import type { RegistrationRow } from "@/lib/supabase";
 import { boDau } from "@/lib/text";
 
 type KetQua = { ok: boolean; text: string };
+
+/** Bản xem trước gắn kèm đúng bộ nội dung đã dùng để dựng nó — so để biết CŨ. */
+type XemTruoc = { subject: string; html: string; tieuDe: string; noiDung: string; idMau: string };
+
+// Khoá sessionStorage cất bản nháp khi phiên đăng nhập hết hạn giữa chừng lúc
+// admin đang gõ. Một tab (không phải toàn trình duyệt) là đủ — mục tiêu chỉ là
+// sống sót qua một lượt "đăng nhập lại rồi quay lại trang này", không cần bền
+// qua việc đóng tab hay khởi động lại máy.
+const KHOA_NHAP_TAM = "mo-gui-mail-hang-loat-nhap";
 
 export function GuiMailHangLoatTool({
   rows,
@@ -23,9 +32,37 @@ export function GuiMailHangLoatTool({
   const [noiDung, setNoiDung] = useState("");
   const [toiEmail, setToiEmail] = useState(emailMacDinh);
   const [soXacNhan, setSoXacNhan] = useState("");
-  const [xemTruoc, setXemTruoc] = useState<{ subject: string; html: string } | null>(null);
+  const [xemTruoc, setXemTruoc] = useState<XemTruoc | null>(null);
   const [dangChay, setDangChay] = useState<"" | "xem" | "thu" | "that">("");
   const [ketQua, setKetQua] = useState<KetQua | null>(null);
+
+  // Phục hồi bản nháp bị 401 văng mất — CHỈ MỘT LẦN, ngay khi màn hình này mở
+  // (không nhất thiết ngay sau đăng nhập — admin có thể quay lại trang sau).
+  // Xoá khoá ngay sau khi đọc để không phục hồi lặp ở lần mở kế tiếp.
+  //
+  // Đọc qua microtask thay vì gọi setState thẳng trong effect: HTML server
+  // render ra rỗng (sessionStorage không tồn tại ở server) — đọc và áp ngay
+  // trong effect sẽ lệch với lượt hydrate đầu tiên. Trì hoãn một nhịp microtask
+  // để hydrate xong với đúng bản rỗng khớp server trước, rồi mới nạp bản nháp —
+  // giống hệt một lượt fetch cập nhật state sau khi effect đã chạy xong.
+  useEffect(() => {
+    queueMicrotask(() => {
+      try {
+        const raw = sessionStorage.getItem(KHOA_NHAP_TAM);
+        if (!raw) return;
+        sessionStorage.removeItem(KHOA_NHAP_TAM);
+        const nhap = JSON.parse(raw) as { tieuDe?: string; noiDung?: string; ids?: string[] };
+        if (typeof nhap.tieuDe === "string") setTieuDe(nhap.tieuDe);
+        if (typeof nhap.noiDung === "string") setNoiDung(nhap.noiDung);
+        if (Array.isArray(nhap.ids)) {
+          setChon(new Set(nhap.ids.filter((id): id is string => typeof id === "string")));
+        }
+      } catch {
+        // Dữ liệu hỏng hoặc sessionStorage bị chặn (chế độ ẩn danh) — bỏ qua,
+        // mất một bản nháp còn hơn crash cả trang.
+      }
+    });
+  }, []);
 
   const hienThi = useMemo(() => {
     const s = boDau(q.trim());
@@ -41,6 +78,13 @@ export function GuiMailHangLoatTool({
   const duNoiDung = tieuDe.trim() !== "" && noiDung.trim() !== "";
   const sanSang = soChon > 0 && duNoiDung && la.length === 0 && dangChay === "";
   const khopSo = soXacNhan.trim() === String(soChon);
+  // Bản xem trước chỉ còn đúng khi tiêu đề, nội dung VÀ mẹ làm mẫu đều chưa đổi
+  // kể từ lúc dựng nó — sửa một trong ba mà không xem lại thì bản xem trước cũ
+  // không còn phản ánh đúng thứ sắp bay tới hàng trăm hộp thư.
+  const xemCu =
+    xemTruoc !== null &&
+    (xemTruoc.tieuDe !== tieuDe || xemTruoc.noiDung !== noiDung || xemTruoc.idMau !== idMau);
+  const xemMoi = xemTruoc !== null && !xemCu;
 
   function bat(id: string) {
     setChon((cu) => {
@@ -68,19 +112,41 @@ export function GuiMailHangLoatTool({
         }),
       });
       if (res.status === 401) {
+        // Phiên có thể hết hạn giữa lúc admin đang gõ dở (tab để mở qua đêm,
+        // TTL 12h). Mất trắng một bản nháp 5000 ký tự và cả trăm mẹ đã tick
+        // không phải cái giá admin nên trả — cất tạm vào sessionStorage, effect
+        // ở đầu component sẽ phục hồi lại khi trang này mở lần kế tiếp.
+        try {
+          sessionStorage.setItem(
+            KHOA_NHAP_TAM,
+            JSON.stringify({ tieuDe, noiDung, ids: [...chon] }),
+          );
+        } catch {
+          // sessionStorage bị chặn (chế độ ẩn danh, quota đầy) — mất nháp còn
+          // hơn chặn luôn việc đăng nhập lại.
+        }
         router.replace("/admin/login");
         return;
       }
       const data = await res.json();
       if (!res.ok) {
         setKetQua({ ok: false, text: data.error ?? "Thất bại" });
+        // Xem lại thất bại thì bản xem trước CŨ (nếu có) không còn đáng tin —
+        // xoá hẳn, đừng để nó nằm cạnh dòng lỗi đỏ trông như vẫn dùng được.
+        if (che_do === "xem") setXemTruoc(null);
         return;
       }
-      if (che_do === "xem") setXemTruoc({ subject: data.subject, html: data.html });
-      else if (che_do === "thu") setKetQua({ ok: true, text: `Đã gửi thử tới ${toiEmail}` });
-      else {
+      if (che_do === "xem") {
+        setXemTruoc({ subject: data.subject, html: data.html, tieuDe, noiDung, idMau });
+      } else if (che_do === "thu") {
+        setKetQua({ ok: true, text: `Đã gửi thử tới ${toiEmail}` });
+      } else {
         setKetQua({ ok: true, text: `Đã gửi ${data.daGui} email` });
         setSoXacNhan("");
+        // Bỏ chọn hết ngay sau khi gửi: không có cổng chống trùng phía server
+        // (cố tình ngoài phạm vi), nên nút "Gửi thật" tự tắt lại là lớp chắn
+        // DUY NHẤT chống một cú bấm nhầm gửi lặp lại đúng lượt vừa xong.
+        setChon(new Set());
       }
     } catch {
       // KHÔNG nói "chưa gửi": request đã bay đi thì client không biết Brevo đã
@@ -92,6 +158,9 @@ export function GuiMailHangLoatTool({
             ? "Mất kết nối. KHÔNG chắc đã gửi hay chưa — kiểm tra nhật ký Brevo trước khi gửi lại."
             : "Không kết nối được. Thử lại.",
       });
+      // Cùng lý do với nhánh !res.ok ở trên: đừng để bản xem trước cũ đứng
+      // cạnh thông báo lỗi trông như vẫn còn dùng được.
+      if (che_do === "xem") setXemTruoc(null);
     } finally {
       setDangChay("");
     }
@@ -255,11 +324,23 @@ export function GuiMailHangLoatTool({
               <p className="text-sm text-ink">
                 Tiêu đề: <strong>{xemTruoc.subject}</strong>
               </p>
-              <iframe
-                title="Xem trước email"
-                srcDoc={xemTruoc.html}
-                className="mt-2 h-96 w-full rounded-xl border border-line bg-white"
-              />
+              <div className="relative mt-2">
+                {xemCu && (
+                  <p
+                    role="alert"
+                    className="absolute left-1/2 top-3 z-10 -translate-x-1/2 rounded-full border border-danger bg-white px-4 py-1.5 text-xs font-bold text-danger shadow"
+                  >
+                    Bản xem trước đã CŨ — bấm &quot;Xem trước&quot; lại trước khi gửi
+                  </p>
+                )}
+                <iframe
+                  title="Xem trước email"
+                  srcDoc={xemTruoc.html}
+                  className={`h-96 w-full rounded-xl border bg-white ${
+                    xemCu ? "border-danger opacity-50" : "border-line"
+                  }`}
+                />
+              </div>
             </div>
           )}
         </section>
@@ -272,6 +353,16 @@ export function GuiMailHangLoatTool({
           <p className="mt-1 text-sm text-ink-faded">
             Gõ đúng số <strong className="text-ink">{soChon}</strong> vào ô dưới để mở nút gửi.
           </p>
+          {/* Bắt buộc phải có một bản xem trước CÒN MỚI (đúng tiêu đề, nội dung,
+              mẹ làm mẫu hiện tại) mới cho gửi thật — chặn đúng ca sửa nội dung
+              sau khi đã xem trước rồi bấm gửi luôn mà không xem lại. */}
+          {!xemMoi && (
+            <p className="mt-1 text-sm font-semibold text-danger">
+              {xemTruoc === null
+                ? 'Chưa có bản xem trước — bấm "Xem trước" ở trên trước khi gửi thật.'
+                : 'Bản xem trước đã cũ — bấm "Xem trước" lại trước khi gửi thật.'}
+            </p>
+          )}
           <div className="mt-3 flex flex-wrap items-center gap-3">
             <input
               value={soXacNhan}
@@ -283,7 +374,7 @@ export function GuiMailHangLoatTool({
             />
             <button
               onClick={() => void goi("that")}
-              disabled={!sanSang || !khopSo}
+              disabled={!sanSang || !khopSo || !xemMoi}
               className="rounded-full bg-danger px-6 py-3 text-base font-bold text-white disabled:cursor-not-allowed disabled:opacity-50"
             >
               {dangChay === "that" ? "Đang gửi..." : `Gửi cho ${soChon} mẹ`}
