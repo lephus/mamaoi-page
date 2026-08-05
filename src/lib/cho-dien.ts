@@ -24,8 +24,40 @@ const MOI_CHO_DIEN = /\{\{([^}]*)\}\}/g;
  */
 export function choDienLa(s: string): string[] {
   const la: string[] = [];
+
+  // Tìm cụm `{{...}}` không hợp lệ (tên chỗ điền sai).
   for (const m of s.matchAll(MOI_CHO_DIEN)) {
     if (!(CHO_DIEN as readonly string[]).includes(m[1])) la.push(m[0]);
   }
+
+  // Loại bỏ TẤT CẢ cụm `{{...}}` hoàn chỉnh (đúng lẫn sai), rồi kiểm stray braces.
+  // Nếu để `{{ten}` hoặc `{ten}}` qua, regex thay thế ở task 2 cũng không khớp,
+  // 500 email sẽ mang chữ `{{ten}` nguyên si — lỗi không sửa được.
+  const cleaned = s.replace(/\{\{[^}]*\}\}/g, "");
+
+  // Tìm {{ hoặc }} từng đôi, và các { hay } riêng lẻ trong chuỗi "sạch".
+  let i = 0;
+  while (i < cleaned.length) {
+    if (cleaned[i] === "{") {
+      if (i + 1 < cleaned.length && cleaned[i + 1] === "{") {
+        la.push("{{");
+        i += 2;
+      } else {
+        la.push("{");
+        i += 1;
+      }
+    } else if (cleaned[i] === "}") {
+      if (i + 1 < cleaned.length && cleaned[i + 1] === "}") {
+        la.push("}}");
+        i += 2;
+      } else {
+        la.push("}");
+        i += 1;
+      }
+    } else {
+      i += 1;
+    }
+  }
+
   return la;
 }

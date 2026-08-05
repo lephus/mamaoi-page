@@ -44,4 +44,20 @@ describe("choDienLa", () => {
   it("một token sai xuất hiện hai lần thì báo hai lần", () => {
     expect(choDienLa("{{x}} rồi {{x}}")).toEqual(["{{x}}", "{{x}}"]);
   });
+
+  /**
+   * Ngoặc không khớp — thiếu đóng hoặc thiếu mở. Nếu không chặn thì regex
+   * thay thế ở task 2 cũng không khớp, email sẽ mang chữ `{{ten}` nguyên si.
+   * Phải báo chúng giống cách báo chỗ điền sai, để không có "lỗi lặn".
+   */
+  it("ngoặc không khớp → báo stray braces", () => {
+    expect(choDienLa("{ten}}")).toEqual(["{", "}}"]);
+    expect(choDienLa("{{ten}")).toEqual(["{{", "}"]);
+    expect(choDienLa("{{")).toEqual(["{{"]);
+  });
+
+  it("trộn chỗ điền đúng và stray braces → báo riêng từng loại", () => {
+    expect(choDienLa("Chào {{ten}}, điểm {score} tại {{address}}"))
+      .toEqual(["{{address}}", "{", "}"]);
+  });
 });
