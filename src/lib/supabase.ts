@@ -215,10 +215,26 @@ export async function checkinByCode(code: string): Promise<CheckinResult> {
   return { status: "already", name: row.ho_ten, time: row.checked_in_at ?? now };
 }
 
+/**
+ * Danh sách đăng ký cho MỌI màn hình admin — bảng check-in, xuất Excel, gửi mail
+ * hàng loạt, picker gửi lại QR.
+ *
+ * `.eq("duoc_moi", true)` là ĐIỂM NGHẼN DUY NHẤT thực thi danh sách khách mời.
+ * Đặt ở đây thay vì ở từng nơi gọi là có chủ ý: năm chỗ tiêu thụ hàm này, và
+ * quên lọc ở một chỗ nghĩa là một lượt gửi mail hàng loạt bay tới 486 người
+ * không được mời — lỗi không thể thu hồi.
+ *
+ * Lọc ở SQL chứ không ở JS vì `/api/admin/registrations` poll mỗi 5 giây suốt
+ * ngày sự kiện; lọc ở JS là kéo thừa 486 dòng PII mỗi nhịp.
+ *
+ * `findByCode` CỐ Ý không có mệnh đề này: mẹ ngoài danh sách quét QR ở quầy vẫn
+ * phải check-in được. Xem spec 2026-08-06-an-dang-ky-ngoai-danh-sach-design.md §3.
+ */
 export async function listRegistrations(): Promise<RegistrationRow[]> {
   const { data, error } = await db()
     .from("registrations")
     .select("*")
+    .eq("duoc_moi", true)
     .order("created_at", { ascending: true });
   if (error) throw new Error(`Supabase list failed: ${error.message}`);
   return (data as RegistrationRow[]) ?? [];
