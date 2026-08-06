@@ -203,7 +203,8 @@ Mở `/admin`. Expected: vẫn hiện **1003** dòng, không có gì đổi — 
 **Files:**
 - Modify: `src/lib/supabase.ts:10-47` (kiểu `RegistrationRow`), `:85-89` (kiểu trả về `registrationToRow`), `:154-159` (tham số `insertRegistrationThuCong`)
 - Modify: `src/lib/dang-ky-thu-cong.ts:89-95` (kiểu trả về `thuCongToRow`)
-- Test: `src/lib/supabase-rows.test.ts`, `src/lib/dang-ky-thu-cong.test.ts`
+- Modify: `src/lib/sheets.ts:104-107` (`hangDbToSheetRow`) và `:299-302` (`appendRegistrationThuCong`) — **hai `Omit<>` khai độc lập**, phát hiện lúc thực thi. `hangDbToSheetRow` còn dựng lại một `RegistrationRow` đầy đủ ở `:110-123` nên phải cấp giá trị cho trường mới. `rowsToSheet` không đọc `duoc_moi` (Sheet không có khái niệm danh sách khách mời), nên giá trị ở đó là chỗ giữ chỗ, đúng lối `id: ""` đã có sẵn ngay trên.
+- Test: `src/lib/supabase-rows.test.ts`, `src/lib/dang-ky-thu-cong.test.ts`. Thêm `duoc_moi` vào fixture dựng `RegistrationRow` đầy đủ ở `src/lib/export-rows.test.ts:5-29` và `src/lib/sheets.test.ts:242-267`.
 
 **Interfaces:**
 - Consumes: cột `duoc_moi` đã tồn tại trên DB (Task 2).
