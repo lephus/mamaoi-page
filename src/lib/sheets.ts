@@ -8,7 +8,12 @@ import {
   rowsToSheet,
   waitlistToSheet,
 } from "./export-rows";
-import { registrationToRow, type RegistrationRow, type WaitlistRow } from "./supabase";
+import {
+  registrationToRow,
+  type RegistrationInsertRow,
+  type RegistrationRow,
+  type WaitlistRow,
+} from "./supabase";
 import type { Registration } from "./validation";
 
 /**
@@ -101,10 +106,7 @@ export function registrationToSheetRow(
  * phép tồn tại một chỗ (HEADERS trong export-rows.ts).
  */
 export function hangDbToSheetRow(
-  hang: Omit<
-    RegistrationRow,
-    "id" | "created_at" | "checked_in" | "checked_in_at" | "checked_in_source"
-  >,
+  hang: RegistrationInsertRow,
   moc: Date = new Date(),
 ): (string | number)[] {
   const row: RegistrationRow = {
@@ -116,6 +118,9 @@ export function hangDbToSheetRow(
     checked_in: false,
     checked_in_at: null,
     checked_in_source: null,
+    // rowsToSheet không đọc cột này — Sheet không có khái niệm danh sách khách
+    // mời. Giá trị chỉ để thoả kiểu `RegistrationRow` đầy đủ.
+    duoc_moi: true,
   };
   return rowsToSheet([row]).rows[0];
 }
@@ -293,12 +298,7 @@ export async function appendRegistration(
  * của chính tab này (`docSoLieuDangKy`). Không ghi thì mẹ được tạo tay không
  * chiếm chỗ nào, và con số ops nhìn thấy trên Sheet nói ít hơn số QR đã phát ra.
  */
-export async function appendRegistrationThuCong(
-  hang: Omit<
-    RegistrationRow,
-    "id" | "created_at" | "checked_in" | "checked_in_at" | "checked_in_source"
-  >,
-): Promise<void> {
+export async function appendRegistrationThuCong(hang: RegistrationInsertRow): Promise<void> {
   await ensureHeader(REGISTER_TAB, [[NOTE], rowsToSheet([]).headers]);
   await appendValues(REGISTER_TAB, [hangDbToSheetRow(hang)]);
 }

@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { THIEU } from "./constants";
-import type { RegistrationRow } from "./supabase";
+import type { RegistrationInsertRow } from "./supabase";
 import { VN_PHONE } from "./validation";
 
 /**
@@ -86,13 +86,7 @@ export type ThuCong = z.infer<typeof thuCongSchema>;
  * Cũng không nhận `moc: Date` như `registrationToRow`: không có ngày sinh bé thì
  * không có `be_thang_tuoi` để suy ra, nên hàm này thuần tuý và không cần mốc.
  */
-export function thuCongToRow(
-  d: ThuCong,
-  code: string,
-): Omit<
-  RegistrationRow,
-  "id" | "created_at" | "checked_in" | "checked_in_at" | "checked_in_source"
-> {
+export function thuCongToRow(d: ThuCong, code: string): RegistrationInsertRow {
   return {
     checkin_code: code,
     ho_ten: d.hoTen,

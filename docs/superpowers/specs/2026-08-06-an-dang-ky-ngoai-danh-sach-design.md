@@ -111,6 +111,10 @@ Danh sách 518 mã sinh ra từ cột "Mã check-in" của sheet `register`, đ�
 
 Đây là hệ quả trực tiếp của quyết định #2 (vẫn cho check-in) cộng #3 (ẩn hẳn), đã nêu rõ lúc chốt. Nếu về sau thấy vướng, cách gỡ rẻ nhất là thêm một nút gạt "Hiện cả ngoài danh sách" ở client — dữ liệu vẫn còn nguyên trong DB, chỉ là API không trả về.
 
+**Hệ quả kéo theo, chưa nêu ở trên: con số check-in đầu ngày sự kiện KHÔNG còn là số người thật trong hội trường.** `AdminDashboard` tính `checkedInCount` bằng cách đếm `checked_in` trên chính `rows` đã bị lọc (`src/components/AdminDashboard.tsx:75`), rồi hiển thị "Đã check-in: N / 517" trên cùng con số `rows.length` đó (`:323-324`). Một mẹ bị ẩn quét QR ở quầy vẫn check-in được (quyết định #2), nhưng dòng của mẹ ấy không nằm trong `rows` — nên lượt check-in đó không cộng vào N, và mẫu số 517 cũng không đổi. "Đã check-in: N / 517" vì vậy chỉ đúng cho nhóm được mời, không phải tổng số người đã vào cổng.
+
+**Mitigation:** check-in của người bị ẩn VẪN đến được Google Sheet, vì cả hai đường ghi check-in đều mirror sang Sheet KHÔNG ĐIỀU KIỆN theo `duoc_moi` — `/api/check-in/route.ts:56` (mẹ tự quét) và `/api/admin/checkin/route.ts:49-58` (ops quét hộ/tick tay) đều gọi thẳng `ghiCheckinVaoSheet`, hàm này tìm dòng bằng `checkin_code` trên tab `register` chứ không hề biết đến cột `duoc_moi`. Nghĩa là tab `register` của Google Sheet — không phải bảng `/admin` — mới là bản ghi đầy đủ, đúng số người thật đã vào cổng trong ngày sự kiện. Muốn biết tổng số đã check-in thật (kể cả nhóm ẩn), phải đọc cột check-in trên Sheet, không đọc "N / 517" trên `/admin`.
+
 Bản backup `~/Downloads/MAMAOI/supabase-backup-20260806-105631` chụp trước mọi thay đổi này, khôi phục được toàn bộ 1003 dòng nếu cần.
 
 ## 8. Kiểm thử

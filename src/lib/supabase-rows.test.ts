@@ -82,4 +82,15 @@ describe("registrationToRow", () => {
     const r = registrationToRow(mangThai, "MO-ABC234", MOC);
     expect(r.chu_de_khac).toBeNull();
   });
+
+  /**
+   * Cột `duoc_moi` do DB quyết định bằng `default true`, KHÔNG do code. Gửi kèm
+   * nó trong payload là phá hai thứ cùng lúc: dòng ops tạo tay hết mặc định
+   * hiện, và `insertRegistration` (upsert) sẽ bật lại thành hiện một mẹ mà ops
+   * đã cố tình ẩn. `Omit<>` chặn ở tầng kiểu; test này chặn ở tầng chạy thật.
+   */
+  it("KHÔNG gửi duoc_moi lên DB — cột đó do default của Postgres quyết định", () => {
+    expect(registrationToRow(mangThai, "MO-23456A", MOC)).not.toHaveProperty("duoc_moi");
+    expect(registrationToRow(daSinh, "MO-23456A", MOC)).not.toHaveProperty("duoc_moi");
+  });
 });

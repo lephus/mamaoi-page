@@ -44,7 +44,36 @@ export type RegistrationRow = {
   checked_in: boolean;
   checked_in_at: string | null;
   checked_in_source: "qr" | "admin" | null;
+  /**
+   * Có nằm trong danh sách khách mời đã chốt hay không. `false` = ẩn khỏi MỌI
+   * chỗ liệt kê (`listRegistrations`), nhưng vẫn tra được bằng mã
+   * (`findByCode`) nên check-in QR không đổi hành vi.
+   *
+   * DB đặt `default true`, và KHÔNG đường ghi nào được gửi cột này lên — đó là
+   * lý do nó nằm trong `RegistrationInsertRow` bên dưới, dùng ở
+   * `registrationToRow` / `thuCongToRow` / `insertRegistrationThuCong` /
+   * `hangDbToSheetRow` / `appendRegistrationThuCong`. Nhờ vậy dòng ops tạo tay
+   * mặc định hiện, còn một mẹ đã ẩn gửi lại form thì upsert không bật cô ấy
+   * hiện lại.
+   */
+  duoc_moi: boolean;
 };
+
+/**
+ * Hàng ghi MỚI của `registrations` — đủ cột trừ những cột DB tự đặt giá trị,
+ * KHÔNG bao giờ do code gán: `id`/`created_at` (Postgres tự sinh lúc insert),
+ * `checked_in`/`checked_in_at`/`checked_in_source` (chỉ đổi qua các hàm
+ * check-in), và `duoc_moi` (default `true` của Postgres quyết định — xem chú
+ * thích tại chỗ khai báo). Cùng một điểm khai báo cho năm chỗ dựng hàng ghi mới
+ * (`registrationToRow`, `thuCongToRow`, `insertRegistrationThuCong`,
+ * `hangDbToSheetRow`, `appendRegistrationThuCong`) nghĩa là đổi danh sách cột bị
+ * loại trừ chỉ phải sửa một chỗ, và TypeScript chặn NGAY nếu một trong năm chỗ
+ * đó lỡ tay gán `duoc_moi`.
+ */
+export type RegistrationInsertRow = Omit<
+  RegistrationRow,
+  "id" | "created_at" | "checked_in" | "checked_in_at" | "checked_in_source" | "duoc_moi"
+>;
 
 /** Waitlist app: chỉ email + consent. Không có gì để check-in. */
 export type WaitlistRow = {
@@ -86,7 +115,7 @@ export function registrationToRow(
   data: Registration,
   code: string,
   moc: Date,
-): Omit<RegistrationRow, "id" | "created_at" | "checked_in" | "checked_in_at" | "checked_in_source"> {
+): RegistrationInsertRow {
   const daSinh = data.trangThai === "da_sinh";
   return {
     checkin_code: code,
@@ -151,12 +180,7 @@ export async function findByEmail(email: string): Promise<RegistrationRow | null
  * `email` là lưới cuối cho trường hợp hai tab admin bấm cùng lúc, và nó phải
  * NÉM LỖI chứ không âm thầm ghi đè.
  */
-export async function insertRegistrationThuCong(
-  row: Omit<
-    RegistrationRow,
-    "id" | "created_at" | "checked_in" | "checked_in_at" | "checked_in_source"
-  >,
-): Promise<void> {
+export async function insertRegistrationThuCong(row: RegistrationInsertRow): Promise<void> {
   const { error } = await db().from("registrations").insert(row);
   if (error) throw new Error(`Supabase insert (thủ công) failed: ${error.message}`);
 }
@@ -204,10 +228,37 @@ export async function checkinByCode(code: string): Promise<CheckinResult> {
   return { status: "already", name: row.ho_ten, time: row.checked_in_at ?? now };
 }
 
+/**
+ * Danh sách đăng ký cho MỌI màn hình admin — bảng check-in, xuất Excel, gửi mail
+ * hàng loạt, picker gửi lại QR.
+ *
+ * `.eq("duoc_moi", true)` là ĐIỂM NGHẼN DUY NHẤT thực thi danh sách khách mời.
+ * Đặt ở đây thay vì ở từng nơi gọi là có chủ ý: năm chỗ tiêu thụ hàm này, và
+ * quên lọc ở một chỗ nghĩa là một lượt gửi mail hàng loạt bay tới 486 người
+ * không được mời — lỗi không thể thu hồi.
+ *
+ * Lọc ở SQL chứ không ở JS vì `/api/admin/registrations` poll mỗi 5 giây suốt
+ * ngày sự kiện; lọc ở JS là kéo thừa 486 dòng PII mỗi nhịp.
+ *
+ * `findByCode` CỐ Ý không có mệnh đề này: mẹ ngoài danh sách quét QR ở quầy vẫn
+ * phải check-in được. Xem spec 2026-08-06-an-dang-ky-ngoai-danh-sach-design.md §3.
+ *
+ * KHÔNG có `.range()` — không phải bỏ sót, mà project Supabase này đặt
+ * `db-max-rows = 1000` ở tầng PostgREST: một truy vấn `limit=2000` vẫn trả về
+ * `HTTP 200` kèm `content-range: 0-999/*`, bị CẮT NGẦM ở dòng 1000, và
+ * `supabase-js` KHÔNG ném lỗi cho việc này — nó trông y hệt một trang kết quả
+ * đầy đủ. Trước nhánh `duoc_moi`, `/admin` vì vậy từng âm thầm chỉ hiện 1000/1003
+ * dòng; việc lọc còn 517 hôm nay tình cờ dọn sạch triệu chứng đó, không phải sửa
+ * nó. Còn dư khoảng 483 dòng trước khi chạm lại trần 1000 — vượt trần đúng lúc số
+ * đăng ký lớn nhất (gần ngày sự kiện) là lúc cắt ngầm gây thiệt hại nặng nhất.
+ * Có nên thêm phân trang hay không là quyết định con người chưa đưa ra; comment
+ * này chỉ để lần sau ai đó không phải dò lại từ đầu.
+ */
 export async function listRegistrations(): Promise<RegistrationRow[]> {
   const { data, error } = await db()
     .from("registrations")
     .select("*")
+    .eq("duoc_moi", true)
     .order("created_at", { ascending: true });
   if (error) throw new Error(`Supabase list failed: ${error.message}`);
   return (data as RegistrationRow[]) ?? [];
@@ -243,6 +294,15 @@ export async function insertWaitlist(email: string, dongY: boolean): Promise<voi
   if (error) throw new Error(`Supabase waitlist insert failed: ${error.message}`);
 }
 
+/**
+ * KHÔNG có `.range()` — cùng cái trần đã ghi ở `listRegistrations()`: project
+ * Supabase này đặt `db-max-rows = 1000` ở PostgREST, một truy vấn không giới
+ * hạn vẫn trả `HTTP 200` (kèm `content-range` báo bị cắt) chứ không ném lỗi, và
+ * `supabase-js` chuyển tiếp y nguyên — gọi hàm này không cách nào tự biết dữ
+ * liệu đã bị cắt. Bảng `waitlist` hiện 414 dòng, còn dư khoảng 586 trước khi
+ * chạm trần và bắt đầu âm thầm mất dòng cuối. Thêm phân trang hay không là
+ * quyết định con người chưa đưa ra; đây chỉ là mốc để lần sau khỏi dò lại.
+ */
 export async function listWaitlist(): Promise<WaitlistRow[]> {
   const { data, error } = await db()
     .from("waitlist")
