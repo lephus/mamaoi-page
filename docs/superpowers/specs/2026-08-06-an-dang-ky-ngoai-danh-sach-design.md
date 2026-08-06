@@ -81,7 +81,7 @@ Không cần index: bảng 1003 dòng.
 | File | Thay đổi |
 |---|---|
 | `src/lib/supabase.ts` | Thêm `duoc_moi: boolean` vào `RegistrationRow`. Thêm `"duoc_moi"` vào danh sách `Omit<>` ở kiểu trả về của `registrationToRow` và ở tham số của `insertRegistrationThuCong`. Thêm `.eq("duoc_moi", true)` vào `listRegistrations()`. |
-| `src/lib/dang-ky-thu-cong.ts` | Thêm `"duoc_moi"` vào `Omit<>` của kiểu trả về `dangKyThuCongToRow`. Không thêm giá trị vào object trả về. |
+| `src/lib/dang-ky-thu-cong.ts` | Thêm `"duoc_moi"` vào `Omit<>` của kiểu trả về `thuCongToRow`. Không thêm giá trị vào object trả về. |
 | `supabase/2026-08-06-duoc-moi.sql` | **File mới.** Xem §6. |
 
 Đưa `duoc_moi` vào `Omit<>` (thay vì gán giá trị) là cố ý: TypeScript sẽ **chặn** bất kỳ ai về sau lỡ tay gửi cột này lên trong payload insert, giữ cho default của DB luôn là thứ quyết định.
@@ -122,7 +122,7 @@ Cái làm được:
 | Việc | Kiểm cái gì |
 |---|---|
 | Sửa `src/lib/supabase-rows.test.ts` | `registrationToRow(...)` trả về object **không có khoá `duoc_moi`** — nếu ai đó thêm vào, default DB mất tác dụng. |
-| Sửa `src/lib/dang-ky-thu-cong.test.ts` | Tương tự cho `dangKyThuCongToRow`. |
+| Sửa `src/lib/dang-ky-thu-cong.test.ts` | Tương tự cho `thuCongToRow`. |
 | `npm run build` + `npm run lint` | Kiểu `RegistrationRow` đổi mà mọi nơi dùng vẫn biên dịch. |
 
 **Xác minh thật sau khi chạy SQL** (không thay thế được bằng test):
