@@ -264,6 +264,7 @@ describe("buildCheckinUpdate", () => {
         checked_in: true,
         checked_in_at: iso,
         checked_in_source: "qr",
+        duoc_moi: true,
       },
     ]);
     const gio = excel.rows[0][excel.headers.indexOf("Giờ check-in")];

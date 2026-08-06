@@ -91,7 +91,7 @@ export function thuCongToRow(
   code: string,
 ): Omit<
   RegistrationRow,
-  "id" | "created_at" | "checked_in" | "checked_in_at" | "checked_in_source"
+  "id" | "created_at" | "checked_in" | "checked_in_at" | "checked_in_source" | "duoc_moi"
 > {
   return {
     checkin_code: code,

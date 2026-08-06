@@ -172,4 +172,13 @@ describe("thuCongToRow", () => {
     expect(row).not.toHaveProperty("checked_in_at");
     expect(row).not.toHaveProperty("checked_in_source");
   });
+
+  /**
+   * Cùng lý lẽ với test cùng tên trong supabase-rows.test.ts: dòng ops tạo tay
+   * phải HIỆN ngay sau khi thêm, và điều đó chỉ đúng khi payload không mang
+   * `duoc_moi` để `default true` của Postgres được áp.
+   */
+  it("KHÔNG gửi duoc_moi lên DB — cột đó do default của Postgres quyết định", () => {
+    expect(row).not.toHaveProperty("duoc_moi");
+  });
 });

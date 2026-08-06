@@ -103,7 +103,7 @@ export function registrationToSheetRow(
 export function hangDbToSheetRow(
   hang: Omit<
     RegistrationRow,
-    "id" | "created_at" | "checked_in" | "checked_in_at" | "checked_in_source"
+    "id" | "created_at" | "checked_in" | "checked_in_at" | "checked_in_source" | "duoc_moi"
   >,
   moc: Date = new Date(),
 ): (string | number)[] {
@@ -116,6 +116,9 @@ export function hangDbToSheetRow(
     checked_in: false,
     checked_in_at: null,
     checked_in_source: null,
+    // rowsToSheet không đọc cột này — Sheet không có khái niệm danh sách khách
+    // mời. Giá trị chỉ để thoả kiểu `RegistrationRow` đầy đủ.
+    duoc_moi: true,
   };
   return rowsToSheet([row]).rows[0];
 }
@@ -296,7 +299,7 @@ export async function appendRegistration(
 export async function appendRegistrationThuCong(
   hang: Omit<
     RegistrationRow,
-    "id" | "created_at" | "checked_in" | "checked_in_at" | "checked_in_source"
+    "id" | "created_at" | "checked_in" | "checked_in_at" | "checked_in_source" | "duoc_moi"
   >,
 ): Promise<void> {
   await ensureHeader(REGISTER_TAB, [[NOTE], rowsToSheet([]).headers]);

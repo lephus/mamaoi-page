@@ -26,6 +26,7 @@ const base: RegistrationRow = {
   checked_in: false,
   checked_in_at: null,
   checked_in_source: null,
+  duoc_moi: true,
 };
 
 describe("rowsToSheet", () => {

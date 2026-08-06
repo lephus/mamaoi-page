@@ -44,6 +44,17 @@ export type RegistrationRow = {
   checked_in: boolean;
   checked_in_at: string | null;
   checked_in_source: "qr" | "admin" | null;
+  /**
+   * Có nằm trong danh sách khách mời đã chốt hay không. `false` = ẩn khỏi MỌI
+   * chỗ liệt kê (`listRegistrations`), nhưng vẫn tra được bằng mã
+   * (`findByCode`) nên check-in QR không đổi hành vi.
+   *
+   * DB đặt `default true`, và KHÔNG đường ghi nào được gửi cột này lên — đó là
+   * lý do nó nằm trong `Omit<>` ở `registrationToRow` / `thuCongToRow` /
+   * `insertRegistrationThuCong`. Nhờ vậy dòng ops tạo tay mặc định hiện, còn
+   * một mẹ đã ẩn gửi lại form thì upsert không bật cô ấy hiện lại.
+   */
+  duoc_moi: boolean;
 };
 
 /** Waitlist app: chỉ email + consent. Không có gì để check-in. */
@@ -86,7 +97,7 @@ export function registrationToRow(
   data: Registration,
   code: string,
   moc: Date,
-): Omit<RegistrationRow, "id" | "created_at" | "checked_in" | "checked_in_at" | "checked_in_source"> {
+): Omit<RegistrationRow, "id" | "created_at" | "checked_in" | "checked_in_at" | "checked_in_source" | "duoc_moi"> {
   const daSinh = data.trangThai === "da_sinh";
   return {
     checkin_code: code,
@@ -154,7 +165,7 @@ export async function findByEmail(email: string): Promise<RegistrationRow | null
 export async function insertRegistrationThuCong(
   row: Omit<
     RegistrationRow,
-    "id" | "created_at" | "checked_in" | "checked_in_at" | "checked_in_source"
+    "id" | "created_at" | "checked_in" | "checked_in_at" | "checked_in_source" | "duoc_moi"
   >,
 ): Promise<void> {
   const { error } = await db().from("registrations").insert(row);
