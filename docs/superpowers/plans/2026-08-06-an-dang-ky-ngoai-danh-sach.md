@@ -34,12 +34,12 @@
 - Consumes: không có.
 - Produces: `supabase/2026-08-06-duoc-moi.sql` — file SQL Task 2 sẽ chạy tay. Chứa một `alter table … add column if not exists duoc_moi boolean not null default true` và một `update … set duoc_moi = false where created_at < '2026-08-06T00:00:00+07:00' and checkin_code not in (518 mã)`.
 
-- [ ] **Step 1: Kiểm openpyxl có sẵn**
+- [x] **Step 1: Kiểm openpyxl có sẵn**
 
 Run: `python3 -c "import openpyxl; print(openpyxl.__version__)"`
 Expected: in ra số phiên bản. Nếu `ModuleNotFoundError` thì `python3 -m pip install openpyxl` rồi chạy lại.
 
-- [ ] **Step 2: Viết bộ sinh**
+- [x] **Step 2: Viết bộ sinh**
 
 Tạo `scripts/sinh-duoc-moi-sql.py` với đúng nội dung sau:
 
@@ -106,14 +106,14 @@ where created_at < '2026-08-06T00:00:00+07:00'
 print(f'Đã ghi {OUT}: {len(codes)} mã')
 ```
 
-- [ ] **Step 3: Chạy bộ sinh**
+- [x] **Step 3: Chạy bộ sinh**
 
 Run: `python3 scripts/sinh-duoc-moi-sql.py "/Users/lehuuphu/Downloads/MamaOi – Đăng ký.xlsx"`
 Expected: `Đã ghi supabase/2026-08-06-duoc-moi.sql: 518 mã`
 
 Nếu in ra "Chờ 518 mã, đọc được N" thì **DỪNG** — file Excel đã đổi so với lúc viết spec, phải đối chiếu lại số liệu với người dùng trước khi đi tiếp.
 
-- [ ] **Step 4: Kiểm file sinh ra**
+- [x] **Step 4: Kiểm file sinh ra**
 
 Run:
 ```bash
@@ -125,7 +125,7 @@ Expected: lần lượt `518`, `1`, `1`.
 
 Mệnh đề `created_at <` phải có mặt — thiếu nó là lỗi nghiêm trọng, xem Global Constraints.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add scripts/sinh-duoc-moi-sql.py supabase/2026-08-06-duoc-moi.sql
@@ -144,14 +144,14 @@ git commit -m "feat: SQL nạp cột duoc_moi cho 518 mã trong danh sách khác
 
 > **Task này chạm production và cần người dùng bấm.** Đưa nội dung file SQL cho người dùng chạy trong Supabase SQL editor, hoặc xin phép chạy qua REST/psql. Không tự ý chạy khi chưa được đồng ý.
 
-- [ ] **Step 1: Xác nhận có bản backup trước khi đụng schema**
+- [x] **Step 1: Xác nhận có bản backup trước khi đụng schema**
 
 Run: `ls -la /Users/lehuuphu/Downloads/MAMAOI/supabase-backup-*/manifest.json`
 Expected: có ít nhất một thư mục backup. Bản chụp lúc 06/08 10:56 chứa đủ 1003 dòng `registrations` và 416 dòng `waitlist`.
 
 Không có backup thì **DỪNG** và chạy `python3 /Users/lehuuphu/Downloads/MAMAOI/backup_supabase.py` trước.
 
-- [ ] **Step 2: Đếm mốc trước khi chạy**
+- [x] **Step 2: Đếm mốc trước khi chạy**
 
 Chạy trong Supabase SQL editor:
 ```sql
@@ -161,12 +161,12 @@ Expected: `1003`.
 
 Ra số khác thì **DỪNG** — dữ liệu đã đổi kể từ lúc chốt spec, phải đối chiếu lại 517/486 với người dùng.
 
-- [ ] **Step 3: Chạy file SQL**
+- [x] **Step 3: Chạy file SQL**
 
 Dán toàn bộ nội dung `supabase/2026-08-06-duoc-moi.sql` vào Supabase SQL editor và chạy.
 Expected: `ALTER TABLE` thành công, `UPDATE 486`.
 
-- [ ] **Step 4: Xác minh ba con số**
+- [x] **Step 4: Xác minh ba con số**
 
 Chạy trong Supabase SQL editor:
 ```sql
@@ -181,7 +181,7 @@ Expected: `tong = 1003`, `hien = 517`, `an = 486`, `an_ma_da_checkin = 0`.
 
 Bất kỳ số nào lệch → **DỪNG**, đừng đi tiếp sang Task 3/4. Cách lùi: `update registrations set duoc_moi = true;` đưa mọi thứ về trạng thái không lọc, app vẫn chạy y như cũ.
 
-- [ ] **Step 5: Xác minh 4 mẹ từng bị sửa email KHÔNG bị ẩn oan**
+- [x] **Step 5: Xác minh 4 mẹ từng bị sửa email KHÔNG bị ẩn oan**
 
 Chạy trong Supabase SQL editor:
 ```sql
@@ -192,7 +192,7 @@ Expected: 4 dòng, tất cả `duoc_moi = true`.
 
 Đây là phép kiểm quan trọng nhất của cả task: nó chứng minh việc đối chiếu bằng `checkin_code` thay vì email đã có tác dụng thật.
 
-- [ ] **Step 6: Xác nhận app vẫn chạy y như cũ**
+- [x] **Step 6: Xác nhận app vẫn chạy y như cũ**
 
 Mở `/admin`. Expected: vẫn hiện **1003** dòng, không có gì đổi — code chưa đọc cột mới. Đây là bằng chứng bước migration không gây gián đoạn.
 
@@ -212,12 +212,12 @@ Mở `/admin`. Expected: vẫn hiện **1003** dòng, không có gì đổi — 
 
 > **Lưu ý về "red" của task này:** cái đỏ trước là **trình biên dịch TypeScript**, không phải vitest. Step 2 làm `tsc` đỏ, Step 3 làm nó xanh. Test vitest ở Step 4 là lưới chống hồi quy cho tương lai — Step 5 chứng minh nó thật sự bắt được lỗi.
 
-- [ ] **Step 1: Chụp mốc — toàn bộ test đang xanh**
+- [x] **Step 1: Chụp mốc — toàn bộ test đang xanh**
 
 Run: `npm test`
 Expected: PASS toàn bộ. Ghi lại số test để so ở cuối.
 
-- [ ] **Step 2: Thêm trường vào `RegistrationRow` để `tsc` đỏ**
+- [x] **Step 2: Thêm trường vào `RegistrationRow` để `tsc` đỏ**
 
 Trong `src/lib/supabase.ts`, thêm vào cuối type `RegistrationRow` (ngay sau `checked_in_source`):
 
@@ -235,12 +235,12 @@ Trong `src/lib/supabase.ts`, thêm vào cuối type `RegistrationRow` (ngay sau 
   duoc_moi: boolean;
 ```
 
-- [ ] **Step 3: Chạy `tsc` để thấy nó đỏ**
+- [x] **Step 3: Chạy `tsc` để thấy nó đỏ**
 
 Run: `npx tsc --noEmit`
 Expected: FAIL, hai lỗi kiểu `Property 'duoc_moi' is missing in type ... but required in type 'Omit<RegistrationRow, ...>'` — một ở `registrationToRow` (`src/lib/supabase.ts`), một ở `thuCongToRow` (`src/lib/dang-ky-thu-cong.ts`).
 
-- [ ] **Step 4: Thêm `"duoc_moi"` vào ba chỗ `Omit<>` để xanh lại**
+- [x] **Step 4: Thêm `"duoc_moi"` vào ba chỗ `Omit<>` để xanh lại**
 
 Trong `src/lib/supabase.ts`, kiểu trả về của `registrationToRow`:
 
@@ -268,12 +268,12 @@ Trong `src/lib/dang-ky-thu-cong.ts`, kiểu trả về của `thuCongToRow`:
 
 Không sửa thân hàm nào — không hàm nào được gán `duoc_moi`.
 
-- [ ] **Step 5: Chạy `tsc` để xác nhận xanh**
+- [x] **Step 5: Chạy `tsc` để xác nhận xanh**
 
 Run: `npx tsc --noEmit`
 Expected: không lỗi.
 
-- [ ] **Step 6: Thêm lưới chống hồi quy vào `supabase-rows.test.ts`**
+- [x] **Step 6: Thêm lưới chống hồi quy vào `supabase-rows.test.ts`**
 
 Thêm vào cuối `describe("registrationToRow", ...)` trong `src/lib/supabase-rows.test.ts`:
 
@@ -290,7 +290,7 @@ Thêm vào cuối `describe("registrationToRow", ...)` trong `src/lib/supabase-r
   });
 ```
 
-- [ ] **Step 7: Thêm lưới tương tự vào `dang-ky-thu-cong.test.ts`**
+- [x] **Step 7: Thêm lưới tương tự vào `dang-ky-thu-cong.test.ts`**
 
 Thêm vào cuối `describe("thuCongToRow", ...)` trong `src/lib/dang-ky-thu-cong.test.ts`, ngay sau test `"không đụng tới các cột check-in"`. Dùng lại biến `row` đã dựng sẵn ở đầu `describe` (dòng 88) — đúng lối các test khác trong khối này:
 
@@ -305,12 +305,12 @@ Thêm vào cuối `describe("thuCongToRow", ...)` trong `src/lib/dang-ky-thu-con
   });
 ```
 
-- [ ] **Step 8: Chạy test**
+- [x] **Step 8: Chạy test**
 
 Run: `npm test`
 Expected: PASS toàn bộ, nhiều hơn Step 1 đúng 2 test.
 
-- [ ] **Step 9: Chứng minh lưới thật sự bắt được lỗi**
+- [x] **Step 9: Chứng minh lưới thật sự bắt được lỗi**
 
 Tạm thêm `duoc_moi: true,` vào object trả về của `thuCongToRow` trong `src/lib/dang-ky-thu-cong.ts`.
 
@@ -319,7 +319,7 @@ Expected: `tsc` FAIL (`'duoc_moi' does not exist in type 'Omit<...>'`). Nếu v�
 
 **Gỡ dòng tạm đó ra**, rồi chạy lại `npx tsc --noEmit && npm test` → xanh.
 
-- [ ] **Step 10: Commit**
+- [x] **Step 10: Commit**
 
 ```bash
 git add src/lib/supabase.ts src/lib/dang-ky-thu-cong.ts src/lib/supabase-rows.test.ts src/lib/dang-ky-thu-cong.test.ts
@@ -339,7 +339,7 @@ git commit -m "feat: thêm cột duoc_moi vào RegistrationRow, chặn mọi đ�
 
 > **Chặn cứng:** không làm task này nếu Task 2 Step 4 chưa cho đúng 517/486/0. Deploy mệnh đề `.eq` khi cột chưa tồn tại là làm chết `/admin`.
 
-- [ ] **Step 1: Xác nhận Task 2 đã xong**
+- [x] **Step 1: Xác nhận Task 2 đã xong**
 
 Chạy trong Supabase SQL editor:
 ```sql
@@ -348,7 +348,7 @@ from registrations;
 ```
 Expected: `hien = 517`, `an = 486`. Chưa đúng thì **DỪNG**, quay lại Task 2.
 
-- [ ] **Step 2: Thêm mệnh đề lọc**
+- [x] **Step 2: Thêm mệnh đề lọc**
 
 Trong `src/lib/supabase.ts`, thay thân `listRegistrations`:
 
@@ -379,12 +379,12 @@ export async function listRegistrations(): Promise<RegistrationRow[]> {
 }
 ```
 
-- [ ] **Step 3: Chạy test, lint, build**
+- [x] **Step 3: Chạy test, lint, build**
 
 Run: `npm test && npx tsc --noEmit && npm run lint && npm run build`
 Expected: tất cả PASS. Không test nào vỡ — mọi test route đều `vi.mock("@/lib/supabase")` nên không chạm mệnh đề này.
 
-- [ ] **Step 4: Xác minh trên dev server — đây là phép kiểm thật của task**
+- [x] **Step 4: Xác minh trên dev server — đây là phép kiểm thật của task**
 
 Run: `npm run dev`, rồi đăng nhập `/admin`.
 
@@ -400,7 +400,7 @@ Kiểm đủ năm điểm:
 
 Tab "Waitlist app" phải **không đổi** (414 dòng) — bảng đó ngoài phạm vi.
 
-- [ ] **Step 5: Xác minh check-in của người bị ẩn VẪN chạy**
+- [x] **Step 5: Xác minh check-in của người bị ẩn VẪN chạy**
 
 Lấy một mã thuộc nhóm ẩn:
 ```sql
@@ -414,14 +414,14 @@ Sau đó kiểm lại: `select checked_in from registrations where checkin_code 
 
 Mẹ này vẫn **không** xuất hiện trong bảng `/admin` — đúng như §7 của spec đã nêu là rủi ro chấp nhận.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add src/lib/supabase.ts
 git commit -m "feat: listRegistrations chỉ trả về đăng ký trong danh sách khách mời"
 ```
 
-- [ ] **Step 7: Báo cáo số liệu thật cho người dùng**
+- [x] **Step 7: Báo cáo số liệu thật cho người dùng**
 
 Đưa lại: số dòng ở mỗi điểm trong bảng Step 4, kết quả Step 5, và nhắc rằng 486 dòng vẫn nguyên trong DB cùng bản backup `~/Downloads/MAMAOI/supabase-backup-20260806-105631`. Nêu rõ nếu có bước nào bỏ qua.
 
