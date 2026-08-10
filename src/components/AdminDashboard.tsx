@@ -266,9 +266,6 @@ export function AdminDashboard({
             >
               + Thêm đăng ký
             </Link>
-            {/* Tạm ẩn theo yêu cầu — hai trang vẫn còn nguyên ở
-                /admin/gui-mail và /admin/gui-mail-hang-loat, mở lại bằng cách
-                bỏ comment khối này.
             <Link
               href="/admin/gui-mail"
               className="rounded-full border border-line bg-white px-5 py-2.5 text-sm font-semibold text-ink hover:bg-primary-faded-hover"
@@ -281,7 +278,6 @@ export function AdminDashboard({
             >
               Gửi mail hàng loạt
             </Link>
-            */}
             <button
               onClick={logout}
               className="rounded-full border border-line bg-white px-5 py-2.5 text-sm font-semibold text-ink-faded hover:bg-primary-faded-hover"
