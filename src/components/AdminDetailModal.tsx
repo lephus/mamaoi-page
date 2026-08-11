@@ -77,7 +77,9 @@ export function AdminDetailModal({
           <p className="mt-3 text-2xl font-extrabold tracking-widest text-primary">
             {row.checkin_code}
           </p>
-          <p className="mt-1 text-xs text-ink-faded">Mẹ mất email? Đưa mã này cho mẹ quét.</p>
+          <p className="mt-1 text-xs text-ink-faded">
+            Trường hợp không tìm thấy email, vui lòng đưa mã này cho mẹ quét.
+          </p>
         </div>
 
         <div className="mt-4">
