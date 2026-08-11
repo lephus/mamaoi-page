@@ -1,4 +1,4 @@
-import { escapeHtml, FOOTNOTE_BTC, KY_TEN_BTC, P, shell } from "./brevo";
+import { escapeHtml, FOOTNOTE_BTC, P, shell } from "./brevo";
 import { CHO_DIEN } from "./cho-dien";
 import type { RegistrationRow } from "./supabase";
 
@@ -62,6 +62,12 @@ function thanThanhHtml(noiDung: string, row: MeNhan): string {
  *
  * Tiêu đề KHÔNG escape: nó là chuỗi thường, không phải HTML. Escape ở đây làm
  * mẹ nhận email tiêu đề "Chào chị Trần &amp; Lê".
+ *
+ * `null` ở tham số chữ ký nghĩa là KHÔNG ký tên — khác hẳn bỏ trống, vốn rơi về
+ * mặc định "Đội ngũ Mama Ơi". Nội dung ở đây do admin gõ tay nên lời kết là
+ * việc của họ; một chữ ký đóng cứng bên dưới sẽ đá nhau với lời kết họ vừa
+ * viết. Hai mẫu cố định `capLai` / `suCo` trong brevo.ts KHÔNG đổi — chúng vẫn
+ * ký tên BTC đúng câu chữ đã duyệt.
  */
 export function dungEmail(
   tieuDe: string,
@@ -70,6 +76,6 @@ export function dungEmail(
 ): { subject: string; html: string } {
   return {
     subject: thay(tieuDe, giaTri(row)),
-    html: shell(thanThanhHtml(noiDung, row), FOOTNOTE_BTC, KY_TEN_BTC),
+    html: shell(thanThanhHtml(noiDung, row), FOOTNOTE_BTC, null),
   };
 }

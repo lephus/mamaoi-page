@@ -4,12 +4,17 @@ import { dungEmail } from "@/lib/mail-hang-loat";
 const LAN = { ho_ten: "Nguyễn Thị Lan", checkin_code: "MO-ABC234" };
 
 /**
- * `shell()` (brevo.ts, dùng nguyên khung — xem `dungEmail`) LUÔN tự vẽ thêm
- * đúng hai thẻ `<p style=...>` của riêng nó: đoạn chữ ký BTC và đoạn chân
- * trang. Chúng cộng vào MỌI phép đếm `<p ` bên dưới, bất kể nội dung admin gõ
- * có bao nhiêu đoạn — nên số đoạn thật luôn phải +2 so với số đoạn admin gõ.
+ * `shell()` (brevo.ts, dùng nguyên khung — xem `dungEmail`) tự vẽ thêm đúng MỘT
+ * thẻ `<p style=...>` của riêng nó cho email gửi hàng loạt: đoạn chân trang.
+ * Nó cộng vào MỌI phép đếm `<p ` bên dưới, bất kể nội dung admin gõ có bao nhiêu
+ * đoạn — nên số đoạn thật luôn phải +1 so với số đoạn admin gõ.
+ *
+ * TRƯỚC ĐÂY LÀ 2: khung còn vẽ thêm đoạn chữ ký "Trân trọng & Cảm ơn, Mama Ơi
+ * Team". Chữ ký đã bỏ khỏi email gửi hàng loạt theo yêu cầu — admin tự gõ lời
+ * kết trong phần nội dung. Hai mẫu cố định `capLai` / `suCo` KHÔNG đổi, vẫn ký
+ * tên BTC như câu chữ đã duyệt.
  */
-const SO_P_KHUNG = 2;
+const SO_P_KHUNG = 1;
 
 describe("dungEmail — nội dung", () => {
   it("{{ten}} ra tên thật, {{ma}} ra mã thật", () => {
@@ -56,10 +61,17 @@ describe("dungEmail — nội dung", () => {
     expect(html.match(/<p /g)?.length).toBe(2 + SO_P_KHUNG);
   });
 
-  it("giữ nguyên khung thương hiệu: chân trang và chữ ký BTC", () => {
+  /**
+   * Chân trang Ở LẠI (nó nói vì sao mẹ nhận được email này — thông tin bắt buộc
+   * để không bị coi là thư rác), nhưng chữ ký thì KHÔNG. Bỏ chữ ký mà quên
+   * truyền `null` sẽ khiến `shell` rơi về mặc định "Đội ngũ Mama Ơi" — vẫn là
+   * một chữ ký, chỉ khác chữ. Nên phải khẳng định CẢ HAI chuỗi đều vắng mặt.
+   */
+  it("giữ chân trang thương hiệu nhưng KHÔNG ký tên", () => {
     const { html } = dungEmail("x", "Nội dung", LAN);
     expect(html).toContain("Bạn nhận được email này vì đã đăng ký tham dự");
-    expect(html).toContain("Mama Ơi Team");
+    expect(html).not.toContain("Mama Ơi Team");
+    expect(html).not.toContain("Đội ngũ Mama Ơi");
   });
 });
 

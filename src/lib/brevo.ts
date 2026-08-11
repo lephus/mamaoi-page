@@ -191,20 +191,40 @@ export function escapeHtml(s: string): string {
 }
 
 /**
- * `kyTen` là tuỳ chọn vì hai mẫu gửi lại (BTC soạn) có chữ ký riêng — "Trân
- * trọng & Cảm ơn, Mama Ơi Team". Ghim cứng "Đội ngũ Mama Ơi" thì email sẽ ký
- * tên hai lần liên tiếp. Bỏ trống = giữ nguyên chữ ký cũ, nên mail xác nhận
- * đang chạy production không đổi một ký tự nào.
+ * `kyTen` có BA trạng thái, đừng gộp lại thành hai:
+ *
+ *  - **bỏ trống** (`undefined`) → ký "Đội ngũ Mama Ơi". Mail xác nhận và mail
+ *    waitlist đang chạy production đi đường này, không đổi một ký tự nào.
+ *  - **một chuỗi** → ký đúng chuỗi đó. Hai mẫu gửi lại (BTC soạn) có chữ ký
+ *    riêng "Trân trọng & Cảm ơn, Mama Ơi Team"; ghim cứng mặc định thì email sẽ
+ *    ký tên hai lần liên tiếp.
+ *  - **`null`** → KHÔNG vẽ đoạn chữ ký nào cả. Email gửi hàng loạt đi đường
+ *    này: nội dung do admin gõ tay nên lời kết là việc của họ, và một chữ ký
+ *    đóng cứng bên dưới sẽ đá nhau với lời kết họ vừa viết.
+ *
+ * `null` phải là một giá trị riêng chứ không dùng chuỗi rỗng: `"" ?? x` trả về
+ * `""` (`??` chỉ bắt null/undefined), nên chuỗi rỗng vẫn vẽ ra một thẻ `<p>`
+ * trống mang nguyên 24px margin — khoảng hở thừa dưới đáy thư mà không ai hiểu
+ * từ đâu ra.
  */
-export function shell(inner: string, footnote: string, kyTen?: string): string {
+export function shell(
+  inner: string,
+  footnote: string,
+  kyTen?: string | null,
+): string {
+  const doanKyTen =
+    kyTen === null
+      ? ""
+      : `<p style="margin:24px 0 0;font-size:14px;line-height:20px;color:#737373;">
+      ${kyTen ?? `Đội ngũ ${SITE.name}`}
+    </p>`;
+
   // Styles are inlined because email clients strip <style> blocks.
   return `
 <div style="margin:0;padding:24px;background:#fdf8f4;font-family:'Nunito',Arial,sans-serif;color:#292929;">
   <div style="max-width:520px;margin:0 auto;background:#ffffff;border-radius:24px;padding:32px;">
     ${inner}
-    <p style="margin:24px 0 0;font-size:14px;line-height:20px;color:#737373;">
-      ${kyTen ?? `Đội ngũ ${SITE.name}`}
-    </p>
+    ${doanKyTen}
   </div>
   <p style="max-width:520px;margin:16px auto 0;font-size:12px;line-height:18px;color:#a3a3a3;text-align:center;">
     ${footnote}
