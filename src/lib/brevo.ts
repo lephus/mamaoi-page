@@ -4,6 +4,7 @@ import { chuDeLabel, EVENT, SITE } from "./constants";
 import { isRegistration, thangTuoiTuNgaySinh, type Submission } from "./validation";
 import { checkinUrl } from "./checkin-url";
 import type { MauEmail } from "./mau-email";
+import type { DinhKem } from "./dinh-kem";
 
 const BREVO_API = "https://api.brevo.com/v3";
 
@@ -436,7 +437,10 @@ export type BanGuiMot = {
  * Ném lỗi kèm nguyên văn phản hồi Brevo VÀ số đã gửi được. Báo "đã gửi" khi
  * chưa gửi được nghĩa là không ai gửi lại, và 500 mẹ không biết tin.
  */
-export async function guiHangLoat(ban: BanGuiMot[]): Promise<number> {
+export async function guiHangLoat(
+  ban: BanGuiMot[],
+  dinhKem?: DinhKem[],
+): Promise<number> {
   if (ban.length === 0) return 0;
 
   const senderEmail = process.env.BREVO_SENDER_EMAIL;
@@ -452,6 +456,18 @@ export async function guiHangLoat(ban: BanGuiMot[]): Promise<number> {
       // subject/htmlContent riêng và đó mới là thứ tới hộp thư của mẹ.
       subject: lo[0].subject,
       htmlContent: lo[0].html,
+      // Đính kèm nằm ở CẤP GỐC, KHÔNG trong messageVersions: Brevo chỉ cho mỗi
+      // bản ghi đè to/cc/bcc/replyTo/subject/htmlContent/textContent/params.
+      // Đính kèm là thứ dùng CHUNG cho cả lô — cũng chính là lý do "đính kèm
+      // riêng từng mẹ" nằm ngoài phạm vi cả hai spec.
+      //
+      // Nằm TRONG vòng lặp chia lô, không ngoài: gắn ngoài thì lô thứ hai đi tay
+      // không và không có lỗi nào nổi lên.
+      //
+      // Spread có điều kiện chứ không gán thẳng `attachment: dinhKem`: gửi
+      // `attachment: []` là gửi một mảng rỗng cho Brevo, và không tài liệu nào
+      // hứa nó vô hại. Không có file thì đừng nhắc tới khoá này.
+      ...(dinhKem && dinhKem.length > 0 ? { attachment: dinhKem } : {}),
       messageVersions: lo.map((b) => ({
         to: [{ email: b.email, name: b.hoTen }],
         subject: b.subject,
