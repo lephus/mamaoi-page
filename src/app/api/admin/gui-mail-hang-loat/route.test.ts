@@ -39,6 +39,9 @@ const post = (body: unknown) =>
 
 const CO_BAN = { tieuDe: "Sự kiện đổi địa điểm", noiDung: "Chào chị {{ten}}." };
 
+/** base64 của 4 byte — file bé xíu nhưng khác rỗng, đủ qua phép kiểm dung lượng. */
+const KEM = [{ name: "poster.png", content: Buffer.from("abcd").toString("base64") }];
+
 beforeEach(() => {
   vi.clearAllMocks();
   vi.mocked(adminAuth.isAdmin).mockResolvedValue(true);
@@ -109,12 +112,12 @@ describe("/api/admin/gui-mail-hang-loat", () => {
     expect((await post({ ...CO_BAN, che_do: "xem", idMau: "khong-co" })).status).toBe(404);
   });
 
-  it("gửi thử: đúng 1 email, tới địa chỉ admin gõ, nội dung của mẹ mẫu", async () => {
+  it("gửi thử: một địa chỉ — vẫn chạy y như trước", async () => {
     const res = await post({
       ...CO_BAN,
       che_do: "thu",
       idMau: "id-1",
-      toiEmail: "toi@digitalunicorn.tech",
+      toiEmails: ["toi@digitalunicorn.tech"],
     });
     expect(res.status).toBe(200);
     expect(brevo.guiHangLoat).toHaveBeenCalledTimes(1);
@@ -124,13 +127,49 @@ describe("/api/admin/gui-mail-hang-loat", () => {
     expect(ban[0].html).toContain("Chào chị Nguyễn Thị Lan.");
   });
 
-  it("gửi thử với email sai định dạng → 400", async () => {
+  /**
+   * Nhiều địa chỉ KHÔNG được gộp vào một trường `to` — làm thế là lộ email của
+   * những người soát bài cho nhau. Mỗi địa chỉ một bản riêng, đúng nguyên tắc
+   * guiHangLoat đã giữ cho đường gửi thật.
+   */
+  it("gửi thử: ba địa chỉ → ba bản, MỖI BẢN đúng MỘT địa chỉ", async () => {
     const res = await post({
       ...CO_BAN,
       che_do: "thu",
       idMau: "id-1",
-      toiEmail: "khong-phai-email",
+      toiEmails: ["a@x.vn", "b@x.vn", "c@x.vn"],
     });
+    expect(res.status).toBe(200);
+    const ban = vi.mocked(brevo.guiHangLoat).mock.calls[0][0];
+    expect(ban.map((b) => b.email)).toEqual(["a@x.vn", "b@x.vn", "c@x.vn"]);
+    // Cả ba đều dựng từ CÙNG mẹ mẫu — email thử phải y hệt thứ mẹ đó sẽ nhận.
+    for (const b of ban) expect(b.html).toContain("Chào chị Nguyễn Thị Lan.");
+  });
+
+  it("gửi thử: bỏ trùng trước khi gửi, kể cả khác hoa thường", async () => {
+    await post({
+      ...CO_BAN,
+      che_do: "thu",
+      idMau: "id-1",
+      toiEmails: ["a@x.vn", "A@X.VN", "b@x.vn"],
+    });
+    expect(vi.mocked(brevo.guiHangLoat).mock.calls[0][0]).toHaveLength(2);
+  });
+
+  it("gửi thử: có địa chỉ sai định dạng → 400 kèm đúng địa chỉ sai, KHÔNG gửi", async () => {
+    const res = await post({
+      ...CO_BAN,
+      che_do: "thu",
+      idMau: "id-1",
+      toiEmails: ["tot@x.vn", "khong-phai-email"],
+    });
+    expect(res.status).toBe(400);
+    expect((await res.json()).error).toContain("khong-phai-email");
+    expect(brevo.guiHangLoat).not.toHaveBeenCalled();
+  });
+
+  it("gửi thử: danh sách rỗng → 400", async () => {
+    const res = await post({ ...CO_BAN, che_do: "thu", idMau: "id-1", toiEmails: [] });
     expect(res.status).toBe(400);
     expect(brevo.guiHangLoat).not.toHaveBeenCalled();
   });
@@ -219,5 +258,92 @@ describe("/api/admin/gui-mail-hang-loat", () => {
     });
     expect(res.status).toBe(502);
     expect((await res.json()).error).toContain("Brevo từ chối");
+  });
+
+  it("đính kèm sai đuôi → 400, KHÔNG gửi", async () => {
+    const res = await post({
+      ...CO_BAN,
+      che_do: "that",
+      ids: ["id-1"],
+      xacNhanSoLuong: 1,
+      dinhKem: [{ name: "poster.webp", content: Buffer.from("abcd").toString("base64") }],
+    });
+    expect(res.status).toBe(400);
+    expect((await res.json()).error).toContain("poster.webp");
+    expect(brevo.guiHangLoat).not.toHaveBeenCalled();
+  });
+
+  it("đính kèm vượt tổng dung lượng → 400, KHÔNG gửi", async () => {
+    const res = await post({
+      ...CO_BAN,
+      che_do: "that",
+      ids: ["id-1"],
+      xacNhanSoLuong: 1,
+      dinhKem: [
+        { name: "to.png", content: Buffer.alloc(3 * 1024 * 1024 + 1, 0x61).toString("base64") },
+      ],
+    });
+    expect(res.status).toBe(400);
+    expect(brevo.guiHangLoat).not.toHaveBeenCalled();
+  });
+
+  it("đính kèm hình dạng lạ (thiếu trường) → 400, KHÔNG gửi", async () => {
+    const res = await post({
+      ...CO_BAN,
+      che_do: "that",
+      ids: ["id-1"],
+      xacNhanSoLuong: 1,
+      dinhKem: [{ name: "poster.png" }],
+    });
+    expect(res.status).toBe(400);
+    expect(brevo.guiHangLoat).not.toHaveBeenCalled();
+  });
+
+  it("gửi thử: đính kèm được truyền xuống guiHangLoat", async () => {
+    await post({
+      ...CO_BAN,
+      che_do: "thu",
+      idMau: "id-1",
+      toiEmails: ["a@x.vn"],
+      dinhKem: KEM,
+    });
+    expect(vi.mocked(brevo.guiHangLoat).mock.calls[0][1]).toEqual(KEM);
+  });
+
+  it("gửi thật: đính kèm được truyền xuống guiHangLoat", async () => {
+    await post({
+      ...CO_BAN,
+      che_do: "that",
+      ids: ["id-1", "id-2"],
+      xacNhanSoLuong: 2,
+      dinhKem: KEM,
+    });
+    expect(vi.mocked(brevo.guiHangLoat).mock.calls[0][1]).toEqual(KEM);
+  });
+
+  it("không đính kèm → guiHangLoat nhận mảng rỗng, không phải undefined lung tung", async () => {
+    await post({ ...CO_BAN, che_do: "that", ids: ["id-1"], xacNhanSoLuong: 1 });
+    expect(vi.mocked(brevo.guiHangLoat).mock.calls[0][1]).toEqual([]);
+  });
+
+  /**
+   * Xem trước KHÔNG gửi gì, nhưng vẫn phải kiểm đính kèm: mục đích là để admin
+   * biết file sai TRƯỚC khi bấm gửi thật, chứ không phải sau.
+   */
+  it("xem trước: đính kèm sai vẫn bị chặn 400 — biết trước khi bấm gửi", async () => {
+    const res = await post({
+      ...CO_BAN,
+      che_do: "xem",
+      idMau: "id-1",
+      dinhKem: [{ name: "anh.heic", content: Buffer.from("abcd").toString("base64") }],
+    });
+    expect(res.status).toBe(400);
+    expect(brevo.guiHangLoat).not.toHaveBeenCalled();
+  });
+
+  it("xem trước: đính kèm hợp lệ vẫn không gửi gì", async () => {
+    const res = await post({ ...CO_BAN, che_do: "xem", idMau: "id-1", dinhKem: KEM });
+    expect(res.status).toBe(200);
+    expect(brevo.guiHangLoat).not.toHaveBeenCalled();
   });
 });

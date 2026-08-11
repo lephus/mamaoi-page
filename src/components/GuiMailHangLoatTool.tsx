@@ -4,6 +4,15 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { choDienLa } from "@/lib/cho-dien";
+import {
+  byteCuaBase64,
+  coChu,
+  DUOI_CHO_PHEP,
+  loiDinhKem,
+  TOI_DA_TONG_BYTE,
+  type DinhKem,
+} from "@/lib/dinh-kem";
+import { tachEmail } from "@/lib/nhieu-email";
 import type { RegistrationRow } from "@/lib/supabase";
 import { boDau } from "@/lib/text";
 
@@ -18,6 +27,28 @@ type XemTruoc = { subject: string; html: string; tieuDe: string; noiDung: string
 // qua việc đóng tab hay khởi động lại máy.
 const KHOA_NHAP_TAM = "mo-gui-mail-hang-loat-nhap";
 
+/**
+ * File → base64 THUẦN. `FileReader.readAsDataURL` trả về một data-URL
+ * (`data:image/png;base64,iVBOR...`), phải cắt phần tiền tố đi — Brevo chỉ nhận
+ * phần base64, gửi cả tiền tố là file hỏng khi mở ra.
+ */
+function docBase64(f: File): Promise<string> {
+  return new Promise((giai, tuChoi) => {
+    const doc = new FileReader();
+    doc.onerror = () => tuChoi(doc.error ?? new Error("Không đọc được file"));
+    doc.onload = () => {
+      const s = String(doc.result);
+      const i = s.indexOf(",");
+      if (i < 0) tuChoi(new Error("Không đọc được file"));
+      else giai(s.slice(i + 1));
+    };
+    doc.readAsDataURL(f);
+  });
+}
+
+/** Chuỗi cho thuộc tính `accept` của ô chọn file: ".png,.jpg,..." */
+const ACCEPT = DUOI_CHO_PHEP.map((d) => `.${d}`).join(",");
+
 export function GuiMailHangLoatTool({
   rows,
   emailMacDinh,
@@ -30,11 +61,18 @@ export function GuiMailHangLoatTool({
   const [chon, setChon] = useState<Set<string>>(new Set());
   const [tieuDe, setTieuDe] = useState("");
   const [noiDung, setNoiDung] = useState("");
-  const [toiEmail, setToiEmail] = useState(emailMacDinh);
+  const [nhapEmail, setNhapEmail] = useState(emailMacDinh);
   const [soXacNhan, setSoXacNhan] = useState("");
   const [xemTruoc, setXemTruoc] = useState<XemTruoc | null>(null);
   const [dangChay, setDangChay] = useState<"" | "xem" | "thu" | "that">("");
   const [ketQua, setKetQua] = useState<KetQua | null>(null);
+  const [dinhKem, setDinhKem] = useState<DinhKem[]>([]);
+  const [loiFile, setLoiFile] = useState("");
+  // Bản nháp cứu khi 401 KHÔNG cứu được file đính kèm (xem effect bên dưới), nên
+  // phải nói thẳng ra thay vì để admin tưởng file vẫn còn đó. Tắt lại ngay khi
+  // admin đã đính kèm được một file (trong `themFile`) — dòng nhắc đã làm xong
+  // việc của nó, để mãi cho hết phiên chỉ gây nhiễu.
+  const [daPhucHoiNhap, setDaPhucHoiNhap] = useState(false);
 
   // Phục hồi bản nháp bị 401 văng mất — CHỈ MỘT LẦN, ngay khi màn hình này mở
   // (không nhất thiết ngay sau đăng nhập — admin có thể quay lại trang sau).
@@ -51,6 +89,7 @@ export function GuiMailHangLoatTool({
         const raw = sessionStorage.getItem(KHOA_NHAP_TAM);
         if (!raw) return;
         sessionStorage.removeItem(KHOA_NHAP_TAM);
+        setDaPhucHoiNhap(true);
         const nhap = JSON.parse(raw) as { tieuDe?: string; noiDung?: string; ids?: string[] };
         if (typeof nhap.tieuDe === "string") setTieuDe(nhap.tieuDe);
         if (typeof nhap.noiDung === "string") setNoiDung(nhap.noiDung);
@@ -76,7 +115,27 @@ export function GuiMailHangLoatTool({
   const soChon = chon.size;
   const idMau = rows.find((r) => chon.has(r.id))?.id ?? "";
   const duNoiDung = tieuDe.trim() !== "" && noiDung.trim() !== "";
-  const sanSang = soChon > 0 && duNoiDung && la.length === 0 && dangChay === "";
+  const { hopLe: emailThu, sai: emailSai } = useMemo(
+    () => tachEmail(nhapEmail),
+    [nhapEmail],
+  );
+  const tongByteKem = dinhKem.reduce((t, f) => t + byteCuaBase64(f.content), 0);
+  // CỐ Ý tính lại từ `dinhKem` HIỆN TẠI, không đọc cờ `loiFile`. `loiFile` chỉ
+  // ghi nhận LƯỢT THÊM gần nhất có bị từ chối hay không — nó không nói gì về
+  // việc đính kèm đang có trong danh sách có hợp lệ hay không. Vì `themFile`
+  // chỉ `setDinhKem` sau khi `loiDinhKem` trả `null`, còn `boFile` chỉ xoá bớt,
+  // nên `dinhKem` luôn luôn hợp lệ theo bất biến — gác `sanSang` bằng `loiFile`
+  // là gác một cờ không bao giờ bảo vệ được gì, mà lại khoá nhầm: chưa có đính
+  // kèm nào, chọn một file bị từ chối (vd .webp) thì `loiFile` bật lên nhưng
+  // `dinhKem` vẫn rỗng — không có gì để bấm "Bỏ", cả ba nút kẹt cứng cho tới khi
+  // chọn được một file khác hợp lệ hoặc tải lại trang. ĐỪNG "đơn giản hoá" lại
+  // thành `loiFile === ""`.
+  const loiKemHienTai = useMemo(() => loiDinhKem(dinhKem), [dinhKem]);
+  // `loiKemHienTai` gác CẢ BA nút, không riêng nút gửi thật: một đính kèm sai
+  // đuôi hay vượt trần làm hỏng lượt gửi thật, nên không có lý do gì để nút đó
+  // còn bấm được. Cùng cách cờ `la` (chỗ điền sai) đang gác.
+  const sanSang =
+    soChon > 0 && duNoiDung && la.length === 0 && loiKemHienTai === null && dangChay === "";
   const khopSo = soXacNhan.trim() === String(soChon);
   // Bản xem trước chỉ còn đúng khi tiêu đề, nội dung VÀ mẹ làm mẫu đều chưa đổi
   // kể từ lúc dựng nó — sửa một trong ba mà không xem lại thì bản xem trước cũ
@@ -95,6 +154,58 @@ export function GuiMailHangLoatTool({
     });
   }
 
+  async function themFile(danh: FileList | null) {
+    if (!danh || danh.length === 0) return;
+    setLoiFile("");
+
+    // `FileReader` đọc hỏng CHỈ loại đúng file đó, KHÁC HẲN ca lỗi validate ở
+    // dưới. Đây là lỗi ĐỌC từng file, không liên quan gì tới nội dung các file
+    // khác trong cùng lượt chọn — bỏ qua file hỏng rồi vẫn thêm những file đọc
+    // được, không hất luôn cả lô như spec §8 yêu cầu.
+    const moi: DinhKem[] = [];
+    const tenLoiDoc: string[] = [];
+    for (const f of Array.from(danh)) {
+      try {
+        moi.push({ name: f.name, content: await docBase64(f) });
+      } catch {
+        tenLoiDoc.push(f.name);
+      }
+    }
+
+    // Kiểm CẢ danh sách sau khi gộp, vì trần 3MB là trần TỔNG chứ không phải
+    // trần từng file.
+    const gop = [...dinhKem, ...moi];
+    const loi = loiDinhKem(gop);
+    if (loi) {
+      // Có lỗi thì KHÔNG thêm gì cả — kể cả những file đã đọc được ở `moi`.
+      // Thêm một nửa rồi báo lỗi là bắt admin ngồi đoán file nào đã vào, file
+      // nào chưa. CỐ Ý khác cách xử ca đọc hỏng ở trên: lỗi đọc là lỗi TỪNG
+      // FILE độc lập nên giữ được phần đọc tốt; lỗi validate là lỗi trên CẢ
+      // DANH SÁCH gộp (vd tổng byte vượt trần) nên không tách riêng được "file
+      // nào gây lỗi" để giữ lại phần còn lại một cách an toàn.
+      setLoiFile(loi);
+      return;
+    }
+    setDinhKem(gop);
+    // Đã thêm được ít nhất một file mới thành công — dòng nhắc "file đính kèm
+    // phải chọn lại" sau khi phục hồi nháp-401 đã làm xong việc của nó, tắt đi.
+    if (moi.length > 0) setDaPhucHoiNhap(false);
+
+    if (tenLoiDoc.length > 0) {
+      const ds = tenLoiDoc.map((t) => `"${t}"`).join(", ");
+      setLoiFile(
+        tenLoiDoc.length === 1
+          ? `Không đọc được file ${ds}. Thử chọn lại.`
+          : `Không đọc được các file ${ds}. Thử chọn lại.`,
+      );
+    }
+  }
+
+  function boFile(vt: number) {
+    setLoiFile("");
+    setDinhKem((cu) => cu.filter((_, i) => i !== vt));
+  }
+
   async function goi(che_do: "xem" | "thu" | "that") {
     setDangChay(che_do);
     setKetQua(null);
@@ -106,9 +217,10 @@ export function GuiMailHangLoatTool({
           che_do,
           tieuDe,
           noiDung,
+          dinhKem,
           ...(che_do === "that"
             ? { ids: [...chon], xacNhanSoLuong: chon.size }
-            : { idMau, ...(che_do === "thu" ? { toiEmail } : {}) }),
+            : { idMau, ...(che_do === "thu" ? { toiEmails: emailThu } : {}) }),
         }),
       });
       if (res.status === 401) {
@@ -139,7 +251,10 @@ export function GuiMailHangLoatTool({
       if (che_do === "xem") {
         setXemTruoc({ subject: data.subject, html: data.html, tieuDe, noiDung, idMau });
       } else if (che_do === "thu") {
-        setKetQua({ ok: true, text: `Đã gửi thử tới ${toiEmail}` });
+        setKetQua({
+          ok: true,
+          text: `Đã gửi thử tới ${emailThu.length} địa chỉ: ${emailThu.join(", ")}`,
+        });
       } else {
         setKetQua({ ok: true, text: `Đã gửi ${data.daGui} email` });
         setSoXacNhan("");
@@ -281,6 +396,68 @@ export function GuiMailHangLoatTool({
               Chỗ điền không hợp lệ: {la.join(", ")} — chỉ dùng {"{{ten}}"} và {"{{ma}}"}.
             </p>
           )}
+
+          <label htmlFor="dinh-kem" className="mt-4 block text-sm font-semibold text-ink">
+            Đính kèm (tuỳ chọn)
+          </label>
+          <input
+            id="dinh-kem"
+            type="file"
+            multiple
+            accept={ACCEPT}
+            onChange={(e) => {
+              void themFile(e.target.files);
+              // Xoá giá trị ô để chọn LẠI ĐÚNG file vừa bỏ ra vẫn kích hoạt
+              // onChange — nếu không, trình duyệt coi là "không đổi" và im lặng.
+              e.target.value = "";
+            }}
+            className="mt-2 block w-full text-sm text-ink file:mr-3 file:rounded-full file:border file:border-line file:bg-white file:px-4 file:py-2 file:text-sm file:font-semibold file:text-ink hover:file:bg-primary-faded-hover"
+          />
+          <p className="mt-2 text-sm text-ink-faded">
+            Tối đa tổng {coChu(TOI_DA_TONG_BYTE)}. Nhận {ACCEPT.replaceAll(",", ", ")}.
+            Ảnh .webp và .heic (ảnh chụp từ iPhone) không gửi được — đổi sang .png hoặc .jpg.
+          </p>
+
+          {dinhKem.length > 0 && (
+            <>
+              <ul className="mt-3 space-y-2">
+                {dinhKem.map((f, i) => (
+                  <li
+                    key={`${f.name}-${i}`}
+                    className="flex items-center gap-3 rounded-xl border border-line px-3 py-2 text-sm"
+                  >
+                    <span className="min-w-0 flex-1 truncate text-ink">{f.name}</span>
+                    <span className="shrink-0 text-xs text-ink-faded">
+                      {coChu(byteCuaBase64(f.content))}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => boFile(i)}
+                      aria-label={`Bỏ ${f.name}`}
+                      className="shrink-0 rounded-full border border-line px-3 py-1 text-xs font-semibold text-ink-faded hover:bg-primary-faded-hover"
+                    >
+                      Bỏ
+                    </button>
+                  </li>
+                ))}
+              </ul>
+              <p className="mt-2 text-sm text-ink-faded">
+                {dinhKem.length} file · {coChu(tongByteKem)} / {coChu(TOI_DA_TONG_BYTE)}
+              </p>
+            </>
+          )}
+
+          {loiFile !== "" && (
+            <p role="alert" className="mt-2 text-sm font-semibold text-danger">
+              {loiFile}
+            </p>
+          )}
+
+          {daPhucHoiNhap && (
+            <p className="mt-2 text-sm font-semibold text-ink-faded">
+              Bản nháp đã được khôi phục sau khi đăng nhập lại. File đính kèm phải chọn lại.
+            </p>
+          )}
         </section>
 
         {/* ---------- Xem trước / gửi thử ---------- */}
@@ -299,20 +476,32 @@ export function GuiMailHangLoatTool({
             >
               {dangChay === "xem" ? "Đang dựng..." : "Xem trước"}
             </button>
-            <div>
+            <div className="min-w-0 flex-1">
               <label htmlFor="toi-email" className="text-xs text-ink-faded">
-                Gửi thử tới
+                Gửi thử tới — nhiều địa chỉ cách nhau bằng dấu phẩy hoặc xuống dòng
               </label>
-              <input
+              <textarea
                 id="toi-email"
-                value={toiEmail}
-                onChange={(e) => setToiEmail(e.target.value)}
-                className="mt-1 block rounded-xl border border-line px-3 py-2 text-sm text-ink focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary"
+                value={nhapEmail}
+                onChange={(e) => setNhapEmail(e.target.value)}
+                rows={2}
+                className="mt-1 block w-full rounded-xl border border-line px-3 py-2 text-sm text-ink focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary"
               />
+              {emailSai.length > 0 ? (
+                <p role="alert" className="mt-1 text-xs font-semibold text-danger">
+                  Địa chỉ không hợp lệ: {emailSai.join(", ")}
+                </p>
+              ) : (
+                emailThu.length > 0 && (
+                  <p className="mt-1 text-xs text-ink-faded">
+                    {emailThu.length} địa chỉ
+                  </p>
+                )
+              )}
             </div>
             <button
               onClick={() => void goi("thu")}
-              disabled={!sanSang || !toiEmail.trim()}
+              disabled={!sanSang || emailThu.length === 0 || emailSai.length > 0}
               className="rounded-full border border-line px-5 py-2.5 text-sm font-semibold text-ink hover:bg-primary-faded-hover disabled:cursor-not-allowed disabled:opacity-50"
             >
               {dangChay === "thu" ? "Đang gửi..." : "Gửi thử"}

@@ -190,4 +190,37 @@ describe("guiHangLoat", () => {
     await expect(guiHangLoat(ban(1))).rejects.toThrow("BREVO_SENDER_EMAIL");
     expect(goi).not.toHaveBeenCalled();
   });
+
+  /**
+   * Câu hỏi thật của tính năng đính kèm. Brevo chỉ cho mỗi messageVersion ghi đè
+   * to/cc/bcc/replyTo/subject/htmlContent/textContent/params — đính kèm PHẢI nằm
+   * ở cấp gốc mới áp được cho mọi bản. Đặt nhầm chỗ thì không ai nhận được file,
+   * và không có lỗi nào nổi lên để báo.
+   */
+  it("có đính kèm → attachment ở CẤP GỐC, không nằm trong messageVersions", async () => {
+    await guiHangLoat(ban(2), [{ name: "poster.png", content: "QQ==" }]);
+    const b = body(0);
+    expect(b.attachment).toEqual([{ name: "poster.png", content: "QQ==" }]);
+    for (const v of b.messageVersions) expect(v.attachment).toBeUndefined();
+  });
+
+  it("không có đính kèm → payload KHÔNG có khoá attachment", async () => {
+    await guiHangLoat(ban(2));
+    expect("attachment" in body(0)).toBe(false);
+  });
+
+  it("mảng đính kèm rỗng cũng KHÔNG sinh khoá attachment", async () => {
+    await guiHangLoat(ban(2), []);
+    expect("attachment" in body(0)).toBe(false);
+  });
+
+  /**
+   * Chia lô là chỗ dễ quên nhất: gắn đính kèm ngoài vòng lặp thì lô thứ hai đi
+   * tay không, và 500 mẹ cuối danh sách nhận email thiếu file mà không ai biết.
+   */
+  it("chia lô: CẢ HAI lô đều mang đính kèm, không chỉ lô đầu", async () => {
+    await guiHangLoat(ban(1500), [{ name: "poster.png", content: "QQ==" }]);
+    expect(body(0).attachment).toHaveLength(1);
+    expect(body(1).attachment).toHaveLength(1);
+  });
 });
