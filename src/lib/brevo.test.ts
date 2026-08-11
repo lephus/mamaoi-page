@@ -1,5 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { guiHangLoat, noiDungEmail } from "./brevo";
+import {
+  guiEmailTheoMau,
+  guiHangLoat,
+  noiDungEmail,
+  sendWaitlistEmail,
+} from "./brevo";
 import { MAU_THU_TU } from "./mau-email";
 
 const MA = "MO-ABC234";
@@ -222,5 +227,99 @@ describe("guiHangLoat", () => {
     await guiHangLoat(ban(1500), [{ name: "poster.png", content: "QQ==" }]);
     expect(body(0).attachment).toHaveLength(1);
     expect(body(1).attachment).toHaveLength(1);
+  });
+});
+
+/**
+ * `send()` là hàm riêng tư, nên test qua hai hàm bọc ngoài nó — đó cũng đúng là
+ * bề mặt mà phần còn lại của hệ thống gọi tới.
+ *
+ * Khối này ra đời cùng lượt gộp SMTP → REST API. Trước đó `send()` đi qua
+ * nodemailer và KHÔNG có một test nào: đường gửi mail xác nhận cho 500 mẹ chỉ
+ * được bảo vệ bằng niềm tin. Bây giờ nó đi chung `brevo()` với mọi thứ khác,
+ * nên mock đúng một chỗ `fetch` là kiểm được cả hai đường.
+ */
+describe("send — qua REST API, không còn SMTP", () => {
+  const goi = vi.fn();
+
+  beforeEach(() => {
+    goi.mockReset();
+    goi.mockResolvedValue({ ok: true, status: 201, text: async () => "" });
+    vi.stubGlobal("fetch", goi);
+    process.env.BREVO_API_KEY = "xkeysib-test";
+    process.env.BREVO_SENDER_EMAIL = "hello@mamaoi.vn";
+    process.env.BREVO_SENDER_NAME = "Mama Ơi";
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  const body = () => JSON.parse(goi.mock.calls[0][1].body as string);
+
+  it("gửi tới endpoint transactional của Brevo, KHÔNG mở kết nối SMTP", async () => {
+    await guiEmailTheoMau("xacNhan", { email: "lan@example.com", hoTen: TEN }, MA);
+    expect(goi).toHaveBeenCalledTimes(1);
+    expect(goi.mock.calls[0][0]).toBe("https://api.brevo.com/v3/smtp/email");
+    expect(goi.mock.calls[0][1].headers["api-key"]).toBe("xkeysib-test");
+  });
+
+  /**
+   * Một email cho MỘT người. Đây là mail cá nhân (kèm mã check-in riêng), nên
+   * trường `to` nhiều địa chỉ ở đây là lộ vé vào cửa của mẹ này cho mẹ khác.
+   */
+  it("đúng MỘT người nhận, kèm tên", async () => {
+    await guiEmailTheoMau("xacNhan", { email: "lan@example.com", hoTen: TEN }, MA);
+    expect(body().to).toEqual([{ email: "lan@example.com", name: TEN }]);
+  });
+
+  it("QR đi kèm dạng attachment base64, tên file mang mã check-in", async () => {
+    await guiEmailTheoMau("capLai", { email: "lan@example.com", hoTen: TEN }, MA);
+    const kem = body().attachment;
+    expect(kem).toHaveLength(1);
+    expect(kem[0].name).toBe(`checkin-${MA}.png`);
+    // Base64 THUẦN — còn tiền tố `data:image/png;base64,` là file hỏng khi mở ra.
+    expect(kem[0].content).not.toContain("data:");
+    expect(kem[0].content.length).toBeGreaterThan(100);
+  });
+
+  it("mail waitlist không có QR → payload KHÔNG có khoá attachment", async () => {
+    await sendWaitlistEmail({
+      email: "me@example.com",
+      nguon: "app-waitlist",
+      dongYNhanTin: true,
+    } as never);
+    expect("attachment" in body()).toBe(false);
+  });
+
+  it("gửi tiêu đề và HTML thật của mẫu, không phải chuỗi rỗng", async () => {
+    await guiEmailTheoMau("xacNhan", { email: "lan@example.com", hoTen: TEN }, MA);
+    const { subject, htmlContent } = body();
+    expect(subject).toBe(noiDungEmail("xacNhan", TEN, MA).subject);
+    expect(htmlContent).toContain(MA);
+  });
+
+  /**
+   * Cùng nguyên tắc `guiHangLoat`: báo "đã gửi" khi chưa gửi được nghĩa là không
+   * ai gửi lại, và mẹ không bao giờ nhận được vé vào cửa. Đúng lỗi 403
+   * "SMTP account is not yet activated" phải nổi lên nguyên văn tới nơi gọi.
+   */
+  it("Brevo từ chối → ném lỗi kèm nguyên văn phản hồi, không báo thành công giả", async () => {
+    goi.mockResolvedValue({
+      ok: false,
+      status: 403,
+      text: async () => '{"message":"SMTP account is not yet activated"}',
+    });
+    await expect(
+      guiEmailTheoMau("xacNhan", { email: "lan@example.com", hoTen: TEN }, MA),
+    ).rejects.toThrow("not yet activated");
+  });
+
+  it("thiếu BREVO_SENDER_EMAIL → lỗi rõ ràng, KHÔNG gọi Brevo", async () => {
+    delete process.env.BREVO_SENDER_EMAIL;
+    await expect(
+      guiEmailTheoMau("xacNhan", { email: "lan@example.com", hoTen: TEN }, MA),
+    ).rejects.toThrow("BREVO_SENDER_EMAIL");
+    expect(goi).not.toHaveBeenCalled();
   });
 });

@@ -1,8 +1,8 @@
 /**
  * Danh mục chỗ điền được phép trong email gửi hàng loạt, và phép kiểm chúng.
  *
- * File này CỐ Ý không import gì từ `brevo.ts`. `brevo.ts` kéo theo nodemailer và
- * qrcode (thuần server); import nó vào một component "use client" là gãy build —
+ * File này CỐ Ý không import gì từ `brevo.ts`. `brevo.ts` kéo theo qrcode và đọc
+ * BREVO_API_KEY (thuần server); import nó vào một component "use client" là gãy build —
  * cùng lý do `mau-email.ts` được tách ra khỏi `brevo.ts`. Màn hình soạn mail phải
  * cảnh báo chỗ điền sai ngay lúc admin gõ, nên phép kiểm phải sống được ở client.
  *

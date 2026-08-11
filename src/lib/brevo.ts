@@ -1,4 +1,3 @@
-import nodemailer, { type Transporter } from "nodemailer";
 import QRCode from "qrcode";
 import { chuDeLabel, EVENT, SITE } from "./constants";
 import { isRegistration, thangTuoiTuNgaySinh, type Submission } from "./validation";
@@ -9,10 +8,29 @@ import type { DinhKem } from "./dinh-kem";
 const BREVO_API = "https://api.brevo.com/v3";
 
 /**
- * Contact management stays on the REST API (the xkeysib key) — it works today.
- * Only email SENDING moves to SMTP, per request. Both, however, are gated by
- * Brevo account activation: until the account is activated, transactional email
- * is refused ("SMTP account is not yet activated") no matter the transport.
+ * MỘT đường duy nhất tới Brevo, cho cả quản lý contact lẫn gửi email.
+ *
+ * Trước đây việc GỬI đi qua SMTP relay (nodemailer) còn contact đi REST API —
+ * hai giao thức, hai bộ credential, cho cùng một tài khoản. Đã gộp về REST vì:
+ *
+ *  - **Serverless không hợp SMTP.** SMTP giữ kết nối, mà Vercel bật/tắt hàm
+ *    liên tục nên transporter cache lại gần như vô dụng, và mỗi cold start phải
+ *    trả giá bắt tay TLS.
+ *  - **Lỗi đọc được.** REST trả JSON có `message` và `code` — nhờ vậy mới đọc
+ *    thẳng được "SMTP account is not yet activated" / `permission_denied` và
+ *    biết phải làm gì. SMTP trả một chuỗi lỗi khó xử lý theo chương trình.
+ *  - **Gửi hàng loạt vốn đã BẮT BUỘC dùng REST** (xem `guiHangLoat`), nên giữ
+ *    SMTP chỉ để phục vụ mail đơn là nuôi hai đường cho cùng một việc.
+ *  - Một biến `BREVO_API_KEY` thay cho bốn biến `BREVO_SMTP_*`.
+ *
+ * ĐÁNH ĐỔI đã cân nhắc: SMTP không khoá ta vào Brevo — đổi sang SendGrid/SES
+ * chỉ cần đổi biến môi trường. Bỏ nó đi nghĩa là đổi nhà cung cấp sẽ phải sửa
+ * code. Chấp nhận, vì phần phải sửa gói gọn trong `brevo()` và `send()` ngay
+ * dưới đây.
+ *
+ * LƯU Ý QUAN TRỌNG: gộp đường KHÔNG gỡ được cổng kích hoạt tài khoản. Tài khoản
+ * Brevo chưa kích hoạt thì email giao dịch bị từ chối bất kể đi giao thức nào —
+ * đó là chuyện phải xử lý với Brevo, không phải bằng code.
  */
 async function brevo(path: string, body: unknown): Promise<Response> {
   const key = process.env.BREVO_API_KEY;
@@ -27,24 +45,6 @@ async function brevo(path: string, body: unknown): Promise<Response> {
     },
     body: JSON.stringify(body),
   });
-}
-
-// Brevo SMTP relay. Reused across warm invocations rather than reconnecting.
-let transporter: Transporter | null = null;
-function getTransport(): Transporter {
-  if (transporter) return transporter;
-  const user = process.env.BREVO_SMTP_LOGIN;
-  const pass = process.env.BREVO_SMTP_KEY;
-  if (!user || !pass) {
-    throw new Error("BREVO_SMTP_LOGIN / BREVO_SMTP_KEY chưa được cấu hình");
-  }
-  transporter = nodemailer.createTransport({
-    host: process.env.BREVO_SMTP_HOST ?? "smtp-relay.brevo.com",
-    port: Number(process.env.BREVO_SMTP_PORT ?? 587),
-    secure: false, // STARTTLS is negotiated on 587; TLS is still enforced
-    auth: { user, pass },
-  });
-  return transporter;
 }
 
 /**
@@ -232,29 +232,46 @@ export function shell(
 </div>`;
 }
 
+/**
+ * Gửi MỘT email cho MỘT người, qua REST API.
+ *
+ * Trường `to` cố tình chỉ mang đúng một địa chỉ: mọi email đi qua đây đều là
+ * thư cá nhân (kèm mã check-in riêng của mẹ đó), nên nhét thêm địa chỉ vào đây
+ * là đưa vé vào cửa của mẹ này cho mẹ khác. Muốn gửi cho nhiều người thì dùng
+ * `guiHangLoat` — nó có `messageVersions`, mỗi người một bản riêng.
+ *
+ * `attachment` khớp thẳng hình dạng Brevo cần (`{ name, content }`, `content` là
+ * base64 THUẦN đã bỏ tiền tố data-URL), nên không phải ánh xạ lại gì. Brevo tự
+ * suy ra kiểu file từ đuôi trong `name`.
+ */
 async function send(
   to: { email: string; name?: string },
   subject: string,
   html: string,
-  attachment?: { content: string; name: string }[],
+  attachment?: DinhKem[],
 ): Promise<void> {
   const senderEmail = process.env.BREVO_SENDER_EMAIL;
   const senderName = process.env.BREVO_SENDER_NAME ?? SITE.name;
   if (!senderEmail) throw new Error("BREVO_SENDER_EMAIL chưa được cấu hình");
 
-  await getTransport().sendMail({
-    from: { name: senderName, address: senderEmail },
-    to: to.name ? { name: to.name, address: to.email } : to.email,
+  const res = await brevo("/smtp/email", {
+    sender: { name: senderName, email: senderEmail },
+    to: [to.name ? { email: to.email, name: to.name } : { email: to.email }],
     subject,
-    html,
-    // `content` is the QR's base64 payload (data-URL prefix already stripped).
-    attachments: attachment?.map((a) => ({
-      filename: a.name,
-      content: a.content,
-      encoding: "base64",
-      contentType: "image/png",
-    })),
+    htmlContent: html,
+    // Spread có điều kiện, cùng lý lẽ đã ghi ở `guiHangLoat`: không có file thì
+    // đừng nhắc tới khoá này, đừng gửi mảng rỗng.
+    ...(attachment && attachment.length > 0 ? { attachment } : {}),
   });
+
+  // Không bao giờ báo thành công giả: nơi gọi (luồng đăng ký) nuốt lỗi này
+  // thành một cảnh báo non-fatal, nên nếu ta im lặng ở đây thì mẹ đăng ký xong,
+  // thấy màn hình thành công, mà email kèm QR không bao giờ tới — và không có
+  // dấu vết nào cả.
+  if (!res.ok) {
+    const chiTiet = await res.text().catch(() => "");
+    throw new Error(`Brevo từ chối (${res.status}): ${chiTiet}`.trim());
+  }
 }
 
 /**

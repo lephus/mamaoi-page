@@ -3,7 +3,7 @@
  * và phép kiểm.
  *
  * File này CỐ Ý không import gì — cùng lý do đã ghi ở đầu `cho-dien.ts`:
- * `brevo.ts` kéo theo nodemailer và qrcode (thuần server), import nó vào một
+ * `brevo.ts` kéo theo qrcode và đọc BREVO_API_KEY (thuần server), import nó vào một
  * component "use client" là gãy build. Màn hình soạn mail phải báo file sai NGAY
  * lúc admin chọn file, nên phép kiểm phải sống được ở client.
  *
