@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { POST } from "./route";
-import * as brevo from "@/lib/brevo";
+import * as mail from "@/lib/mail";
 import * as sheets from "@/lib/sheets";
 import * as supabase from "@/lib/supabase";
 
@@ -8,9 +8,8 @@ import * as supabase from "@/lib/supabase";
  * Bốn dịch vụ ngoài đều bị chặn: test chạy ở env `node`, không có mạng và cũng
  * không được phép có — mục tiêu là kiểm tra THỨ TỰ và nhánh rẽ của route.
  */
-vi.mock("@/lib/brevo", () => ({
+vi.mock("@/lib/mail", () => ({
   existingCheckinCode: vi.fn(async () => null),
-  upsertContact: vi.fn(async () => {}),
   sendEventEmail: vi.fn(async () => {}),
   sendWaitlistEmail: vi.fn(async () => {}),
 }));
@@ -64,10 +63,19 @@ const TRONG_HAN = new Date("2026-07-25T10:00:00+07:00");
 const QUA_HAN = new Date("2026-08-31T00:00:00+07:00");
 
 beforeEach(() => {
+  // `clearAllMocks` chỉ xoá LỊCH SỬ GỌI, không gỡ implementation — một
+  // `mockRejectedValue` đặt trong test hỏng-hóc sẽ sống tiếp sang mọi test sau
+  // và làm chúng đỏ vì lý do chẳng liên quan. Dựng lại TOÀN BỘ nhánh thành công
+  // ở đây để mỗi test tự đứng một mình.
   vi.clearAllMocks();
   vi.mocked(supabase.supabaseConfigured).mockReturnValue(true);
+  vi.mocked(supabase.insertRegistration).mockResolvedValue(undefined);
+  vi.mocked(supabase.insertWaitlist).mockResolvedValue(undefined);
   vi.mocked(sheets.sheetsConfigured).mockReturnValue(true);
   vi.mocked(sheets.docSoLieuDangKy).mockResolvedValue(sheetCo(0));
+  vi.mocked(sheets.appendRegistration).mockResolvedValue(undefined);
+  vi.mocked(mail.sendEventEmail).mockResolvedValue(undefined);
+  vi.mocked(mail.sendWaitlistEmail).mockResolvedValue(undefined);
 
   // Ghim đồng hồ cho MỌI test trong file. Route giờ có cổng chặn theo hạn
   // 30/08/2026, nên để đồng hồ thật thì sau ngày đó toàn bộ test sức chứa nhận
@@ -127,8 +135,7 @@ describe("POST /api/dang-ky — cổng chặn hết hạn", () => {
 
     await POST(post(dangKyHopLe()));
 
-    expect(brevo.upsertContact).not.toHaveBeenCalled();
-    expect(brevo.sendEventEmail).not.toHaveBeenCalled();
+    expect(mail.sendEventEmail).not.toHaveBeenCalled();
     expect(sheets.docSoLieuDangKy).not.toHaveBeenCalled();
     expect(supabase.insertRegistration).not.toHaveBeenCalled();
     expect(sheets.appendRegistration).not.toHaveBeenCalled();
@@ -147,7 +154,7 @@ describe("POST /api/dang-ky — cổng chặn hết hạn", () => {
 
     const res = await POST(post(dangKyHopLe()));
     expect(res.status).toBe(200);
-    expect(brevo.upsertContact).toHaveBeenCalledOnce();
+    expect(supabase.insertRegistration).toHaveBeenCalledOnce();
   });
 
   /** Waitlist app không có hạn — sự kiện xong rồi mẹ vẫn để lại email nhận tin. */
@@ -193,8 +200,7 @@ describe("POST /api/dang-ky — cổng chặn sức chứa (đếm trên Google 
 
     await POST(post(dangKyHopLe()));
 
-    expect(brevo.upsertContact).not.toHaveBeenCalled();
-    expect(brevo.sendEventEmail).not.toHaveBeenCalled();
+    expect(mail.sendEventEmail).not.toHaveBeenCalled();
     expect(supabase.insertRegistration).not.toHaveBeenCalled();
     expect(sheets.appendRegistration).not.toHaveBeenCalled();
   });
@@ -203,7 +209,7 @@ describe("POST /api/dang-ky — cổng chặn sức chứa (đếm trên Google 
     const res = await POST(post(dangKyHopLe()));
 
     expect(res.status).toBe(200);
-    expect(brevo.upsertContact).toHaveBeenCalledOnce();
+    expect(supabase.insertRegistration).toHaveBeenCalledOnce();
     expect(supabase.insertRegistration).toHaveBeenCalledOnce();
     expect(sheets.appendRegistration).toHaveBeenCalledOnce();
   });
@@ -231,7 +237,7 @@ describe("POST /api/dang-ky — cổng chặn sức chứa (đếm trên Google 
 
     const body = await res.json();
     expect(body.warnings).toContain("suc-chua");
-    expect(brevo.upsertContact).toHaveBeenCalledOnce();
+    expect(supabase.insertRegistration).toHaveBeenCalledOnce();
   });
 
   it("chưa cấu hình Sheets: không chặn, không đọc gì", async () => {
@@ -244,10 +250,11 @@ describe("POST /api/dang-ky — cổng chặn sức chứa (đếm trên Google 
   });
 
   /**
-   * Cổng chặn KHÔNG được đụng tới Supabase nữa — nguồn đếm duy nhất là Sheet.
-   * Supabase sập thì mẹ vẫn đăng ký được, chỉ mất bản ghi check-in (non-fatal).
+   * Cổng chặn sức chứa KHÔNG đụng tới Supabase — nguồn đếm duy nhất là Sheet.
+   * Ca này khẳng định thứ tự: hết chỗ thì trả 409 TRƯỚC khi chạm Supabase, nên
+   * Supabase chưa cấu hình cũng không đổi kết quả.
    */
-  it("Supabase sập: cổng chặn vẫn chạy bình thường trên Sheet", async () => {
+  it("cổng chặn sức chứa chạy trên Sheet, không cần Supabase", async () => {
     vi.mocked(supabase.supabaseConfigured).mockReturnValue(false);
     vi.mocked(sheets.docSoLieuDangKy).mockResolvedValue(sheetCo(500));
 
@@ -255,6 +262,36 @@ describe("POST /api/dang-ky — cổng chặn sức chứa (đếm trên Google 
 
     expect(res.status).toBe(409);
     expect(supabase.insertRegistration).not.toHaveBeenCalled();
+  });
+
+  /**
+   * HÀNH VI MỚI, và là lưới an toàn quan trọng nhất sau khi Brevo bị gỡ.
+   *
+   * Trước đây Brevo giữ bản ghi thành viên và ghi hỏng là từ chối cả lượt đăng
+   * ký; ghi Supabase chỉ là cảnh báo. Giờ Supabase là nơi DUY NHẤT giữ dữ liệu
+   * đó — để nó non-fatal nghĩa là mẹ thấy màn hình thành công mà không có bản
+   * ghi nào ở đâu cả, và mã check-in vừa cấp thì không ai tra lại được.
+   *
+   * Email phải KHÔNG được gửi: đưa mẹ một tấm QR trỏ vào dòng không tồn tại là
+   * hứa một chỗ ngồi không có thật.
+   */
+  it("Supabase ghi hỏng → 502, và TUYỆT ĐỐI không gửi email", async () => {
+    vi.mocked(supabase.insertRegistration).mockRejectedValue(new Error("DB chết"));
+
+    const res = await POST(post(dangKyHopLe()));
+
+    expect(res.status).toBe(502);
+    expect(mail.sendEventEmail).not.toHaveBeenCalled();
+    expect(sheets.appendRegistration).not.toHaveBeenCalled();
+  });
+
+  it("Supabase chưa cấu hình → 502, không phải im lặng bỏ qua", async () => {
+    vi.mocked(supabase.supabaseConfigured).mockReturnValue(false);
+
+    const res = await POST(post(dangKyHopLe()));
+
+    expect(res.status).toBe(502);
+    expect(mail.sendEventEmail).not.toHaveBeenCalled();
   });
 
   it("waitlist app không dính cổng chặn", async () => {

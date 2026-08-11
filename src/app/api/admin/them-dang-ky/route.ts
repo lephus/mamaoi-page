@@ -1,9 +1,5 @@
 import { isAdmin } from "@/lib/admin-auth";
-import {
-  existingCheckinCode,
-  guiEmailTheoMau,
-  upsertContactThuCong,
-} from "@/lib/brevo";
+import { guiEmailTheoMau } from "@/lib/mail";
 import { thuCongSchema, thuCongToRow } from "@/lib/dang-ky-thu-cong";
 import { appendRegistrationThuCong, sheetsConfigured } from "@/lib/sheets";
 import { findByEmail, insertRegistrationThuCong } from "@/lib/supabase";
@@ -20,7 +16,7 @@ import { generateCheckinCode } from "@/lib/validation";
  * xử lý ngoại lệ — ops thêm mẹ thứ 501, hay thêm sau ngày đóng đăng ký, là quyết
  * định có chủ ý của ban tổ chức chứ không phải tai nạn cần chặn.
  *
- * Bốn dịch vụ ngoài chạy tuần tự (Brevo, Supabase, SMTP, Sheets) — cùng lý do
+ * Ba dịch vụ ngoài chạy tuần tự (Supabase, SMTP, Sheets) — cùng lý do
  * `/api/dang-ky` phải nới ngân sách thời gian.
  */
 export const maxDuration = 60;
@@ -93,49 +89,27 @@ export async function POST(request: Request) {
     );
   }
 
-  // Mã cũ của email này (nếu có) được DÙNG LẠI — giữ mã của một email cố định
-  // thì mọi QR đã gửi trước đó còn quét được. Đúng ca mà tính năng này hay gặp
-  // nhất: mẹ có contact ở Brevo kèm mã, nhưng dòng Supabase bị mất do sự cố.
-  // Tra hỏng thì sinh mã mới — xấu nhất là quay lại hành vi cũ, chứ không chặn ops.
-  let reused: string | null = null;
-  try {
-    reused = await existingCheckinCode(data.email);
-  } catch (err) {
-    console.error("[admin/them-dang-ky] existingCheckinCode failed:", data.email, err);
-  }
-  const code = reused ?? generateCheckinCode();
+  // Mã MỚI, không tra lại mã cũ.
+  //
+  // Trước đây đoạn này gọi `existingCheckinCode` để dùng lại mã mẹ đã có ở
+  // Brevo khi dòng Supabase bị mất do sự cố. Brevo đã bị gỡ khỏi dự án, và
+  // `existingCheckinCode` nay đọc từ CHÍNH bảng mà cổng chặn trùng bên trên vừa
+  // tra — tới được đây nghĩa là chắc chắn không có dòng nào, nên nó luôn trả
+  // null. Giữ lại chỉ là một lượt gọi DB thừa và một lời hứa không còn thật.
+  const code = generateCheckinCode();
 
   const nguoiNhan = { email: data.email, hoTen: data.hoTen };
 
-  // Brevo giữ MA_CHECKIN — nguồn mà `existingCheckinCode` đọc để cố định mã của
-  // một email. Ghi hỏng ở đây thì lần sau mẹ tự đăng ký bằng email này sẽ được
-  // cấp mã MỚI và tấm QR ta sắp gửi chết, nên phải dừng hẳn.
-  try {
-    // `sdt` chỉ đi kèm khi ops thực sự nhập — chuỗi rỗng bị bỏ qua trong
-    // `upsertContactThuCong`, không được biến thành "--" trong CRM.
-    await upsertContactThuCong(
-      { ...nguoiNhan, sdt: data.sdt, dongYNhanTin: data.dongYNhanTin },
-      code,
-    );
-  } catch (err) {
-    console.error("[admin/them-dang-ky] Brevo contact failed:", data.email, err);
-    return Response.json(
-      {
-        error: "Không ghi được contact lên Brevo. Chưa tạo gì cả, thử lại sau ít phút.",
-        chiTiet: chiTiet(err),
-      },
-      { status: 502 },
-    );
-  }
-
   const hang = thuCongToRow(data, code);
 
-  // Supabase BẮT BUỘC thành công — khác `/api/dang-ky`, nơi đây chỉ là cảnh báo.
-  // Ở đó có một mẹ đang chờ trước màn hình và lượt submit của mẹ đáng được cứu;
-  // ở đây không có ai chờ, mà `findByCode` đọc từ chính bảng này: thiếu dòng
-  // nghĩa là QR quét vào báo "không tìm thấy mã".
+  // Supabase BẮT BUỘC thành công. Nó vừa là nơi `findByCode` đọc khi quét QR,
+  // vừa là nơi `existingCheckinCode` đọc để cố định mã của một email — Brevo đã
+  // bị gỡ khỏi dự án nên không còn bản sao thứ hai nào giữ MA_CHECKIN nữa.
+  // Thiếu dòng ở đây nghĩa là QR quét vào báo "không tìm thấy mã", VÀ lần sau mẹ
+  // tự đăng ký bằng email này sẽ được cấp mã MỚI làm tấm QR vừa gửi chết.
   //
-  // Bấm lại an toàn: Brevo đã giữ mã, nên lần thử sau dùng lại ĐÚNG mã đó.
+  // Bấm lại an toàn: chưa ghi được thì cũng chưa gửi email nào, và lượt sau sinh
+  // mã mới cho một email chưa từng có dòng nào — không giẫm lên gì cả.
   try {
     await insertRegistrationThuCong(hang);
   } catch (err) {

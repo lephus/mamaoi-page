@@ -78,9 +78,15 @@ Copy is Vietnamese. Event names, section headings, and form labels are client-ap
 Both forms post to `POST /api/dang-ky`:
 
 1. Validate + honeypot check (a hidden `website` field — the anti-bot mechanism actually in service; reCAPTCHA was removed as dead code)
-2. **Brevo** — upsert contact with typed attributes, add to list, send the thank-you email. This is the source of truth.
-3. **Google Sheets** — append a mirror row for the ops team.
+2. **Supabase** — insert the typed registration row. **This is the source of truth.** Failing here **must** surface a real error (502) — never fake success, and never send the email.
+3. **SMTP** — send the thank-you email (with the check-in QR attached). Non-fatal: by this point she is registered, and failing her request would make her refill the form over a problem that is entirely ours.
+4. **Google Sheets** — append a mirror row for the ops team, and the source the 500-capacity gate counts from.
 
-Sheets failing must **not** fail the registration (Brevo already holds the lead). Brevo failing **must** surface a real error — never fake success.
+Sheets failing must **not** fail the registration (Supabase already holds the record).
 
-`NGUON` attribute distinguishes `app-waitlist` from `su-kien`.
+**Brevo was removed entirely** (2026-08-11). It previously held the member record and sent all email. Consequences worth knowing:
+
+- Supabase is now the *only* store, which is why its write was promoted from non-fatal to fatal. There is no second copy to back-fill from.
+- `existingCheckinCode()` — which keeps one email's check-in code stable so already-emailed QRs never die — now reads `registrations` instead of Brevo's `MA_CHECKIN` attribute.
+- Email goes through `src/lib/mail.ts` (nodemailer, pooled SMTP). Bulk send is one message per recipient over a connection pool, **not** one API call carrying all of them — so a 3MB attachment to 500 mothers is 1.5GB leaving the SMTP server. That is why the attachment ceiling in `dinh-kem.ts` matters more than before.
+- No contact/CRM sync of any kind remains. The "Membership First" directive above now lives entirely in the shape of the Supabase row.

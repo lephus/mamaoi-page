@@ -15,7 +15,7 @@ import type { SoLieuDangKy } from "./sheets";
  *  0. Số dòng ops đếm bằng mắt trên Sheet LỚN HƠN số chỗ đã dùng khi có mẹ gửi
  *     lại form. Đó là chủ ý: mẹ sửa số điện thoại rồi gửi lại không được phép
  *     ăn thêm một ghế trong 500.
- *  1. KHÔNG nguyên tử. Dòng Sheet chỉ được append ở CUỐI route (sau Brevo), nên
+ *  1. KHÔNG nguyên tử. Dòng Sheet chỉ được append ở CUỐI route (sau Supabase), nên
  *     hai mẹ submit trong cùng một nhịp đều đọc ra cùng một con số và cùng đi
  *     qua — sự kiện có thể nhận dôi vài chỗ quanh mốc 500. Bản cũ đếm-và-ghi
  *     trong một transaction Postgres nên không hở; đổi nguồn đếm là mất tính đó.

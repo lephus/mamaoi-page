@@ -2,7 +2,7 @@ import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { thangTuoiTuNgaySinh, type Registration } from "./validation";
 
 /**
- * Structured registration store + check-in ledger. Brevo remains the source of
+ * Structured registration store + check-in ledger. THIS is the source of
  * truth for contacts; this table is the queryable operational record that
  * powers /check-in and /admin. Accessed server-side only, with the service
  * role key — clients never touch Supabase, so no RLS is needed.

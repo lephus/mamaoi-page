@@ -550,7 +550,7 @@ export const PROVINCES = [
 export const LEGAL_UPDATED = "15/07/2026";
 
 /**
- * Chủ đề quan tâm — chọn nhiều. `value` là thứ lưu xuống DB và gửi Brevo;
+ * Chủ đề quan tâm — chọn nhiều. `value` là thứ lưu xuống DB;
  * `label` là chữ hiện trên form (wording khách duyệt, đừng sửa).
  */
 export const CHU_DE_QUAN_TAM = [
@@ -577,7 +577,7 @@ export const NGUON_BIET_DEN = [
 
 /**
  * Tình trạng hiện tại của mẹ — phân khúc chính, chọn một. `value` là thứ lưu
- * xuống DB (`trang_thai`) và gửi Brevo (`TRANG_THAI`); `label` là nhãn NGẮN cho
+ * xuống DB (`trang_thai`); `label` là nhãn NGẮN cho
  * /admin và file Excel. Form đăng ký hiển thị nhãn DÀI riêng ("Đang mang thai",
  * "Bé đã chào đời") nên không map từ đây — nhưng `value` phải khớp từng chữ.
  */

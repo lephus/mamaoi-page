@@ -4,7 +4,7 @@ import { dungEmail } from "@/lib/mail-hang-loat";
 const LAN = { ho_ten: "Nguyễn Thị Lan", checkin_code: "MO-ABC234" };
 
 /**
- * `shell()` (brevo.ts, dùng nguyên khung — xem `dungEmail`) tự vẽ thêm đúng MỘT
+ * `shell()` (mail.ts, dùng nguyên khung — xem `dungEmail`) tự vẽ thêm đúng MỘT
  * thẻ `<p style=...>` của riêng nó cho email gửi hàng loạt: đoạn chân trang.
  * Nó cộng vào MỌI phép đếm `<p ` bên dưới, bất kể nội dung admin gõ có bao nhiêu
  * đoạn — nên số đoạn thật luôn phải +1 so với số đoạn admin gõ.

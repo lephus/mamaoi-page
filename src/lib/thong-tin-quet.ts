@@ -5,7 +5,7 @@ import type { RegistrationRow } from "./supabase";
  *
  * Tách khỏi `supabase.ts` để component "use client" import được mà không kéo
  * theo `@supabase/supabase-js` — cùng lý do `mau-email.ts` được tách khỏi
- * `brevo.ts`.
+ * `mail.ts`.
  *
  * CỐ TÌNH thiếu `email`, `sdt`, `facebook`. Thẻ xác nhận không cần chúng, và
  * màn hình này chạy trên điện thoại CÁ NHÂN của nhân viên thời vụ. Khác

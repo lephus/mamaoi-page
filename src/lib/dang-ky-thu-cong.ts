@@ -119,7 +119,7 @@ export function thuCongToRow(d: ThuCong, code: string): RegistrationInsertRow {
     dong_y_nhan_tin: d.dongYNhanTin,
 
     // Giữ "su-kien", KHÔNG thêm giá trị thứ ba: cột này mang hợp đồng phân khúc
-    // su-kien vs app-waitlist (xem CLAUDE.md), và Brevo đọc cùng một giá trị.
+    // su-kien vs app-waitlist (xem CLAUDE.md).
     // Dòng tạo tay đã nhận ra được bằng các ô "--".
     nguon: "su-kien",
   };

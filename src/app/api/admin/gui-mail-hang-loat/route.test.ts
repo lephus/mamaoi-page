@@ -1,16 +1,16 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { POST } from "./route";
 import * as adminAuth from "@/lib/admin-auth";
-import * as brevo from "@/lib/brevo";
+import * as mail from "@/lib/mail";
 import * as supabase from "@/lib/supabase";
 
 vi.mock("@/lib/admin-auth", () => ({ isAdmin: vi.fn(async () => true) }));
 vi.mock("@/lib/supabase", () => ({ listRegistrations: vi.fn() }));
-vi.mock("@/lib/brevo", async (goc) => ({
-  // `dungEmail` gọi shell/escapeHtml thật qua brevo.ts — giữ nguyên bản thật để
+vi.mock("@/lib/mail", async (goc) => ({
+  // `dungEmail` gọi shell/escapeHtml thật qua mail.ts — giữ nguyên bản thật để
   // test này khẳng định được HTML thật, chỉ thay đúng phần GỬI.
-  ...(await goc<typeof brevo>()),
-  guiHangLoat: vi.fn(async (ban: brevo.BanGuiMot[]) => ban.length),
+  ...(await goc<typeof mail>()),
+  guiHangLoat: vi.fn(async (ban: mail.BanGuiMot[]) => ban.length),
 }));
 
 const ROWS = [
@@ -46,7 +46,7 @@ beforeEach(() => {
   vi.clearAllMocks();
   vi.mocked(adminAuth.isAdmin).mockResolvedValue(true);
   vi.mocked(supabase.listRegistrations).mockResolvedValue(ROWS);
-  vi.mocked(brevo.guiHangLoat).mockImplementation(async (ban) => ban.length);
+  vi.mocked(mail.guiHangLoat).mockImplementation(async (ban) => ban.length);
 });
 
 describe("/api/admin/gui-mail-hang-loat", () => {
@@ -54,12 +54,12 @@ describe("/api/admin/gui-mail-hang-loat", () => {
     vi.mocked(adminAuth.isAdmin).mockResolvedValue(false);
     const res = await post({ ...CO_BAN, che_do: "that", ids: ["id-1"], xacNhanSoLuong: 1 });
     expect(res.status).toBe(401);
-    expect(brevo.guiHangLoat).not.toHaveBeenCalled();
+    expect(mail.guiHangLoat).not.toHaveBeenCalled();
   });
 
   it("chế độ lạ → 400", async () => {
     expect((await post({ ...CO_BAN, che_do: "xoaHet" })).status).toBe(400);
-    expect(brevo.guiHangLoat).not.toHaveBeenCalled();
+    expect(mail.guiHangLoat).not.toHaveBeenCalled();
   });
 
   it("thiếu tiêu đề hoặc nội dung → 400", async () => {
@@ -84,7 +84,7 @@ describe("/api/admin/gui-mail-hang-loat", () => {
     });
     expect(res.status).toBe(400);
     expect((await res.json()).error).toContain("{{name}}");
-    expect(brevo.guiHangLoat).not.toHaveBeenCalled();
+    expect(mail.guiHangLoat).not.toHaveBeenCalled();
   });
 
   it("chỗ điền lạ trong TIÊU ĐỀ cũng bị chặn", async () => {
@@ -96,7 +96,7 @@ describe("/api/admin/gui-mail-hang-loat", () => {
       xacNhanSoLuong: 1,
     });
     expect(res.status).toBe(400);
-    expect(brevo.guiHangLoat).not.toHaveBeenCalled();
+    expect(mail.guiHangLoat).not.toHaveBeenCalled();
   });
 
   it("xem trước: trả HTML thật, KHÔNG gửi gì", async () => {
@@ -105,7 +105,7 @@ describe("/api/admin/gui-mail-hang-loat", () => {
     expect(res.status).toBe(200);
     expect(data.html).toContain("Chào chị Nguyễn Thị Lan.");
     expect(data.subject).toBe("Sự kiện đổi địa điểm");
-    expect(brevo.guiHangLoat).not.toHaveBeenCalled();
+    expect(mail.guiHangLoat).not.toHaveBeenCalled();
   });
 
   it("xem trước với idMau không tồn tại → 404", async () => {
@@ -120,8 +120,8 @@ describe("/api/admin/gui-mail-hang-loat", () => {
       toiEmails: ["toi@digitalunicorn.tech"],
     });
     expect(res.status).toBe(200);
-    expect(brevo.guiHangLoat).toHaveBeenCalledTimes(1);
-    const ban = vi.mocked(brevo.guiHangLoat).mock.calls[0][0];
+    expect(mail.guiHangLoat).toHaveBeenCalledTimes(1);
+    const ban = vi.mocked(mail.guiHangLoat).mock.calls[0][0];
     expect(ban).toHaveLength(1);
     expect(ban[0].email).toBe("toi@digitalunicorn.tech");
     expect(ban[0].html).toContain("Chào chị Nguyễn Thị Lan.");
@@ -140,7 +140,7 @@ describe("/api/admin/gui-mail-hang-loat", () => {
       toiEmails: ["a@x.vn", "b@x.vn", "c@x.vn"],
     });
     expect(res.status).toBe(200);
-    const ban = vi.mocked(brevo.guiHangLoat).mock.calls[0][0];
+    const ban = vi.mocked(mail.guiHangLoat).mock.calls[0][0];
     expect(ban.map((b) => b.email)).toEqual(["a@x.vn", "b@x.vn", "c@x.vn"]);
     // Cả ba đều dựng từ CÙNG mẹ mẫu — email thử phải y hệt thứ mẹ đó sẽ nhận.
     for (const b of ban) expect(b.html).toContain("Chào chị Nguyễn Thị Lan.");
@@ -153,7 +153,7 @@ describe("/api/admin/gui-mail-hang-loat", () => {
       idMau: "id-1",
       toiEmails: ["a@x.vn", "A@X.VN", "b@x.vn"],
     });
-    expect(vi.mocked(brevo.guiHangLoat).mock.calls[0][0]).toHaveLength(2);
+    expect(vi.mocked(mail.guiHangLoat).mock.calls[0][0]).toHaveLength(2);
   });
 
   it("gửi thử: có địa chỉ sai định dạng → 400 kèm đúng địa chỉ sai, KHÔNG gửi", async () => {
@@ -165,13 +165,13 @@ describe("/api/admin/gui-mail-hang-loat", () => {
     });
     expect(res.status).toBe(400);
     expect((await res.json()).error).toContain("khong-phai-email");
-    expect(brevo.guiHangLoat).not.toHaveBeenCalled();
+    expect(mail.guiHangLoat).not.toHaveBeenCalled();
   });
 
   it("gửi thử: danh sách rỗng → 400", async () => {
     const res = await post({ ...CO_BAN, che_do: "thu", idMau: "id-1", toiEmails: [] });
     expect(res.status).toBe(400);
-    expect(brevo.guiHangLoat).not.toHaveBeenCalled();
+    expect(mail.guiHangLoat).not.toHaveBeenCalled();
   });
 
   /**
@@ -186,13 +186,13 @@ describe("/api/admin/gui-mail-hang-loat", () => {
       xacNhanSoLuong: 1,
     });
     expect(res.status).toBe(400);
-    expect(brevo.guiHangLoat).not.toHaveBeenCalled();
+    expect(mail.guiHangLoat).not.toHaveBeenCalled();
   });
 
   it("gửi thật: ids rỗng → 400", async () => {
     const res = await post({ ...CO_BAN, che_do: "that", ids: [], xacNhanSoLuong: 0 });
     expect(res.status).toBe(400);
-    expect(brevo.guiHangLoat).not.toHaveBeenCalled();
+    expect(mail.guiHangLoat).not.toHaveBeenCalled();
   });
 
   /**
@@ -208,7 +208,7 @@ describe("/api/admin/gui-mail-hang-loat", () => {
       xacNhanSoLuong: 2,
       emails: ["ke-gian@evil.com"],
     });
-    const ban = vi.mocked(brevo.guiHangLoat).mock.calls[0][0];
+    const ban = vi.mocked(mail.guiHangLoat).mock.calls[0][0];
     expect(ban.map((b) => b.email).sort()).toEqual([
       "lan@example.com",
       "mai@example.com",
@@ -217,7 +217,7 @@ describe("/api/admin/gui-mail-hang-loat", () => {
 
   it("gửi thật: mỗi mẹ nhận bản có tên mình", async () => {
     await post({ ...CO_BAN, che_do: "that", ids: ["id-1", "id-2"], xacNhanSoLuong: 2 });
-    const ban = vi.mocked(brevo.guiHangLoat).mock.calls[0][0];
+    const ban = vi.mocked(mail.guiHangLoat).mock.calls[0][0];
     expect(ban.find((b) => b.email === "lan@example.com")!.html).toContain(
       "Chào chị Nguyễn Thị Lan.",
     );
@@ -234,7 +234,7 @@ describe("/api/admin/gui-mail-hang-loat", () => {
       xacNhanSoLuong: 2,
     });
     expect(res.status).toBe(400);
-    expect(brevo.guiHangLoat).not.toHaveBeenCalled();
+    expect(mail.guiHangLoat).not.toHaveBeenCalled();
   });
 
   it("gửi thật thành công → trả số đã gửi", async () => {
@@ -248,8 +248,8 @@ describe("/api/admin/gui-mail-hang-loat", () => {
     expect((await res.json()).daGui).toBe(2);
   });
 
-  it("Brevo hỏng → 502 kèm lỗi thật, không báo thành công giả", async () => {
-    vi.mocked(brevo.guiHangLoat).mockRejectedValue(new Error("Brevo từ chối: 400"));
+  it("gửi hỏng → 502 kèm lỗi thật, không báo thành công giả", async () => {
+    vi.mocked(mail.guiHangLoat).mockRejectedValue(new Error("Máy chủ SMTP từ chối người nhận"));
     const res = await post({
       ...CO_BAN,
       che_do: "that",
@@ -257,7 +257,7 @@ describe("/api/admin/gui-mail-hang-loat", () => {
       xacNhanSoLuong: 1,
     });
     expect(res.status).toBe(502);
-    expect((await res.json()).error).toContain("Brevo từ chối");
+    expect((await res.json()).error).toContain("SMTP từ chối");
   });
 
   it("đính kèm sai đuôi → 400, KHÔNG gửi", async () => {
@@ -270,7 +270,7 @@ describe("/api/admin/gui-mail-hang-loat", () => {
     });
     expect(res.status).toBe(400);
     expect((await res.json()).error).toContain("poster.webp");
-    expect(brevo.guiHangLoat).not.toHaveBeenCalled();
+    expect(mail.guiHangLoat).not.toHaveBeenCalled();
   });
 
   it("đính kèm vượt tổng dung lượng → 400, KHÔNG gửi", async () => {
@@ -284,7 +284,7 @@ describe("/api/admin/gui-mail-hang-loat", () => {
       ],
     });
     expect(res.status).toBe(400);
-    expect(brevo.guiHangLoat).not.toHaveBeenCalled();
+    expect(mail.guiHangLoat).not.toHaveBeenCalled();
   });
 
   it("đính kèm hình dạng lạ (thiếu trường) → 400, KHÔNG gửi", async () => {
@@ -296,7 +296,7 @@ describe("/api/admin/gui-mail-hang-loat", () => {
       dinhKem: [{ name: "poster.png" }],
     });
     expect(res.status).toBe(400);
-    expect(brevo.guiHangLoat).not.toHaveBeenCalled();
+    expect(mail.guiHangLoat).not.toHaveBeenCalled();
   });
 
   it("gửi thử: đính kèm được truyền xuống guiHangLoat", async () => {
@@ -307,7 +307,7 @@ describe("/api/admin/gui-mail-hang-loat", () => {
       toiEmails: ["a@x.vn"],
       dinhKem: KEM,
     });
-    expect(vi.mocked(brevo.guiHangLoat).mock.calls[0][1]).toEqual(KEM);
+    expect(vi.mocked(mail.guiHangLoat).mock.calls[0][1]).toEqual(KEM);
   });
 
   it("gửi thật: đính kèm được truyền xuống guiHangLoat", async () => {
@@ -318,12 +318,12 @@ describe("/api/admin/gui-mail-hang-loat", () => {
       xacNhanSoLuong: 2,
       dinhKem: KEM,
     });
-    expect(vi.mocked(brevo.guiHangLoat).mock.calls[0][1]).toEqual(KEM);
+    expect(vi.mocked(mail.guiHangLoat).mock.calls[0][1]).toEqual(KEM);
   });
 
   it("không đính kèm → guiHangLoat nhận mảng rỗng, không phải undefined lung tung", async () => {
     await post({ ...CO_BAN, che_do: "that", ids: ["id-1"], xacNhanSoLuong: 1 });
-    expect(vi.mocked(brevo.guiHangLoat).mock.calls[0][1]).toEqual([]);
+    expect(vi.mocked(mail.guiHangLoat).mock.calls[0][1]).toEqual([]);
   });
 
   /**
@@ -338,12 +338,12 @@ describe("/api/admin/gui-mail-hang-loat", () => {
       dinhKem: [{ name: "anh.heic", content: Buffer.from("abcd").toString("base64") }],
     });
     expect(res.status).toBe(400);
-    expect(brevo.guiHangLoat).not.toHaveBeenCalled();
+    expect(mail.guiHangLoat).not.toHaveBeenCalled();
   });
 
   it("xem trước: đính kèm hợp lệ vẫn không gửi gì", async () => {
     const res = await post({ ...CO_BAN, che_do: "xem", idMau: "id-1", dinhKem: KEM });
     expect(res.status).toBe(200);
-    expect(brevo.guiHangLoat).not.toHaveBeenCalled();
+    expect(mail.guiHangLoat).not.toHaveBeenCalled();
   });
 });

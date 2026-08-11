@@ -1,5 +1,5 @@
 import { isAdmin } from "@/lib/admin-auth";
-import { guiHangLoat, type BanGuiMot } from "@/lib/brevo";
+import { guiHangLoat, type BanGuiMot } from "@/lib/mail";
 import { choDienLa } from "@/lib/cho-dien";
 import { loiDinhKem, type DinhKem } from "@/lib/dinh-kem";
 import { dungEmail } from "@/lib/mail-hang-loat";
@@ -16,7 +16,7 @@ import { listRegistrations, type RegistrationRow } from "@/lib/supabase";
  * Ba chế độ, phân biệt bằng THAM SỐ BẮT BUỘC KHÁC NHAU chứ không chỉ bằng một
  * cờ — để một lượt "thu" không thể vô tình biến thành lượt bắn 500 email.
  */
-// Một lượt gọi Brevo mang 500 bản riêng cần thời gian thật.
+// Gửi 500 thư riêng qua pool SMTP cần thời gian thật.
 export const maxDuration = 60;
 
 const TOI_DA_TIEU_DE = 200;

@@ -1,12 +1,12 @@
-import { escapeHtml, FOOTNOTE_BTC, P, shell } from "./brevo";
+import { escapeHtml, FOOTNOTE_BTC, P, shell } from "./mail";
 import { CHO_DIEN } from "./cho-dien";
 import type { RegistrationRow } from "./supabase";
 
 /**
  * Dựng nội dung email gửi hàng loạt. THUẦN — không gọi mạng, không đọc DB, nên
- * test được đủ ca. Việc GỬI nằm ở `guiHangLoat` trong brevo.ts.
+ * test được đủ ca. Việc GỬI nằm ở `guiHangLoat` trong mail.ts.
  *
- * Server-only (import brevo.ts). Phần client cần dùng thì lấy ở `cho-dien.ts`.
+ * Server-only (import mail.ts). Phần client cần dùng thì lấy ở `cho-dien.ts`.
  */
 
 /** Chỉ hai cột này được dùng để thay chỗ điền — không nhận cả dòng để khỏi lỡ tay dùng thêm. */
@@ -58,7 +58,7 @@ function thanThanhHtml(noiDung: string, row: MeNhan): string {
  * Tiêu đề + HTML đã sẵn sàng gửi cho MỘT mẹ.
  *
  * Trả `{ subject, html }` để khớp `noiDungEmail` ngay cạnh và khớp đúng tên
- * trường của payload Brevo — bớt một lần đổi tên ở route.
+ * trường payload gửi mail — bớt một lần đổi tên ở route.
  *
  * Tiêu đề KHÔNG escape: nó là chuỗi thường, không phải HTML. Escape ở đây làm
  * mẹ nhận email tiêu đề "Chào chị Trần &amp; Lê".
@@ -66,7 +66,7 @@ function thanThanhHtml(noiDung: string, row: MeNhan): string {
  * `null` ở tham số chữ ký nghĩa là KHÔNG ký tên — khác hẳn bỏ trống, vốn rơi về
  * mặc định "Đội ngũ Mama Ơi". Nội dung ở đây do admin gõ tay nên lời kết là
  * việc của họ; một chữ ký đóng cứng bên dưới sẽ đá nhau với lời kết họ vừa
- * viết. Hai mẫu cố định `capLai` / `suCo` trong brevo.ts KHÔNG đổi — chúng vẫn
+ * viết. Hai mẫu cố định `capLai` / `suCo` trong mail.ts KHÔNG đổi — chúng vẫn
  * ký tên BTC đúng câu chữ đã duyệt.
  */
 export function dungEmail(

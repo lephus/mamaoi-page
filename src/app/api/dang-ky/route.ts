@@ -3,8 +3,7 @@ import {
   existingCheckinCode,
   sendEventEmail,
   sendWaitlistEmail,
-  upsertContact,
-} from "@/lib/brevo";
+} from "@/lib/mail";
 import {
   appendRegistration,
   appendWaitlist,
@@ -31,8 +30,8 @@ import {
   type Submission,
 } from "@/lib/validation";
 
-// Bốn dịch vụ ngoài chạy tuần tự trong request này — Brevo, SMTP, Supabase,
-// Sheets — cùng chia sẻ ngân sách thời gian dưới đây. Bị nền tảng giết giữa
+// Ba dịch vụ ngoài chạy tuần tự trong request này — Supabase, SMTP, Sheets —
+// cùng chia sẻ ngân sách thời gian dưới đây. Bị nền tảng giết giữa
 // chừng sẽ báo thất bại cho một lượt đăng ký thực ra đã thành công.
 export const maxDuration = 60;
 
@@ -87,7 +86,7 @@ export async function POST(request: Request) {
   // Mã check-in: nếu email đã đăng ký sự kiện trước đó thì DÙNG LẠI mã cũ để mã
   // của một email không bao giờ đổi (QR/email cũ vẫn quét được, hết lỗi "không
   // tìm thấy mã" do upsert-theo-email ghi đè mã). Chỉ sinh mã mới ở lần đầu. Tra
-  // Brevo lỗi → sinh mã mới: xấu nhất là quay lại hành vi cũ cho đúng lượt này,
+  // Tra lỗi → sinh mã mới: xấu nhất là quay lại hành vi cũ cho đúng lượt này,
   // chứ không chặn mẹ đăng ký.
   let checkinCode: string | undefined;
   if (isRegistration(data)) {
@@ -108,7 +107,7 @@ export async function POST(request: Request) {
   // hôm trước, một đồng hồ máy chạy chậm, hay một cú curl đều gửi được sau hạn —
   // và vẫn nhận email xác nhận kèm mã QR cho sự kiện đã xong.
   //
-  // Đứng TRƯỚC cả cổng sức chứa và Brevo, cùng một lý do: đặt sau thì mẹ đã cầm
+  // Đứng TRƯỚC cả cổng sức chứa và lượt ghi Supabase, cùng một lý do: đặt sau thì mẹ đã cầm
   // email xác nhận rồi mới bị báo là muộn.
   //
   // Waitlist app không có hạn — chỉ đăng ký sự kiện mới đóng.
@@ -121,7 +120,7 @@ export async function POST(request: Request) {
 
   // ---------- Cổng chặn sức chứa ----------
   //
-  // PHẢI đứng TRƯỚC Brevo. Đặt sau thì mẹ đã nhận email xác nhận kèm mã QR rồi
+  // PHẢI đứng TRƯỚC lượt ghi Supabase. Đặt sau thì mẹ đã nhận email xác nhận kèm mã QR rồi
   // mới bị báo hết chỗ — không rút lại được.
   //
   // Đếm từ Google Sheet (tab register) theo yêu cầu của khách: ops nhìn Sheet
@@ -180,23 +179,45 @@ export async function POST(request: Request) {
     if (ket === "loi") warnings.push("suc-chua");
   }
 
-  // Brevo holds the member record. If this fails, the registration genuinely
-  // did not happen — surface a real error rather than a comforting lie.
+  // Supabase GIỮ bản ghi thành viên. Hỏng ở đây thì lượt đăng ký THẬT SỰ không
+  // xảy ra — trả lỗi thật thay vì một lời an ủi.
   //
-  // Brevo hỏng ở đây thì cổng chặn ở trên không phải dọn gì: ghế chỉ thực sự bị
-  // chiếm khi dòng Sheet được append ở cuối route, mà tới đó thì không còn.
+  // TRƯỚC ĐÂY VAI TRÒ NÀY LÀ CỦA BREVO, và ghi Supabase chỉ là non-fatal. Brevo
+  // đã bị gỡ khỏi dự án, nên Supabase là nơi DUY NHẤT còn giữ dữ liệu này —
+  // để nó non-fatal nghĩa là mẹ điền form, thấy màn hình thành công, mà không
+  // có bản ghi nào ở đâu cả, và mã check-in vừa cấp thì không ai tra lại được.
+  // `existingCheckinCode` cũng đọc từ đúng bảng này, nên một lượt ghi hụt sẽ
+  // khiến lần đăng ký sau cấp mã MỚI và giết tấm QR đã gửi.
+  //
+  // Hỏng ở đây thì cổng chặn sức chứa bên trên không phải dọn gì: ghế chỉ thực
+  // sự bị chiếm khi dòng Sheet được append ở cuối route, mà tới đó thì không còn.
+  //
+  // Thiếu cấu hình Supabase cũng là lỗi, không phải lý do để bỏ qua — không có
+  // kho thì không có đăng ký.
+  if (!supabaseConfigured()) {
+    console.error("[dang-ky] Supabase chưa được cấu hình — không thể ghi nhận đăng ký");
+    return NextResponse.json(
+      { error: "Không thể hoàn tất đăng ký. Vui lòng thử lại sau ít phút." },
+      { status: 502 },
+    );
+  }
   try {
-    await upsertContact(data, checkinCode);
+    if (isRegistration(data)) {
+      // Upsert theo email nên mẹ gửi lại form chỉ làm mới đúng dòng cũ.
+      await insertRegistration(data, checkinCode!);
+    } else {
+      await insertWaitlist(data.email, data.dongYNhanTin);
+    }
   } catch (err) {
-    console.error("[dang-ky] Brevo contact failed:", err);
+    console.error("[dang-ky] Supabase insert failed:", data.email, err);
     return NextResponse.json(
       { error: "Không thể hoàn tất đăng ký. Vui lòng thử lại sau ít phút." },
       { status: 502 },
     );
   }
 
-  // Past this point she IS registered. Nothing below may fail her request —
-  // she would be refilling the form to fix a problem that is entirely ours.
+  // Qua điểm này mẹ ĐÃ đăng ký. Không gì bên dưới được phép làm hỏng request của
+  // mẹ — mẹ sẽ phải điền lại form để sửa một vấn đề hoàn toàn của chúng ta.
 
   try {
     if (isRegistration(data)) {
@@ -205,31 +226,8 @@ export async function POST(request: Request) {
       await sendWaitlistEmail(data);
     }
   } catch (err) {
-    // Most likely cause: no verified sender in Brevo yet.
     console.error("[dang-ky] Email failed:", err);
     warnings.push("email");
-  }
-
-  // Bản ghi có cấu trúc cho /check-in + /admin.
-  //  - Đăng ký sự kiện → bảng `registrations` (có mã check-in, thông tin bé).
-  //  - Waitlist app    → bảng `waitlist` (chỉ email + consent).
-  // Hai bảng RIÊNG, không gộp: gộp thì phải nới NOT NULL của ho_ten/sdt/
-  // tinh_thanh/checkin_code, tức gỡ luôn lưới an toàn của đăng ký sự kiện thật.
-  //
-  // Non-fatal ở CẢ HAI nhánh: mẹ đã đăng ký xong ở Brevo rồi. Lỗi ở đây chỉ
-  // log thật to để ops back-fill từ Brevo.
-  if (supabaseConfigured()) {
-    try {
-      if (isRegistration(data)) {
-        // Upsert theo email nên mẹ gửi lại form chỉ làm mới đúng dòng cũ.
-        await insertRegistration(data, checkinCode!);
-      } else {
-        await insertWaitlist(data.email, data.dongYNhanTin);
-      }
-    } catch (err) {
-      console.error("[dang-ky] Supabase insert failed:", data.email, err);
-      warnings.push("supabase");
-    }
   }
 
   // Bản mirror thô cho ops. Cố tình KHÔNG phụ thuộc kết quả của Supabase ở

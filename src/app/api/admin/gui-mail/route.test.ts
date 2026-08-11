@@ -1,14 +1,14 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { GET, POST } from "./route";
 import * as adminAuth from "@/lib/admin-auth";
-import * as brevo from "@/lib/brevo";
+import * as mail from "@/lib/mail";
 import * as supabase from "@/lib/supabase";
 
 vi.mock("@/lib/admin-auth", () => ({ isAdmin: vi.fn(async () => true) }));
 
-vi.mock("@/lib/brevo", async (goc) => ({
+vi.mock("@/lib/mail", async (goc) => ({
   // `noiDungEmail` để thật — bản xem trước phải là HTML thật, không phải stub.
-  ...(await goc<typeof brevo>()),
+  ...(await goc<typeof mail>()),
   guiEmailTheoMau: vi.fn(async () => {}),
 }));
 
@@ -50,19 +50,19 @@ describe("/api/admin/gui-mail", () => {
     vi.mocked(adminAuth.isAdmin).mockResolvedValue(false);
     expect((await get(`code=${MA}&mau=capLai`)).status).toBe(401);
     expect((await post({ code: MA, mau: "capLai" })).status).toBe(401);
-    expect(brevo.guiEmailTheoMau).not.toHaveBeenCalled();
+    expect(mail.guiEmailTheoMau).not.toHaveBeenCalled();
   });
 
   it("từ chối mã sai định dạng và mẫu lạ", async () => {
     expect((await post({ code: "LUNG-TUNG", mau: "capLai" })).status).toBe(400);
     expect((await post({ code: MA, mau: "xoaHetDuLieu" })).status).toBe(400);
-    expect(brevo.guiEmailTheoMau).not.toHaveBeenCalled();
+    expect(mail.guiEmailTheoMau).not.toHaveBeenCalled();
   });
 
   it("mã không có trong DB thì 404, không gửi mù", async () => {
     vi.mocked(supabase.findByCode).mockResolvedValue(null);
     expect((await post({ code: MA, mau: "capLai" })).status).toBe(404);
-    expect(brevo.guiEmailTheoMau).not.toHaveBeenCalled();
+    expect(mail.guiEmailTheoMau).not.toHaveBeenCalled();
   });
 
   /**
@@ -79,7 +79,7 @@ describe("/api/admin/gui-mail", () => {
     });
 
     expect(res.status).toBe(200);
-    expect(brevo.guiEmailTheoMau).toHaveBeenCalledWith(
+    expect(mail.guiEmailTheoMau).toHaveBeenCalledWith(
       "capLai",
       { email: "lan@example.com", hoTen: "Nguyễn Thị Lan" },
       MA,
@@ -92,7 +92,7 @@ describe("/api/admin/gui-mail", () => {
   });
 
   it("gửi hỏng thì trả 502 chứ không báo thành công giả", async () => {
-    vi.mocked(brevo.guiEmailTheoMau).mockRejectedValue(new Error("SMTP chết"));
+    vi.mocked(mail.guiEmailTheoMau).mockRejectedValue(new Error("SMTP chết"));
     const res = await post({ code: MA, mau: "capLai" });
     expect(res.status).toBe(502);
     expect((await res.json()).error).toContain("SMTP chết");
@@ -110,7 +110,7 @@ describe("/api/admin/gui-mail", () => {
     expect(data.mauThu).toBe(true);
     expect(data.subject).toBe("[Mama Ơi] Xin lỗi vì sự cố kỹ thuật – Gửi mã QR check-in");
     expect(supabase.findByCode).not.toHaveBeenCalled();
-    expect(brevo.guiEmailTheoMau).not.toHaveBeenCalled();
+    expect(mail.guiEmailTheoMau).not.toHaveBeenCalled();
   });
 
   it("bản mẫu vẫn phải đăng nhập", async () => {
@@ -131,6 +131,6 @@ describe("/api/admin/gui-mail", () => {
     expect(data.html).toContain(MA);
     expect(data.html).toContain("Xin chào Nguyễn Thị Lan,");
     expect(data.email).toBe("lan@example.com");
-    expect(brevo.guiEmailTheoMau).not.toHaveBeenCalled();
+    expect(mail.guiEmailTheoMau).not.toHaveBeenCalled();
   });
 });

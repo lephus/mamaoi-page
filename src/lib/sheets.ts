@@ -25,7 +25,7 @@ import type { Registration } from "./validation";
  *  - Đăng ký sự kiện → tab "register" (22 cột, có mã check-in + thông tin bé).
  *  - Waitlist app    → tab "waitlist" (3 cột: email, consent, thời điểm).
  * Ops tự đặt tên hai tab này trong Sheet; API `values.append` KHÔNG tự tạo tab,
- * nên tab thiếu / gõ sai tên sẽ làm lượt ghi lỗi — nhưng non-fatal (Brevo giữ
+ * nên tab thiếu / gõ sai tên sẽ làm lượt ghi lỗi — nhưng non-fatal (Supabase giữ
  * lead), route chỉ log cảnh báo.
  *
  * Chủ yếu là append lúc đăng ký. NGOẠI LỆ DUY NHẤT: check-in (mẹ tự quét QR hoặc
@@ -56,7 +56,7 @@ function range(tab: string): string {
 /**
  * Có tới bốn lượt gọi Google tuần tự trong một lượt đăng ký (token, đọc A1,
  * append header, append dòng), tất cả cộng dồn vào thời gian mẹ đang chờ —
- * ngay sau Brevo và email. Mỗi cuộc gọi phải giữ ngân sách nhỏ để tổng thời
+ * ngay sau Supabase và email. Mỗi cuộc gọi phải giữ ngân sách nhỏ để tổng thời
  * gian còn nằm trong maxDuration của route, không phải để "đủ thời gian".
  */
 const TIMEOUT_MS = 5_000;

@@ -29,7 +29,7 @@ const KHOA_NHAP_TAM = "mo-gui-mail-hang-loat-nhap";
 
 /**
  * File → base64 THUẦN. `FileReader.readAsDataURL` trả về một data-URL
- * (`data:image/png;base64,iVBOR...`), phải cắt phần tiền tố đi — Brevo chỉ nhận
+ * (`data:image/png;base64,iVBOR...`), phải cắt phần tiền tố đi — nodemailer chỉ nhận
  * phần base64, gửi cả tiền tố là file hỏng khi mở ra.
  */
 function docBase64(f: File): Promise<string> {
@@ -264,13 +264,13 @@ export function GuiMailHangLoatTool({
         setChon(new Set());
       }
     } catch {
-      // KHÔNG nói "chưa gửi": request đã bay đi thì client không biết Brevo đã
+      // KHÔNG nói "chưa gửi": request đã bay đi thì client không biết máy chủ mail đã
       // nhận chưa. Nói "chưa gửi" là dụ admin bấm lại và 500 mẹ nhận hai lần.
       setKetQua({
         ok: false,
         text:
           che_do === "that"
-            ? "Mất kết nối. KHÔNG chắc đã gửi hay chưa — kiểm tra nhật ký Brevo trước khi gửi lại."
+            ? "Mất kết nối. KHÔNG chắc đã gửi hay chưa — kiểm tra hộp thư đã nhận chưa trước khi gửi lại."
             : "Không kết nối được. Thử lại.",
       });
       // Cùng lý do với nhánh !res.ok ở trên: đừng để bản xem trước cũ đứng

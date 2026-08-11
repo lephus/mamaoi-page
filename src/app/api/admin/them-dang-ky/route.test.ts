@@ -1,16 +1,14 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { POST } from "./route";
 import * as adminAuth from "@/lib/admin-auth";
-import * as brevo from "@/lib/brevo";
+import * as mail from "@/lib/mail";
 import * as sheets from "@/lib/sheets";
 import * as supabase from "@/lib/supabase";
 
 vi.mock("@/lib/admin-auth", () => ({ isAdmin: vi.fn(async () => true) }));
 
-vi.mock("@/lib/brevo", () => ({
-  existingCheckinCode: vi.fn(async () => null),
-  upsertContactThuCong: vi.fn(async () => {}),
-  guiEmailTheoMau: vi.fn(async () => {}),
+vi.mock("@/lib/mail", () => ({
+    guiEmailTheoMau: vi.fn(async () => {}),
 }));
 
 vi.mock("@/lib/supabase", () => ({
@@ -36,9 +34,8 @@ const post = (body: unknown) =>
 
 /** Không lượt ghi nào chạm tới bất kỳ kho nào. */
 function khongGhiGi() {
-  expect(brevo.upsertContactThuCong).not.toHaveBeenCalled();
   expect(supabase.insertRegistrationThuCong).not.toHaveBeenCalled();
-  expect(brevo.guiEmailTheoMau).not.toHaveBeenCalled();
+  expect(mail.guiEmailTheoMau).not.toHaveBeenCalled();
   expect(sheets.appendRegistrationThuCong).not.toHaveBeenCalled();
 }
 
@@ -53,9 +50,7 @@ beforeEach(() => {
   vi.mocked(sheets.appendRegistrationThuCong).mockResolvedValue(undefined);
   vi.mocked(supabase.findByEmail).mockResolvedValue(null);
   vi.mocked(supabase.insertRegistrationThuCong).mockResolvedValue(undefined);
-  vi.mocked(brevo.existingCheckinCode).mockResolvedValue(null);
-  vi.mocked(brevo.upsertContactThuCong).mockResolvedValue(undefined);
-  vi.mocked(brevo.guiEmailTheoMau).mockResolvedValue(undefined);
+  vi.mocked(mail.guiEmailTheoMau).mockResolvedValue(undefined);
 });
 
 describe("/api/admin/them-dang-ky", () => {
@@ -105,7 +100,7 @@ describe("/api/admin/them-dang-ky", () => {
     khongGhiGi();
   });
 
-  it("tạo thành công: ghi đủ Brevo, Supabase, email, Sheet", async () => {
+  it("tạo thành công: ghi đủ Supabase, email, Sheet", async () => {
     const res = await post(HOP_LE);
     expect(res.status).toBe(200);
     const data = await res.json();
@@ -114,13 +109,9 @@ describe("/api/admin/them-dang-ky", () => {
     expect(data.code).toMatch(/^MO-[2-9A-HJ-NP-Z]{6}$/);
     expect(data.warnings).toEqual([]);
 
-    expect(brevo.upsertContactThuCong).toHaveBeenCalledWith(
-      { email: "lan@example.com", hoTen: "Nguyễn Thị Lan", sdt: "", dongYNhanTin: false },
-      data.code,
-    );
     expect(supabase.insertRegistrationThuCong).toHaveBeenCalledOnce();
     expect(sheets.appendRegistrationThuCong).toHaveBeenCalledOnce();
-    expect(brevo.guiEmailTheoMau).toHaveBeenCalledWith(
+    expect(mail.guiEmailTheoMau).toHaveBeenCalledWith(
       "xacNhan",
       { email: "lan@example.com", hoTen: "Nguyễn Thị Lan" },
       data.code,
@@ -137,16 +128,12 @@ describe("/api/admin/them-dang-ky", () => {
     expect(hang.ho_ten).toBe("Nguyễn Thị Lan");
   });
 
-  it("có nhập sdt thì ghi xuống DB và gửi kèm lên Brevo", async () => {
+  it("có nhập sdt thì ghi xuống DB dạng đã chuẩn hoá", async () => {
     const data = await (await post({ ...HOP_LE, sdt: "090 123 4567" })).json();
     // Trả về bản ĐÃ chuẩn hoá, để ops đối chiếu được với thứ thật sự đã lưu.
     expect(data.sdt).toBe("0901234567");
     expect(vi.mocked(supabase.insertRegistrationThuCong).mock.calls[0][0].sdt).toBe(
       "0901234567",
-    );
-    expect(brevo.upsertContactThuCong).toHaveBeenCalledWith(
-      expect.objectContaining({ sdt: "0901234567" }),
-      expect.anything(),
     );
   });
 
@@ -166,35 +153,20 @@ describe("/api/admin/them-dang-ky", () => {
   });
 
   /**
-   * Giữ mã của một email cố định: mọi QR đã gửi trước đó phải còn quét được.
-   * Email này chưa có DÒNG trong Supabase (sự cố mất dòng — đúng ca mà tính năng
-   * này sinh ra để chữa) nhưng đã có contact ở Brevo mang sẵn mã.
+   * HÀNH VI ĐÃ ĐỔI khi Brevo bị gỡ. Trước đây route tra `existingCheckinCode` ở
+   * Brevo để dùng lại mã của một email mất dòng Supabase. Giờ nguồn duy nhất là
+   * Supabase — mà cổng chặn trùng ngay trên đã `findByEmail` và trả 409 nếu có
+   * dòng, nên tới được đây luôn nghĩa là email này chưa có mã nào. Mã mới là
+   * đúng, và không còn lượt gọi DB thừa nào để tra lại.
    */
-  it("dùng lại mã cũ của email nếu Brevo đã cấp", async () => {
-    vi.mocked(brevo.existingCheckinCode).mockResolvedValue("MO-CU5678");
+  it("email chưa có dòng → luôn sinh mã MỚI", async () => {
     const data = await (await post(HOP_LE)).json();
-    expect(data.code).toBe("MO-CU5678");
-    expect(brevo.guiEmailTheoMau).toHaveBeenCalledWith(
+    expect(data.code).toMatch(/^MO-[2-9A-HJ-NP-Z]{6}$/);
+    expect(mail.guiEmailTheoMau).toHaveBeenCalledWith(
       "xacNhan",
       expect.anything(),
-      "MO-CU5678",
+      data.code,
     );
-  });
-
-  it("tra mã cũ hỏng thì vẫn tạo được, chỉ sinh mã mới", async () => {
-    vi.mocked(brevo.existingCheckinCode).mockRejectedValue(new Error("Brevo lag"));
-    const res = await post(HOP_LE);
-    expect(res.status).toBe(200);
-    expect((await res.json()).code).toMatch(/^MO-/);
-  });
-
-  it("Brevo hỏng thì 502 và không ghi tiếp gì", async () => {
-    vi.mocked(brevo.upsertContactThuCong).mockRejectedValue(new Error("Brevo chết"));
-    const res = await post(HOP_LE);
-    expect(res.status).toBe(502);
-    expect(supabase.insertRegistrationThuCong).not.toHaveBeenCalled();
-    expect(brevo.guiEmailTheoMau).not.toHaveBeenCalled();
-    expect(sheets.appendRegistrationThuCong).not.toHaveBeenCalled();
   });
 
   /**
@@ -207,11 +179,11 @@ describe("/api/admin/them-dang-ky", () => {
     vi.mocked(supabase.insertRegistrationThuCong).mockRejectedValue(new Error("DB chết"));
     const res = await post(HOP_LE);
     expect(res.status).toBe(502);
-    expect(brevo.guiEmailTheoMau).not.toHaveBeenCalled();
+    expect(mail.guiEmailTheoMau).not.toHaveBeenCalled();
   });
 
   it("email hỏng chỉ là cảnh báo — mã đã lưu, gửi lại được", async () => {
-    vi.mocked(brevo.guiEmailTheoMau).mockRejectedValue(new Error("SMTP chết"));
+    vi.mocked(mail.guiEmailTheoMau).mockRejectedValue(new Error("SMTP chết"));
     const res = await post(HOP_LE);
     expect(res.status).toBe(200);
     const data = await res.json();
@@ -229,7 +201,7 @@ describe("/api/admin/them-dang-ky", () => {
   it("không tick gửi mail thì không gửi gì, nhưng vẫn tạo", async () => {
     const res = await post({ ...HOP_LE, guiEmail: false });
     expect(res.status).toBe(200);
-    expect(brevo.guiEmailTheoMau).not.toHaveBeenCalled();
+    expect(mail.guiEmailTheoMau).not.toHaveBeenCalled();
     expect(supabase.insertRegistrationThuCong).toHaveBeenCalledOnce();
   });
 
@@ -237,10 +209,6 @@ describe("/api/admin/them-dang-ky", () => {
     await post({ ...HOP_LE, dongYNhanTin: true });
     expect(vi.mocked(supabase.insertRegistrationThuCong).mock.calls[0][0].dong_y_nhan_tin).toBe(
       true,
-    );
-    expect(brevo.upsertContactThuCong).toHaveBeenCalledWith(
-      expect.objectContaining({ dongYNhanTin: true }),
-      expect.anything(),
     );
   });
 

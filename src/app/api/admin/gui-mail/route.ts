@@ -1,5 +1,5 @@
 import { isAdmin } from "@/lib/admin-auth";
-import { guiEmailTheoMau, noiDungEmail } from "@/lib/brevo";
+import { guiEmailTheoMau, noiDungEmail } from "@/lib/mail";
 import { MAU_THU_TU, VI_DU, type MauEmail } from "@/lib/mau-email";
 import { findByCode } from "@/lib/supabase";
 import { isValidCheckinCode } from "@/lib/validation";

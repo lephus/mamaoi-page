@@ -116,7 +116,10 @@ export default function PrivacyPolicyPage() {
         </p>
         <ul>
           <li>
-            <strong>Brevo</strong> — lưu trữ danh bạ và gửi email xác nhận
+            <strong>Supabase</strong> — lưu trữ thông tin đăng ký và trạng thái check-in
+          </li>
+          <li>
+            <strong>OneMail (onemail.vn)</strong> — gửi email xác nhận và thông báo sự kiện
           </li>
           <li>
             <strong>Google (Sheets, Analytics)</strong> — quản lý danh sách tham dự và đo

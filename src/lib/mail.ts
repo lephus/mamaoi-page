@@ -1,177 +1,90 @@
+import nodemailer, { type Transporter } from "nodemailer";
 import QRCode from "qrcode";
-import { chuDeLabel, EVENT, SITE } from "./constants";
-import { isRegistration, thangTuoiTuNgaySinh, type Submission } from "./validation";
+import { EVENT, SITE } from "./constants";
+import { isRegistration, type Submission } from "./validation";
+import { findByEmail } from "./supabase";
 import { checkinUrl } from "./checkin-url";
 import type { MauEmail } from "./mau-email";
 import type { DinhKem } from "./dinh-kem";
 
-const BREVO_API = "https://api.brevo.com/v3";
+/**
+ * Máy chủ mặc định. Đọc từ env để đổi được mà không phải sửa code, nhưng CÓ giá
+ * trị mặc định vì bộ biến môi trường đã chốt chỉ gồm bốn key SMTP_PORT /
+ * SMTP_USER / SMTP_PASS / SMTP_FROM — không có SMTP_HOST.
+ */
+const SMTP_HOST_MAC_DINH = "zmhn112404.onemail.vn";
 
 /**
- * MỘT đường duy nhất tới Brevo, cho cả quản lý contact lẫn gửi email.
+ * Số kết nối SMTP mở song song khi gửi hàng loạt.
  *
- * Trước đây việc GỬI đi qua SMTP relay (nodemailer) còn contact đi REST API —
- * hai giao thức, hai bộ credential, cho cùng một tài khoản. Đã gộp về REST vì:
+ * ĐÂY LÀ CON SỐ QUAN TRỌNG NHẤT của việc bỏ Brevo. Brevo nhận cả 500 mẹ trong
+ * MỘT lượt gọi HTTP; SMTP thì mỗi mẹ một lượt gửi riêng. Gửi tuần tự 500 lượt
+ * không sống nổi trong giới hạn thời gian một hàm Vercel — đúng lý do
+ * `guiHangLoat` từng được viết bằng REST API (spec 2026-08-05 §1).
  *
- *  - **Serverless không hợp SMTP.** SMTP giữ kết nối, mà Vercel bật/tắt hàm
- *    liên tục nên transporter cache lại gần như vô dụng, và mỗi cold start phải
- *    trả giá bắt tay TLS.
- *  - **Lỗi đọc được.** REST trả JSON có `message` và `code` — nhờ vậy mới đọc
- *    thẳng được "SMTP account is not yet activated" / `permission_denied` và
- *    biết phải làm gì. SMTP trả một chuỗi lỗi khó xử lý theo chương trình.
- *  - **Gửi hàng loạt vốn đã BẮT BUỘC dùng REST** (xem `guiHangLoat`), nên giữ
- *    SMTP chỉ để phục vụ mail đơn là nuôi hai đường cho cùng một việc.
- *  - Một biến `BREVO_API_KEY` thay cho bốn biến `BREVO_SMTP_*`.
+ * Pool nhiều kết nối là cách duy nhất để 500 mẹ vừa khít: 5 kết nối × ~200ms
+ * mỗi thư ≈ 20 giây cho 500 thư, nằm trong `maxDuration = 60`.
  *
- * ĐÁNH ĐỔI đã cân nhắc: SMTP không khoá ta vào Brevo — đổi sang SendGrid/SES
- * chỉ cần đổi biến môi trường. Bỏ nó đi nghĩa là đổi nhà cung cấp sẽ phải sửa
- * code. Chấp nhận, vì phần phải sửa gói gọn trong `brevo()` và `send()` ngay
- * dưới đây.
- *
- * LƯU Ý QUAN TRỌNG: gộp đường KHÔNG gỡ được cổng kích hoạt tài khoản. Tài khoản
- * Brevo chưa kích hoạt thì email giao dịch bị từ chối bất kể đi giao thức nào —
- * đó là chuyện phải xử lý với Brevo, không phải bằng code.
+ * ĐỪNG NÂNG BỪA. Nhà cung cấp SMTP chia sẻ thường chặn khi thấy quá nhiều kết
+ * nối đồng thời, và bị chặn giữa lượt gửi cho 500 mẹ là kiểu hỏng tệ nhất.
  */
-async function brevo(path: string, body: unknown): Promise<Response> {
-  const key = process.env.BREVO_API_KEY;
-  if (!key) throw new Error("BREVO_API_KEY chưa được cấu hình");
+const SO_KET_NOI = 5;
 
-  return fetch(`${BREVO_API}${path}`, {
-    method: "POST",
-    headers: {
-      "api-key": key,
-      "Content-Type": "application/json",
-      accept: "application/json",
-    },
-    body: JSON.stringify(body),
+// Pool dùng lại giữa các lượt gọi ấm thay vì mở kết nối mới mỗi lần.
+let transporter: Transporter | null = null;
+
+function getTransport(): Transporter {
+  if (transporter) return transporter;
+
+  const user = process.env.SMTP_USER;
+  const pass = process.env.SMTP_PASS;
+  if (!user || !pass) {
+    throw new Error("SMTP_USER / SMTP_PASS chưa được cấu hình");
+  }
+
+  transporter = nodemailer.createTransport({
+    host: process.env.SMTP_HOST ?? SMTP_HOST_MAC_DINH,
+    port: Number(process.env.SMTP_PORT ?? 587),
+    secure: false, // STARTTLS thương lượng trên cổng 587; TLS vẫn được áp dụng
+    auth: { user, pass },
+    // Pool phục vụ đường gửi hàng loạt. Mail đơn cũng đi qua đây và hưởng lợi:
+    // lượt gửi thứ hai trong cùng một hàm ấm không phải bắt tay TLS lại.
+    pool: true,
+    maxConnections: SO_KET_NOI,
+    maxMessages: Infinity,
   });
+  return transporter;
 }
 
-/**
- * Upsert the contact into the right list.
- *
- * `updateEnabled` is what makes this Membership First rather than a form dump:
- * a mother who joins the app waitlist in July and registers for the event in
- * August must end up as ONE member with a richer profile, not two contacts.
- * Waitlist attributes are omitted rather than blanked, so the later event
- * registration only ever adds information.
- */
-export async function upsertContact(
-  data: Submission,
-  checkinCode?: string,
-): Promise<void> {
-  const listId = isRegistration(data)
-    ? Number(process.env.BREVO_LIST_EVENT ?? 3)
-    : Number(process.env.BREVO_LIST_WAITLIST ?? 4);
-
-  const attributes: Record<string, string | number | boolean> = {
-    NGUON: data.nguon,
-    DONG_Y_NHAN_TIN: data.dongYNhanTin,
-  };
-
-  if (isRegistration(data)) {
-    attributes.HO_TEN = data.hoTen;
-    attributes.SDT = data.sdt;
-    attributes.TINH_THANH = data.tinhThanh;
-    attributes.TRANG_THAI = data.trangThai;
-    attributes.DI_CUNG_CHONG = data.diCungChong;
-    attributes.NGUON_BIET_DEN = data.nguonBietDen;
-    attributes.CHU_DE_QUAN_TAM = data.chuDeQuanTam.map(chuDeLabel).join(", ");
-    if (data.facebook) attributes.FACEBOOK = data.facebook;
-    if (checkinCode) attributes.MA_CHECKIN = checkinCode;
-
-    // Mỗi nhánh chỉ gửi attribute của CHÍNH nó. `updateEnabled: true` nghĩa là
-    // gửi chuỗi rỗng sẽ XOÁ TRẮNG giá trị cũ — một mẹ đăng ký lần hai sau khi
-    // sinh sẽ mất sạch thông tin bé nếu ta gửi "" cho nhánh không áp dụng.
-    //
-    // Phải so === "da_sinh" tường minh, không dùng `else`: hai nhánh chuẩn bị /
-    // IVF không có field bé, và chỉ gửi TRANG_THAI. `else` sẽ đọc data.tenBe...
-    // vốn không tồn tại trên các nhánh đó.
-    if (data.trangThai === "mang_thai") {
-      attributes.THAI_TUAN = data.thaiTuan;
-    } else if (data.trangThai === "da_sinh") {
-      attributes.TEN_BE = data.tenBe;
-      attributes.BE_NGAY_SINH = data.beNgaySinh.toISOString().slice(0, 10);
-      attributes.BE_GIOI_TINH = data.beGioiTinh;
-      attributes.BE_THANG_TUOI = thangTuoiTuNgaySinh(data.beNgaySinh, new Date());
-    }
-  }
-
-  const res = await brevo("/contacts", {
-    email: data.email,
-    updateEnabled: true,
-    listIds: [listId],
-    attributes,
-  });
-
-  if (!res.ok) {
-    throw new Error(`Brevo contact failed (${res.status}): ${await res.text()}`);
-  }
-}
-
-/**
- * Contact cho đăng ký ops TẠO TAY ở `/admin/them-dang-ky` — chỉ có email, họ tên,
- * và SĐT nếu ops có.
- *
- * Cố ý KHÔNG gửi "--" cho TINH_THANH/TRANG_THAI, và bỏ hẳn SDT khi ops không
- * nhập: các attribute chưa biết VẮNG MẶT khỏi payload. `updateEnabled: true`
- * nghĩa là thứ ta gửi sẽ nằm lại và ĐÈ LÊN dữ liệu thật khi mẹ tự đăng ký đầy đủ
- * sau này — "--" trong ô số điện thoại của CRM còn tệ hơn một ô trống. Đây đúng
- * là lý lẽ đã áp cho nhánh waitlist ở `upsertContact` bên trên: chỉ được phép
- * THÊM thông tin.
- *
- * MA_CHECKIN là lý do lượt ghi này bắt buộc thành công: nó là nơi `existingCheckinCode`
- * đọc ra để giữ mã của một email cố định. Không ghi được thì lần sau mẹ tự đăng
- * ký bằng email đó sẽ được cấp mã MỚI, và tấm QR ta vừa gửi chết.
- */
-export async function upsertContactThuCong(
-  nguoiNhan: { email: string; hoTen: string; sdt?: string; dongYNhanTin: boolean },
-  checkinCode: string,
-): Promise<void> {
-  const attributes: Record<string, string | number | boolean> = {
-    NGUON: "su-kien",
-    HO_TEN: nguoiNhan.hoTen,
-    MA_CHECKIN: checkinCode,
-    DONG_Y_NHAN_TIN: nguoiNhan.dongYNhanTin,
-  };
-  if (nguoiNhan.sdt) attributes.SDT = nguoiNhan.sdt;
-
-  const res = await brevo("/contacts", {
-    email: nguoiNhan.email,
-    updateEnabled: true,
-    listIds: [Number(process.env.BREVO_LIST_EVENT ?? 3)],
-    attributes,
-  });
-
-  if (!res.ok) {
-    throw new Error(`Brevo contact failed (${res.status}): ${await res.text()}`);
-  }
+/** Địa chỉ người gửi. Tách ra vì cả mail đơn lẫn hàng loạt đều cần, và đều phải fail sớm. */
+function nguoiGui(): { name: string; address: string } {
+  const address = process.env.SMTP_FROM;
+  if (!address) throw new Error("SMTP_FROM chưa được cấu hình");
+  return { name: process.env.SMTP_SENDER_NAME ?? SITE.name, address };
 }
 
 /**
  * Mã check-in đã cấp cho email này ở lần đăng ký sự kiện trước (nếu có), để lần
- * sau DÙNG LẠI thay vì sinh mã mới — giữ mã của một email cố định thì QR/email cũ
- * không bao giờ hết hiệu lực (nếu không, upsert theo email ghi đè mã cũ và mọi QR
- * đã gửi trước đó báo "không tìm thấy mã").
+ * sau DÙNG LẠI thay vì sinh mã mới — giữ mã của một email cố định thì QR/email
+ * cũ không bao giờ hết hiệu lực. Không có nó, upsert theo email cấp mã MỚI và
+ * mọi QR đã gửi trước đó báo "không tìm thấy mã".
  *
- * Tra ở Brevo — nguồn sự thật của contact, luôn nằm trong luồng đăng ký — chứ
- * không ở Supabase (non-fatal, có thể tắt). Trả null khi email chưa có contact
- * (404) hoặc mới chỉ ở waitlist app (chưa có MA_CHECKIN); cả hai đều nghĩa là
- * "chưa từng đăng ký sự kiện" → gọi nơi dùng sẽ sinh mã mới.
+ * NGUỒN SỰ THẬT ĐÃ ĐỔI: trước đây tra ở Brevo (attribute MA_CHECKIN). Brevo đã
+ * bị gỡ khỏi dự án, nên giờ tra ở Supabase — bảng `registrations` là nơi duy
+ * nhất còn giữ dữ liệu này.
+ *
+ * ĐÁNH ĐỔI PHẢI BIẾT: Brevo nằm trong luồng đăng ký với tư cách bắt buộc (ghi
+ * hỏng là từ chối cả lượt đăng ký), còn ghi Supabase trước đây là non-fatal —
+ * nuốt lỗi và vẫn báo thành công. Nghĩa là có thể tồn tại mẹ đã đăng ký mà
+ * KHÔNG có dòng nào trong `registrations`; với những mẹ đó hàm này trả null và
+ * họ sẽ được cấp mã mới. Vì vậy ghi Supabase ở `/api/dang-ky` PHẢI được nâng
+ * thành fatal cùng lượt thay đổi này — xem route đó.
+ *
+ * Trả null khi email chưa từng đăng ký sự kiện → nơi gọi sinh mã mới.
  */
 export async function existingCheckinCode(email: string): Promise<string | null> {
-  const key = process.env.BREVO_API_KEY;
-  if (!key) throw new Error("BREVO_API_KEY chưa được cấu hình");
-
-  const res = await fetch(`${BREVO_API}/contacts/${encodeURIComponent(email)}`, {
-    headers: { "api-key": key, accept: "application/json" },
-  });
-  if (res.status === 404) return null;
-  if (!res.ok) {
-    throw new Error(`Brevo get contact failed (${res.status}): ${await res.text()}`);
-  }
-  const data = (await res.json()) as { attributes?: Record<string, unknown> };
-  const code = data.attributes?.MA_CHECKIN;
+  const row = await findByEmail(email);
+  const code = row?.checkin_code;
   return typeof code === "string" && code.length > 0 ? code : null;
 }
 
@@ -240,9 +153,29 @@ export function shell(
  * là đưa vé vào cửa của mẹ này cho mẹ khác. Muốn gửi cho nhiều người thì dùng
  * `guiHangLoat` — nó có `messageVersions`, mỗi người một bản riêng.
  *
- * `attachment` khớp thẳng hình dạng Brevo cần (`{ name, content }`, `content` là
- * base64 THUẦN đã bỏ tiền tố data-URL), nên không phải ánh xạ lại gì. Brevo tự
- * suy ra kiểu file từ đuôi trong `name`.
+ * `attachment` mang base64 THUẦN (đã bỏ tiền tố data-URL); `kemNodemailer` đổi
+ * sang hình dạng nodemailer cần. Kiểu file suy ra từ đuôi trong `name`.
+ */
+/** `DinhKem` → dạng nodemailer cần. `content` là base64 THUẦN, đã bỏ tiền tố data-URL. */
+function kemNodemailer(ds: DinhKem[]) {
+  return ds.map((a) => ({
+    filename: a.name,
+    content: a.content,
+    encoding: "base64" as const,
+  }));
+}
+
+/**
+ * Gửi MỘT email cho MỘT người.
+ *
+ * `to` cố tình chỉ mang đúng một địa chỉ: mọi email đi qua đây đều là thư cá
+ * nhân (kèm mã check-in riêng của mẹ đó), nên nhét thêm địa chỉ vào đây là đưa
+ * vé vào cửa của mẹ này cho mẹ khác.
+ *
+ * Ném lỗi khi gửi hỏng, KHÔNG BAO GIỜ báo thành công giả: nơi gọi (luồng đăng
+ * ký) nuốt lỗi này thành cảnh báo non-fatal, nên nếu ta im lặng ở đây thì mẹ
+ * đăng ký xong, thấy màn hình thành công, mà email kèm QR không bao giờ tới —
+ * và không còn dấu vết nào cả.
  */
 async function send(
   to: { email: string; name?: string },
@@ -250,27 +183,25 @@ async function send(
   html: string,
   attachment?: DinhKem[],
 ): Promise<void> {
-  const senderEmail = process.env.BREVO_SENDER_EMAIL;
-  const senderName = process.env.BREVO_SENDER_NAME ?? SITE.name;
-  if (!senderEmail) throw new Error("BREVO_SENDER_EMAIL chưa được cấu hình");
+  const from = nguoiGui();
 
-  const res = await brevo("/smtp/email", {
-    sender: { name: senderName, email: senderEmail },
-    to: [to.name ? { email: to.email, name: to.name } : { email: to.email }],
+  const ket = await getTransport().sendMail({
+    from,
+    to: to.name ? { name: to.name, address: to.email } : to.email,
     subject,
-    htmlContent: html,
-    // Spread có điều kiện, cùng lý lẽ đã ghi ở `guiHangLoat`: không có file thì
-    // đừng nhắc tới khoá này, đừng gửi mảng rỗng.
-    ...(attachment && attachment.length > 0 ? { attachment } : {}),
+    html,
+    ...(attachment && attachment.length > 0
+      ? { attachments: kemNodemailer(attachment) }
+      : {}),
   });
 
-  // Không bao giờ báo thành công giả: nơi gọi (luồng đăng ký) nuốt lỗi này
-  // thành một cảnh báo non-fatal, nên nếu ta im lặng ở đây thì mẹ đăng ký xong,
-  // thấy màn hình thành công, mà email kèm QR không bao giờ tới — và không có
-  // dấu vết nào cả.
-  if (!res.ok) {
-    const chiTiet = await res.text().catch(() => "");
-    throw new Error(`Brevo từ chối (${res.status}): ${chiTiet}`.trim());
+  // `sendMail` không ném khi máy chủ nhận thư nhưng TỪ CHỐI người nhận — địa
+  // chỉ đó nằm ở `rejected`. Không kiểm là báo thành công cho một thư chắc chắn
+  // không tới.
+  if (ket.rejected?.length) {
+    throw new Error(
+      `Máy chủ SMTP từ chối người nhận: ${ket.rejected.join(", ")}`,
+    );
   }
 }
 
@@ -447,9 +378,6 @@ export async function sendWaitlistEmail(data: Submission): Promise<void> {
   await send({ email: data.email }, `Chào mừng mẹ đến với ${SITE.name}!`, html);
 }
 
-/** Giới hạn messageVersions mỗi lượt gọi — luật của Brevo, không phải con số tuỳ chọn. */
-const TOI_DA_MOI_LO = 1000;
-
 export type BanGuiMot = {
   email: string;
   hoTen: string;
@@ -458,21 +386,25 @@ export type BanGuiMot = {
 };
 
 /**
- * Gửi hàng loạt qua API GIAO DỊCH của Brevo, mỗi người nhận một bản riêng.
+ * Gửi hàng loạt: MỖI mẹ MỘT thư riêng, qua pool SMTP.
  *
- * KHÔNG dùng `send()` ở trên: nó đi qua SMTP relay, mỗi lần một email tuần tự —
- * 500 mẹ là 500 lượt bắt tay SMTP, không sống nổi trong giới hạn thời gian một
- * hàm trên Vercel.
+ * KHÔNG nhét nhiều địa chỉ vào một trường `to`. Làm thế là lộ email của cả 500
+ * mẹ cho nhau — sự cố riêng tư thật, không phải chi tiết kỹ thuật. Đây là tính
+ * chất quan trọng nhất của hàm này và nó không được phép mất khi đổi nhà cung
+ * cấp.
  *
- * KHÔNG nhét nhiều địa chỉ vào một trường `to`: làm thế là lộ email của cả 500
- * mẹ cho nhau. `messageVersions` cho mỗi bản một `to` riêng.
+ * Gửi SONG SONG có giới hạn (`SO_KET_NOI`) chứ không tuần tự: 500 lượt bắt tay
+ * SMTP nối đuôi nhau không sống nổi trong `maxDuration = 60`. Pool của
+ * nodemailer tự xếp hàng, ta chỉ cần chia lô để đo được tiến độ và để một lô
+ * hỏng không kéo theo cả phần còn lại.
  *
- * Chia lô 1000 (giới hạn Brevo). Với sức chứa 500 hiện tại thì luôn đúng một
- * lượt gọi; vòng lặp tồn tại chỉ để ngày nào đó EVENT_CAPACITY được nâng lên
- * thì hệ thống không ÂM THẦM cắt bớt người nhận.
+ * Đính kèm dùng CHUNG cho mọi người nhận — mỗi thư mang một bản sao. Khác Brevo
+ * trước đây (một payload, một khối đính kèm), giờ mỗi thư tự mang file, nên
+ * đính kèm 3MB × 500 mẹ là 1.5GB rời khỏi máy chủ SMTP. Đó là lý do trần 3MB ở
+ * `dinh-kem.ts` càng phải giữ.
  *
- * Ném lỗi kèm nguyên văn phản hồi Brevo VÀ số đã gửi được. Báo "đã gửi" khi
- * chưa gửi được nghĩa là không ai gửi lại, và 500 mẹ không biết tin.
+ * Ném lỗi kèm SỐ ĐÃ GỬI ĐƯỢC. Báo "đã gửi" khi chưa gửi được nghĩa là không ai
+ * gửi lại, và 500 mẹ không biết tin.
  */
 export async function guiHangLoat(
   ban: BanGuiMot[],
@@ -480,44 +412,50 @@ export async function guiHangLoat(
 ): Promise<number> {
   if (ban.length === 0) return 0;
 
-  const senderEmail = process.env.BREVO_SENDER_EMAIL;
-  const senderName = process.env.BREVO_SENDER_NAME ?? SITE.name;
-  if (!senderEmail) throw new Error("BREVO_SENDER_EMAIL chưa được cấu hình");
+  const from = nguoiGui();
+  const kem =
+    dinhKem && dinhKem.length > 0 ? kemNodemailer(dinhKem) : undefined;
+  const tt = getTransport();
 
   let daGui = 0;
-  for (let i = 0; i < ban.length; i += TOI_DA_MOI_LO) {
-    const lo = ban.slice(i, i + TOI_DA_MOI_LO);
-    const res = await brevo("/smtp/email", {
-      sender: { name: senderName, email: senderEmail },
-      // Bản gốc chỉ là chỗ dựa cho payload; mỗi messageVersion tự mang
-      // subject/htmlContent riêng và đó mới là thứ tới hộp thư của mẹ.
-      subject: lo[0].subject,
-      htmlContent: lo[0].html,
-      // Đính kèm nằm ở CẤP GỐC, KHÔNG trong messageVersions: Brevo chỉ cho mỗi
-      // bản ghi đè to/cc/bcc/replyTo/subject/htmlContent/textContent/params.
-      // Đính kèm là thứ dùng CHUNG cho cả lô — cũng chính là lý do "đính kèm
-      // riêng từng mẹ" nằm ngoài phạm vi cả hai spec.
-      //
-      // Nằm TRONG vòng lặp chia lô, không ngoài: gắn ngoài thì lô thứ hai đi tay
-      // không và không có lỗi nào nổi lên.
-      //
-      // Spread có điều kiện chứ không gán thẳng `attachment: dinhKem`: gửi
-      // `attachment: []` là gửi một mảng rỗng cho Brevo, và không tài liệu nào
-      // hứa nó vô hại. Không có file thì đừng nhắc tới khoá này.
-      ...(dinhKem && dinhKem.length > 0 ? { attachment: dinhKem } : {}),
-      messageVersions: lo.map((b) => ({
-        to: [{ email: b.email, name: b.hoTen }],
-        subject: b.subject,
-        htmlContent: b.html,
-      })),
-    });
-    if (!res.ok) {
-      const chiTiet = await res.text().catch(() => "");
-      throw new Error(
-        `Brevo từ chối (đã gửi ${daGui}/${ban.length}): ${res.status} ${chiTiet}`.trim(),
-      );
+  const hong: string[] = [];
+
+  for (let i = 0; i < ban.length; i += SO_KET_NOI) {
+    const lo = ban.slice(i, i + SO_KET_NOI);
+    const ket = await Promise.allSettled(
+      lo.map((b) =>
+        tt.sendMail({
+          from,
+          to: { name: b.hoTen, address: b.email },
+          subject: b.subject,
+          html: b.html,
+          ...(kem ? { attachments: kem } : {}),
+        }),
+      ),
+    );
+
+    for (const [j, k] of ket.entries()) {
+      if (k.status === "rejected") {
+        hong.push(`${lo[j].email}: ${k.reason?.message ?? k.reason}`);
+      } else if (k.value.rejected?.length) {
+        // Máy chủ nhận thư nhưng từ chối người nhận — không ném, phải tự bắt.
+        hong.push(`${lo[j].email}: máy chủ từ chối người nhận`);
+      } else {
+        daGui += 1;
+      }
     }
-    daGui += lo.length;
   }
+
+  // Hỏng một phần vẫn phải NỔI thành lỗi, kèm con số thật. Trả về daGui rồi im
+  // lặng là admin tưởng xong, và những mẹ trong danh sách hỏng không bao giờ
+  // được gửi lại.
+  if (hong.length > 0) {
+    const vaiCai = hong.slice(0, 5).join("; ");
+    const conLai = hong.length > 5 ? ` (và ${hong.length - 5} lỗi nữa)` : "";
+    throw new Error(
+      `Gửi hỏng ${hong.length}/${ban.length} (đã gửi ${daGui}): ${vaiCai}${conLai}`,
+    );
+  }
+
   return daGui;
 }

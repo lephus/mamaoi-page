@@ -1,7 +1,7 @@
 /**
- * Danh mục mẫu email — tách riêng khỏi `brevo.ts` để CLIENT import được.
+ * Danh mục mẫu email — tách riêng khỏi `mail.ts` để CLIENT import được.
  *
- * `brevo.ts` kéo theo qrcode và đọc BREVO_API_KEY (thuần server); import nó vào một
+ * `mail.ts` kéo theo nodemailer và qrcode (thuần server); import nó vào một
  * component "use client" là gãy build. Ở đây chỉ có type và nhãn hiển thị.
  */
 export type MauEmail = "xacNhan" | "capLai" | "suCo";

@@ -3,7 +3,7 @@
  * và phép kiểm.
  *
  * File này CỐ Ý không import gì — cùng lý do đã ghi ở đầu `cho-dien.ts`:
- * `brevo.ts` kéo theo qrcode và đọc BREVO_API_KEY (thuần server), import nó vào một
+ * `mail.ts` kéo theo nodemailer và qrcode (thuần server), import nó vào một
  * component "use client" là gãy build. Màn hình soạn mail phải báo file sai NGAY
  * lúc admin chọn file, nên phép kiểm phải sống được ở client.
  *
@@ -15,12 +15,13 @@
 export type DinhKem = { name: string; content: string };
 
 /**
- * Đuôi file Brevo chấp nhận, thu hẹp về tập BTC dùng thật.
+ * Đuôi file được phép đính kèm, thu hẹp về tập BTC dùng thật.
  *
- * `.webp` và `.heic` CỐ Ý vắng mặt: Brevo không nhận, mà đó lại là hai đuôi dễ
+ * `.webp` và `.heic` CỐ Ý vắng mặt: nhiều máy chủ mail và ứng dụng đọc thư không
+ * nhận, mà đó lại là hai đuôi dễ
  * gặp nhất — `.heic` là định dạng ảnh mặc định của iPhone, `.webp` là thứ trình
  * duyệt lưu ra khi bấm "lưu ảnh". Chặn ở đây kèm gợi ý đổi sang .png/.jpg thì
- * admin biết ngay; để lọt thì Brevo từ chối vào đúng lúc admin vừa bấm gửi thật.
+ * admin biết ngay; để lọt thì mẹ nhận được một file không mở nổi.
  */
 export const DUOI_CHO_PHEP = [
   "png",

@@ -22,7 +22,7 @@ import { boDau } from "@/lib/text";
  *
  * Giá trị vẫn đi vào form qua MỘT `<input type="hidden">`: `onSubmit` của form
  * đọc bằng `new FormData(e.currentTarget)`, nên `buildRegistrationPayload`,
- * schema Zod, Brevo và Sheets không hề biết chỗ này đã đổi.
+ * schema Zod, Supabase và Sheets không hề biết chỗ này đã đổi.
  */
 
 /** Chiều cao ước lượng của panel, dùng để quyết định bung lên hay xuống. */
