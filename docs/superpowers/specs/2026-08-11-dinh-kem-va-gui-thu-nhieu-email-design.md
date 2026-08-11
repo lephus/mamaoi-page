@@ -247,6 +247,14 @@ Việc phải làm trước khi dùng cho 500 mẹ:
 
 **Phương án dự phòng nếu Brevo từ chối:** đẩy file lên Supabase Storage rồi truyền `attachment: [{ url, name }]` thay cho `{ content, name }`. Đắt hơn hẳn — cần tạo bucket bằng tay, cần luồng dọn file cũ — nên chỉ làm khi bước 1 thất bại.
 
+**Câu hỏi mở thật ra là VỊ TRÍ, không phải HÌNH THỨC.** Phương án dự phòng ở trên chỉ đổi HÌNH THỨC của đính kèm — base64 nhúng thẳng (`{ content, name }`) thành đường dẫn (`{ url, name }`) — chứ không đổi VỊ TRÍ của nó trong payload: vẫn là `attachment` ở cấp gốc, đứng cạnh `messageVersions`. Nhưng câu hỏi thật đang bỏ ngỏ chính là VỊ TRÍ: liệu Brevo có tôn trọng `attachment` cấp gốc khi có `messageVersions` đi kèm hay không. Nếu Brevo lặng lẽ bỏ qua `attachment` cấp gốc trong tình huống này, đổi sang dạng URL sẽ thất bại Y HỆT — cùng vị trí, cùng bị bỏ qua — và công sức dựng Supabase Storage không mua được gì cả. Phương án dự phòng chỉ có tác dụng nếu nguyên nhân thất bại nằm ở kích thước payload nhúng thẳng hoặc lỗi mã hoá, KHÔNG PHẢI ở vị trí trong payload.
+
+Phương án B thật sự cho một thất bại về VỊ TRÍ là bỏ `messageVersions` khi có đính kèm, gọi riêng một lượt API cho mỗi người nhận — nhưng đây chính là hướng spec gốc §1 đã loại vì lý do timeout trên Vercel (500 lượt gửi tuần tự không sống nổi trong giới hạn thời gian một hàm serverless). Phải nghĩ trước phương án này TRƯỚC lúc kiểm bằng tay, không phải đợi kiểm xong mới tính — nếu bước 1 thất bại và hoá ra là lỗi vị trí, đây mới là lối ra thật, không phải Supabase Storage.
+
+**Bước 3, không phải bước 1, mới là bước MANG SỨC NẶNG của toàn bộ lượt kiểm.** Bước 1 chỉ xác nhận Brevo nhận payload mà không trả lỗi — không nói gì về việc CẢ HAI địa chỉ trong một lượt gửi có thật sự nhận được đính kèm hay không. Bước 3 (gửi thử tới hai địa chỉ, xác nhận CẢ HAI hộp thư đều nhận được file) mới trả lời đúng câu hỏi mở ở trên: đính kèm cấp gốc có áp cho MỌI `messageVersion`, hay chỉ bản đầu tiên trong lô.
+
+**Phản hồi 200 KHÔNG PHẢI bằng chứng đã gửi đúng.** `guiHangLoat` (`brevo.ts:483`) cộng `lo.length` — số người nhận trong lô — vào `daGui` mỗi khi `res.ok`, không đọc lại nội dung Brevo thật sự đã gửi cho từng người. Nếu Brevo âm thầm bỏ đính kèm mà vẫn nhận và xử lý được phần còn lại của payload, toàn hệ thống — từ `guiHangLoat` tới route tới màn hình admin — sẽ báo *"Đã gửi N email"* mà không có bất kỳ lỗi nào nổi lên ở bất kỳ đâu. Mở hộp thư ra xem file đính kèm là oracle DUY NHẤT cho câu hỏi này; log, mã trạng thái HTTP, hay số đếm trên màn hình admin đều không thay được.
+
 ## 11. Ngoài phạm vi
 
 - **Đính kèm khác nhau theo từng mẹ** — `messageVersions` không cho; spec gốc §11 đã loại và spec này không mở lại.

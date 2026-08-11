@@ -69,7 +69,9 @@ export function GuiMailHangLoatTool({
   const [dinhKem, setDinhKem] = useState<DinhKem[]>([]);
   const [loiFile, setLoiFile] = useState("");
   // Bản nháp cứu khi 401 KHÔNG cứu được file đính kèm (xem effect bên dưới), nên
-  // phải nói thẳng ra thay vì để admin tưởng file vẫn còn đó.
+  // phải nói thẳng ra thay vì để admin tưởng file vẫn còn đó. Tắt lại ngay khi
+  // admin đã đính kèm được một file (trong `themFile`) — dòng nhắc đã làm xong
+  // việc của nó, để mãi cho hết phiên chỉ gây nhiễu.
   const [daPhucHoiNhap, setDaPhucHoiNhap] = useState(false);
 
   // Phục hồi bản nháp bị 401 văng mất — CHỈ MỘT LẦN, ngay khi màn hình này mở
@@ -118,11 +120,22 @@ export function GuiMailHangLoatTool({
     [nhapEmail],
   );
   const tongByteKem = dinhKem.reduce((t, f) => t + byteCuaBase64(f.content), 0);
-  // `loiFile` gác CẢ BA nút, không riêng nút gửi thật: một file sai đuôi làm hỏng
-  // lượt gửi thật, nên không có lý do gì để nút đó còn bấm được. Cùng cách cờ
-  // `la` (chỗ điền sai) đang gác.
+  // CỐ Ý tính lại từ `dinhKem` HIỆN TẠI, không đọc cờ `loiFile`. `loiFile` chỉ
+  // ghi nhận LƯỢT THÊM gần nhất có bị từ chối hay không — nó không nói gì về
+  // việc đính kèm đang có trong danh sách có hợp lệ hay không. Vì `themFile`
+  // chỉ `setDinhKem` sau khi `loiDinhKem` trả `null`, còn `boFile` chỉ xoá bớt,
+  // nên `dinhKem` luôn luôn hợp lệ theo bất biến — gác `sanSang` bằng `loiFile`
+  // là gác một cờ không bao giờ bảo vệ được gì, mà lại khoá nhầm: chưa có đính
+  // kèm nào, chọn một file bị từ chối (vd .webp) thì `loiFile` bật lên nhưng
+  // `dinhKem` vẫn rỗng — không có gì để bấm "Bỏ", cả ba nút kẹt cứng cho tới khi
+  // chọn được một file khác hợp lệ hoặc tải lại trang. ĐỪNG "đơn giản hoá" lại
+  // thành `loiFile === ""`.
+  const loiKemHienTai = useMemo(() => loiDinhKem(dinhKem), [dinhKem]);
+  // `loiKemHienTai` gác CẢ BA nút, không riêng nút gửi thật: một đính kèm sai
+  // đuôi hay vượt trần làm hỏng lượt gửi thật, nên không có lý do gì để nút đó
+  // còn bấm được. Cùng cách cờ `la` (chỗ điền sai) đang gác.
   const sanSang =
-    soChon > 0 && duNoiDung && la.length === 0 && loiFile === "" && dangChay === "";
+    soChon > 0 && duNoiDung && la.length === 0 && loiKemHienTai === null && dangChay === "";
   const khopSo = soXacNhan.trim() === String(soChon);
   // Bản xem trước chỉ còn đúng khi tiêu đề, nội dung VÀ mẹ làm mẫu đều chưa đổi
   // kể từ lúc dựng nó — sửa một trong ba mà không xem lại thì bản xem trước cũ
@@ -145,13 +158,17 @@ export function GuiMailHangLoatTool({
     if (!danh || danh.length === 0) return;
     setLoiFile("");
 
+    // `FileReader` đọc hỏng CHỈ loại đúng file đó, KHÁC HẲN ca lỗi validate ở
+    // dưới. Đây là lỗi ĐỌC từng file, không liên quan gì tới nội dung các file
+    // khác trong cùng lượt chọn — bỏ qua file hỏng rồi vẫn thêm những file đọc
+    // được, không hất luôn cả lô như spec §8 yêu cầu.
     const moi: DinhKem[] = [];
+    const tenLoiDoc: string[] = [];
     for (const f of Array.from(danh)) {
       try {
         moi.push({ name: f.name, content: await docBase64(f) });
       } catch {
-        setLoiFile(`Không đọc được file "${f.name}". Thử chọn lại.`);
-        return;
+        tenLoiDoc.push(f.name);
       }
     }
 
@@ -160,12 +177,28 @@ export function GuiMailHangLoatTool({
     const gop = [...dinhKem, ...moi];
     const loi = loiDinhKem(gop);
     if (loi) {
-      // Có lỗi thì KHÔNG thêm gì cả. Thêm một nửa rồi báo lỗi là bắt admin ngồi
-      // đoán file nào đã vào, file nào chưa.
+      // Có lỗi thì KHÔNG thêm gì cả — kể cả những file đã đọc được ở `moi`.
+      // Thêm một nửa rồi báo lỗi là bắt admin ngồi đoán file nào đã vào, file
+      // nào chưa. CỐ Ý khác cách xử ca đọc hỏng ở trên: lỗi đọc là lỗi TỪNG
+      // FILE độc lập nên giữ được phần đọc tốt; lỗi validate là lỗi trên CẢ
+      // DANH SÁCH gộp (vd tổng byte vượt trần) nên không tách riêng được "file
+      // nào gây lỗi" để giữ lại phần còn lại một cách an toàn.
       setLoiFile(loi);
       return;
     }
     setDinhKem(gop);
+    // Đã thêm được ít nhất một file mới thành công — dòng nhắc "file đính kèm
+    // phải chọn lại" sau khi phục hồi nháp-401 đã làm xong việc của nó, tắt đi.
+    if (moi.length > 0) setDaPhucHoiNhap(false);
+
+    if (tenLoiDoc.length > 0) {
+      const ds = tenLoiDoc.map((t) => `"${t}"`).join(", ");
+      setLoiFile(
+        tenLoiDoc.length === 1
+          ? `Không đọc được file ${ds}. Thử chọn lại.`
+          : `Không đọc được các file ${ds}. Thử chọn lại.`,
+      );
+    }
   }
 
   function boFile(vt: number) {
