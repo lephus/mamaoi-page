@@ -260,6 +260,9 @@ export function AdminDashboard({
             >
               Quét QR
             </Link>
+            {/* Tạm ẩn theo yêu cầu — hai trang vẫn còn nguyên ở
+                /admin/them-dang-ky và /admin/gui-mail, mở lại bằng cách bỏ
+                comment khối này.
             <Link
               href="/admin/them-dang-ky"
               className="rounded-full border border-line bg-white px-5 py-2.5 text-sm font-semibold text-ink hover:bg-primary-faded-hover"
@@ -272,6 +275,7 @@ export function AdminDashboard({
             >
               Gửi lại email QR
             </Link>
+            */}
             <Link
               href="/admin/gui-mail-hang-loat"
               className="rounded-full border border-line bg-white px-5 py-2.5 text-sm font-semibold text-ink hover:bg-primary-faded-hover"
