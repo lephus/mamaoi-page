@@ -1,7 +1,9 @@
 import { isAdmin } from "@/lib/admin-auth";
 import { guiHangLoat, type BanGuiMot } from "@/lib/brevo";
 import { choDienLa } from "@/lib/cho-dien";
+import { loiDinhKem, type DinhKem } from "@/lib/dinh-kem";
 import { dungEmail } from "@/lib/mail-hang-loat";
+import { tachEmail } from "@/lib/nhieu-email";
 import { listRegistrations, type RegistrationRow } from "@/lib/supabase";
 
 /**
@@ -19,7 +21,6 @@ export const maxDuration = 60;
 
 const TOI_DA_TIEU_DE = 200;
 const TOI_DA_NOI_DUNG = 5000;
-const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 const loi = (text: string, status: number) =>
   Response.json({ error: text }, { status });
@@ -28,6 +29,29 @@ const loi = (text: string, status: number) =>
 function banGui(row: RegistrationRow, toiEmail: string, tieuDe: string, noiDung: string): BanGuiMot {
   const { subject, html } = dungEmail(tieuDe, noiDung, row);
   return { email: toiEmail, hoTen: row.ho_ten, subject, html };
+}
+
+/**
+ * `b.dinhKem` do client khai → mảng `DinhKem` đã kiểm KIỂU. `null` nghĩa là hình
+ * dạng sai (không phải mảng, phần tử thiếu trường, trường không phải chuỗi).
+ * Vắng mặt hoàn toàn là hợp lệ → mảng rỗng.
+ *
+ * Tách khỏi `loiDinhKem` vì hai việc khác nhau: hàm này chống payload dị dạng
+ * (lỗi của lập trình viên), `loiDinhKem` chống file admin chọn nhầm (lỗi của
+ * người dùng). Gộp lại thì hai loại câu lỗi sẽ lẫn vào nhau.
+ */
+function docDinhKem(raw: unknown): DinhKem[] | null {
+  if (raw === undefined || raw === null) return [];
+  if (!Array.isArray(raw)) return null;
+
+  const ds: DinhKem[] = [];
+  for (const p of raw) {
+    if (typeof p !== "object" || p === null) return null;
+    const { name, content } = p as Record<string, unknown>;
+    if (typeof name !== "string" || typeof content !== "string") return null;
+    ds.push({ name, content });
+  }
+  return ds;
 }
 
 export async function POST(request: Request) {
@@ -59,6 +83,14 @@ export async function POST(request: Request) {
     return loi(`Chỗ điền không hợp lệ: ${la.join(", ")}. Chỉ dùng {{ten}} và {{ma}}.`, 400);
   }
 
+  // Kiểm đính kèm TRƯỚC khi đọc DB, và ở CẢ BA chế độ — kể cả "xem", vốn không
+  // gửi gì. Mục đích là để admin biết file sai ngay lúc xem trước, chứ không
+  // phải lúc vừa bấm "Gửi cho 500 mẹ".
+  const dinhKem = docDinhKem(b.dinhKem);
+  if (dinhKem === null) return loi("Danh sách đính kèm không hợp lệ", 400);
+  const loiKem = loiDinhKem(dinhKem);
+  if (loiKem) return loi(loiKem, 400);
+
   let rows: RegistrationRow[];
   try {
     rows = await listRegistrations();
@@ -79,19 +111,38 @@ export async function POST(request: Request) {
       return Response.json({ ok: true, subject, html });
     }
 
-    const toiEmail = typeof b.toiEmail === "string" ? b.toiEmail.trim() : "";
-    if (!EMAIL_RE.test(toiEmail)) return loi("Địa chỉ nhận thử không hợp lệ", 400);
+    const raw = b.toiEmails;
+    if (!Array.isArray(raw) || raw.some((e) => typeof e !== "string")) {
+      return loi("Danh sách địa chỉ nhận thử không hợp lệ", 400);
+    }
+    // Chạy LẠI đúng hàm client đã dùng thay vì viết phép kiểm thứ hai ở đây:
+    // hai phép kiểm khác nhau là hai bộ luật sẽ trôi lệch, và bộ ở server mới là
+    // bộ quyết định. Nối bằng xuống dòng vì đó là một trong các dấu ngăn
+    // `tachEmail` nhận.
+    const { hopLe, sai } = tachEmail((raw as string[]).join("\n"));
+    if (sai.length > 0) {
+      return loi(`Địa chỉ nhận thử không hợp lệ: ${sai.join(", ")}`, 400);
+    }
+    if (hopLe.length === 0) return loi("Thiếu địa chỉ nhận thử", 400);
 
     // Có dấu vết cho lượt gửi thử: đây là đường DUY NHẤT của route này chấp
-    // nhận địa chỉ do client khai (spec §7), nên nó phải để lại log.
-    console.log("[admin/gui-mail-hang-loat] gửi thử tới:", toiEmail);
+    // nhận địa chỉ do client khai. Spec 2026-08-11 §6.3 bỏ trần số lượng theo
+    // yêu cầu khách, nên số lượng phải nằm trong log — nó là thứ duy nhất còn
+    // lại để truy nếu một phiên admin bị chiếm.
+    console.log(
+      `[admin/gui-mail-hang-loat] gửi thử tới ${hopLe.length} địa chỉ:`,
+      hopLe.join(", "),
+    );
     try {
-      await guiHangLoat([banGui(mau, toiEmail, tieuDe, noiDung)]);
+      await guiHangLoat(
+        hopLe.map((e) => banGui(mau, e, tieuDe, noiDung)),
+        dinhKem,
+      );
     } catch (err) {
       console.error("[admin/gui-mail-hang-loat] gửi thử hỏng:", err);
       return loi(err instanceof Error ? err.message : "Gửi thử thất bại", 502);
     }
-    return Response.json({ ok: true, daGui: 1 });
+    return Response.json({ ok: true, daGui: hopLe.length });
   }
 
   // ---------- gửi thật ----------
@@ -118,6 +169,7 @@ export async function POST(request: Request) {
     // /api/admin/export: client chỉ được nói "gửi cho id nào".
     const daGui = await guiHangLoat(
       nhan.map((r) => banGui(r, r.email, tieuDe, noiDung)),
+      dinhKem,
     );
     return Response.json({ ok: true, daGui });
   } catch (err) {
