@@ -110,7 +110,7 @@ export function WaitlistForm() {
             onClick={(e) => e.stopPropagation()}
             className="font-semibold text-primary underline-offset-2 hover:underline"
           >
-            Chính sách bảo mật
+            Chính sách quyền riêng tư
           </Link>{" "}
           và{" "}
           <Link

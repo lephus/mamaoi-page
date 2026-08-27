@@ -1,198 +1,246 @@
 import type { Metadata } from "next";
 import { LegalPage, LegalSection } from "@/components/LegalPage";
-import { SITE } from "@/lib/constants";
+import { LEGAL_EMAIL } from "@/lib/constants";
 
 export const metadata: Metadata = {
-  title: "Chính sách bảo mật",
+  title: "Chính sách quyền riêng tư và xử lý dữ liệu cá nhân",
   description:
-    "Chính sách bảo mật của ứng dụng Mama Ơi và website mamaoi.vn — chúng tôi thu thập gì, dùng để làm gì, và mẹ có quyền gì.",
+    "Chính sách quyền riêng tư của ứng dụng Mama Ơi và website mamaoi.vn: chúng tôi thu thập dữ liệu gì, xử lý vì mục đích gì, và Người dùng có những quyền nào.",
 };
 
 /**
- * This is NOT the generic template rewritten in Vietnamese.
+ * Nội dung lấy NGUYÊN VĂN từ file "BẢO MẬT QUYỀN RIÊNG TƯ VÀ XỬ LÝ DỮ LIỆU CÁ
+ * NHÂN.-MAMA ƠI docx.docx" do khách cung cấp (27/08/2026). Chỉ bỏ dòng "Điện
+ * thoại" theo yêu cầu. Muốn sửa câu chữ phải sửa từ phía khách rồi đồng bộ lại
+ * đây — đừng tự viết lại.
  *
- * The template supplied covered a nameless app collecting "name, email, gender,
- * location, pictures". Mama Ơi collects a phone number, a Facebook profile, a
- * pregnancy status and a baby's age, weight, height, temperature, medicines and
- * vaccination history — health data about a child, which Vietnam's Nghị định
- * 13/2023/NĐ-CP treats as sensitive personal data with stricter obligations.
- *
- * A privacy policy that under-describes what is actually collected is worse
- * than none: it is a false statement to the user and to the app stores, both of
- * which cross-check the policy against the app's declared data practices.
- * Keep this document in step with the data the product actually touches.
+ * Các store cross-check chính sách với data practices khai báo của app, nên tài
+ * liệu này phải luôn đi cùng dữ liệu mà sản phẩm thực sự chạm tới.
  */
 export default function PrivacyPolicyPage() {
   return (
-    <LegalPage
-      title="Chính sách bảo mật"
-      intro={`Chính sách này giải thích ${SITE.company} thu thập những thông tin gì khi mẹ sử dụng ứng dụng Mama Ơi và website này, chúng tôi dùng chúng để làm gì, và mẹ có những quyền gì đối với dữ liệu của mình.`}
-    >
-      <LegalSection n={1} title="Chúng tôi là ai">
+    <LegalPage title="CHÍNH SÁCH QUYỀN RIÊNG TƯ VÀ XỬ LÝ DỮ LIỆU CÁ NHÂN">
+      <LegalSection n={1} title="CHÚNG TÔI LÀ AI">
         <p>
-          Ứng dụng và website Mama Ơi được vận hành bởi <strong>{SITE.company}</strong>.
-          Mọi câu hỏi về dữ liệu cá nhân, mẹ có thể liên hệ:
+          Đơn vị sở hữu và vận hành Mama Ơi
+          <br />
+          Email: <a href={`mailto:${LEGAL_EMAIL}`}>{LEGAL_EMAIL}</a>
+        </p>
+        <p>
+          Chúng tôi là bên quyết định mục đích và phương tiện xử lý dữ liệu cá nhân trong
+          phạm vi Mama Ơi cung cấp Dịch vụ.
+        </p>
+        <p>
+          Người dùng có thể liên hệ với chúng tôi qua email trên để thực hiện các quyền liên
+          quan đến dữ liệu cá nhân hoặc gửi câu hỏi, yêu cầu và khiếu nại.
+        </p>
+      </LegalSection>
+
+      <LegalSection n={2} title="DỮ LIỆU CHÚNG TÔI THU THẬP">
+        <p>
+          Tùy theo cách Người dùng sử dụng Mama Ơi, chúng tôi có thể thu thập và xử lý các
+          nhóm dữ liệu cá nhân sau. Dữ liệu được phân loại và áp dụng biện pháp bảo vệ phù
+          hợp theo quy định pháp luật Việt Nam.
+        </p>
+
+        <h3>2.1. Dữ liệu cá nhân cơ bản</h3>
+        <p>Có thể bao gồm:</p>
+        <ul>
+          <li>Họ tên, email, số điện thoại;</li>
+          <li>Thông tin tài khoản và thông tin đăng nhập;</li>
+          <li>Thông tin hồ sơ của trẻ như tên, giới tính, ngày sinh hoặc ngày dự sinh;</li>
+        </ul>
+
+        <h3>2.2. Dữ liệu cá nhân nhạy cảm</h3>
+        <p>
+          Tùy thuộc vào nội dung Người dùng cung cấp và mục đích xử lý, có thể bao gồm các
+          thông tin thuộc nhóm dữ liệu cá nhân nhạy cảm theo pháp luật, đặc biệt là thông
+          tin về sức khỏe và đời tư có liên quan đến sức khỏe, sinh sản.
+        </p>
+        <p>Đối với Mama Ơi, nhóm dữ liệu này có thể bao gồm:</p>
+        <ul>
+          <li>Thông tin về tình trạng sức khỏe, bệnh, triệu chứng hoặc tình trạng điều trị;</li>
+          <li>Cân nặng, chiều cao, nhiệt độ và các chỉ số sức khỏe của trẻ;</li>
+          <li>Thông tin về thuốc, tiêm chủng và chăm sóc sức khỏe;</li>
+          <li>Các thông tin khác mà pháp luật xác định là dữ liệu cá nhân nhạy cảm.</li>
+        </ul>
+        <p>
+          Không phải mọi thông tin về trẻ hoặc mọi nội dung được nhập vào ứng dụng đều mặc
+          nhiên là dữ liệu cá nhân nhạy cảm. Việc phân loại được xác định căn cứ vào bản
+          chất của dữ liệu và quy định pháp luật tại từng thời điểm.
+        </p>
+        <p>
+          Công ty áp dụng biện pháp bảo vệ ở mức dành cho dữ liệu cá nhân nhạy cảm đối với
+          toàn bộ dữ liệu sức khỏe của trẻ.
+        </p>
+
+        <h3>2.3. Dữ liệu được thu thập tự động</h3>
+        <p>
+          Khi Người dùng truy cập website hoặc sử dụng ứng dụng, chúng tôi có thể thu thập
+          một số thông tin kỹ thuật và dữ liệu sử dụng cần thiết cho việc vận hành, bảo mật,
+          phân tích và cải thiện Dịch vụ.
+        </p>
+        <p>
+          Website có thể sử dụng cookie và công nghệ tương tự. Các công cụ phân tích hoặc
+          quảng cáo không thiết yếu, như Google Analytics hoặc Meta Pixel, được sử dụng theo
+          lựa chọn của Người dùng và quy định pháp luật áp dụng.
+        </p>
+      </LegalSection>
+
+      <LegalSection n={3} title="MỤC ĐÍCH VÀ CĂN CỨ XỬ LÝ">
+        <p>Mama Ơi xử lý dữ liệu cá nhân trong phạm vi cần thiết để:</p>
+        <ul>
+          <li>Tạo và quản lý tài khoản;</li>
+          <li>Cung cấp các tính năng theo dõi, ghi nhận và thống kê;</li>
+          <li>Quản lý hồ sơ của trẻ;</li>
+          <li>
+            Tính toán và hiển thị các thông tin, mốc phát triển được cung cấp trong ứng dụng;
+          </li>
+          <li>Xác nhận đăng ký và tổ chức Mama Ơi Day;</li>
+          <li>Gửi thông báo và thông tin liên quan đến Dịch vụ;</li>
+          <li>Cải thiện sản phẩm, bảo mật hệ thống và khắc phục lỗi;</li>
+          <li>Thực hiện nghĩa vụ theo quy định pháp luật;</li>
+          <li>Thực hiện các mục đích khác đã được thông báo hợp pháp cho Người dùng.</li>
+        </ul>
+        <p>
+          Tùy từng trường hợp, việc xử lý dữ liệu có thể dựa trên sự đồng ý của Người dùng
+          hoặc căn cứ xử lý khác được pháp luật cho phép.
+        </p>
+        <p>
+          Đối với hoạt động xử lý mà pháp luật yêu cầu phải có sự đồng ý, Mama Ơi sẽ cung
+          cấp thông tin phù hợp và thực hiện việc lấy sự đồng ý theo đúng hình thức, điều
+          kiện và phạm vi pháp luật quy định.
+        </p>
+        <p>
+          Người dùng có thể rút lại sự đồng ý khi pháp luật cho phép. Việc rút lại sự đồng ý
+          không ảnh hưởng đến tính hợp pháp của hoạt động xử lý đã được thực hiện trước thời
+          điểm rút lại.
+        </p>
+      </LegalSection>
+
+      <LegalSection n={4} title="DỮ LIỆU CỦA TRẺ EM">
+        <p>
+          Mama Ơi được thiết kế để cha mẹ, người giám hộ hoặc người chăm sóc trẻ sử dụng.
+          Trẻ em không được tự tạo tài khoản để sử dụng Dịch vụ.
+        </p>
+        <p>
+          Khi cung cấp thông tin của trẻ, Người dùng xác nhận mình là cha, mẹ, người giám hộ
+          hoặc người có thẩm quyền hợp pháp để cung cấp và quản lý thông tin đó.
+        </p>
+        <p>
+          Mama Ơi áp dụng các biện pháp bảo vệ phù hợp đối với dữ liệu cá nhân của trẻ theo
+          quy định pháp luật.
+        </p>
+        <p>
+          Cha mẹ hoặc người có thẩm quyền hợp pháp có thể yêu cầu truy cập, điều chỉnh hoặc
+          xóa dữ liệu của trẻ trong phạm vi pháp luật cho phép.
+        </p>
+      </LegalSection>
+
+      <LegalSection n={5} title="LƯU TRỮ VÀ CHUYỂN DỮ LIỆU RA NƯỚC NGOÀI">
+        <p>
+          Một số dữ liệu có thể được lưu trữ hoặc xử lý bởi nhà cung cấp dịch vụ ở ngoài Việt
+          Nam, bao gồm hạ tầng Supabase tại Hàn Quốc.
+        </p>
+        <p>
+          Trường hợp phát sinh hoạt động chuyển dữ liệu cá nhân xuyên biên giới, Công ty thực
+          hiện các nghĩa vụ, biện pháp bảo vệ và hồ sơ cần thiết theo quy định pháp luật Việt
+          Nam.
+        </p>
+        <p>
+          Người dùng được thông báo về phạm vi chuyển dữ liệu và các bên liên quan thông qua
+          Chính sách này hoặc thông báo xử lý dữ liệu tương ứng.
+        </p>
+      </LegalSection>
+
+      <LegalSection n={6} title="BẢO MẬT, SỰ CỐ DỮ LIỆU VÀ THỜI HẠN LƯU TRỮ">
+        <p>
+          Công ty áp dụng các biện pháp kỹ thuật và tổ chức phù hợp để bảo vệ dữ liệu cá
+          nhân, bao gồm kiểm soát quyền truy cập, phân quyền, bảo mật đường truyền và các
+          biện pháp bảo vệ phù hợp với tính chất của dữ liệu.
+        </p>
+        <p>
+          Trong trường hợp xảy ra sự cố vi phạm, mất mát, rò rỉ hoặc truy cập trái phép vào
+          dữ liệu cá nhân, Công ty sẽ:
         </p>
         <ul>
           <li>
-            Email: <a href={`mailto:${SITE.email}`}>{SITE.email}</a>
+            Chủ động phát hiện, đánh giá và áp dụng các biện pháp cần thiết để ngăn chặn,
+            khắc phục và hạn chế hậu quả của sự cố;
+          </li>
+          <li>
+            Thực hiện việc thông báo, báo cáo hoặc phối hợp với cơ quan nhà nước có thẩm
+            quyền theo thời hạn, trình tự và điều kiện do pháp luật quy định;
+          </li>
+          <li>
+            Thông báo cho Người dùng hoặc chủ thể dữ liệu bị ảnh hưởng khi pháp luật yêu cầu
+            hoặc khi Công ty xác định việc thông báo là cần thiết để bảo vệ quyền và lợi ích
+            hợp pháp của họ.
+          </li>
+        </ul>
+        <p>
+          Đối với sự cố liên quan đến dữ liệu của trẻ em hoặc dữ liệu cá nhân nhạy cảm, Công
+          ty áp dụng các biện pháp xử lý và bảo vệ phù hợp với mức độ rủi ro và quy định
+          pháp luật.
+        </p>
+        <p>
+          Mama Ơi lưu dữ liệu cá nhân trong thời gian cần thiết để thực hiện mục đích xử lý,
+          cung cấp và duy trì Dịch vụ, thực hiện nghĩa vụ pháp lý hoặc giải quyết các yêu
+          cầu, tranh chấp liên quan. Khi mục đích xử lý kết thúc hoặc dữ liệu không còn cần
+          thiết, chúng tôi sẽ thực hiện xóa, hủy hoặc khử nhận dạng dữ liệu theo quy định
+          pháp luật, trừ trường hợp pháp luật cho phép hoặc yêu cầu tiếp tục lưu trữ.
+        </p>
+      </LegalSection>
+
+      <LegalSection n={7} title="QUYỀN CỦA NGƯỜI DÙNG">
+        <p>
+          Trong phạm vi pháp luật quy định, Người dùng có các quyền đối với dữ liệu cá nhân
+          của mình, bao gồm:
+        </p>
+        <ul>
+          <li>Quyền được biết;</li>
+          <li>Quyền đồng ý và rút lại sự đồng ý khi áp dụng;</li>
+          <li>Quyền truy cập và yêu cầu chỉnh sửa;</li>
+          <li>Quyền xóa dữ liệu;</li>
+          <li>Quyền hạn chế hoặc phản đối việc xử lý;</li>
+          <li>Quyền yêu cầu cung cấp dữ liệu hoặc thực hiện các quyền khác theo quy định;</li>
+          <li>Quyền khiếu nại, tố cáo hoặc khởi kiện theo pháp luật.</li>
+        </ul>
+        <p>Để thực hiện quyền, Người dùng liên hệ:</p>
+        <ul>
+          <li>
+            Email: <a href={`mailto:${LEGAL_EMAIL}`}>{LEGAL_EMAIL}</a>
+          </li>
+        </ul>
+        <p>
+          Công ty có thể yêu cầu thông tin cần thiết để xác minh danh tính và thẩm quyền của
+          người yêu cầu nhằm bảo vệ dữ liệu cá nhân.
+        </p>
+        <p>Công ty sẽ tiếp nhận và xử lý yêu cầu trong thời hạn theo quy định pháp luật.</p>
+      </LegalSection>
+
+      <LegalSection n={8} title="THAY ĐỔI CHÍNH SÁCH VÀ LIÊN HỆ">
+        <p>
+          Công ty có thể cập nhật Chính sách này để phù hợp với thay đổi của Dịch vụ hoặc
+          pháp luật.
+        </p>
+        <p>
+          Phiên bản cập nhật sẽ được công bố trên Mama Ơi và ghi rõ ngày cập nhật. Trường
+          hợp thay đổi quan trọng ảnh hưởng đến quyền của Người dùng, Công ty sẽ thực hiện
+          thông báo và lấy sự đồng ý lại nếu pháp luật yêu cầu.
+        </p>
+        <p>Mọi câu hỏi hoặc yêu cầu liên quan đến dữ liệu cá nhân, vui lòng liên hệ:</p>
+        <p>Đơn vị sở hữu và vận hành Mama Ơi, thông qua:</p>
+        <ul>
+          <li>
+            Email: <a href={`mailto:${LEGAL_EMAIL}`}>{LEGAL_EMAIL}</a>
           </li>
         </ul>
       </LegalSection>
 
-      <LegalSection n={2} title="Thông tin chúng tôi thu thập">
-        <h3>2.1. Thông tin mẹ chủ động cung cấp</h3>
-        <p>Khi mẹ đăng ký sự kiện hoặc nhận tin trên website:</p>
-        <ul>
-          <li>Họ tên, email, số điện thoại</li>
-          <li>Tài khoản Facebook (nếu mẹ cung cấp)</li>
-          <li>Tỉnh/thành đang sinh sống</li>
-          <li>
-            Tình trạng hiện tại: <strong>chuẩn bị mang thai</strong>,{" "}
-            <strong>IVF</strong>, <strong>đang mang thai</strong> hoặc{" "}
-            <strong>bé đã chào đời</strong>, và số tháng tuổi của bé (nếu có)
-          </li>
-          <li>Việc mẹ có đi cùng chồng hay không</li>
-        </ul>
-
-        <h3>2.2. Thông tin trong ứng dụng Mama Ơi</h3>
-        <p>
-          Khi mẹ sử dụng ứng dụng để theo dõi bé, chúng tôi lưu những dữ liệu mẹ nhập vào:
-        </p>
-        <ul>
-          <li>Hồ sơ bé: tên, giới tính, ngày sinh hoặc ngày dự sinh, ảnh đại diện</li>
-          <li>Nhật ký chăm sóc: cữ bú, giấc ngủ, lần thay bỉm, bữa ăn dặm</li>
-          <li>
-            Dữ liệu sức khoẻ của bé: cân nặng, chiều cao, nhiệt độ, thuốc đã dùng, lịch
-            tiêm vaccine
-          </li>
-          <li>Cột mốc phát triển và ảnh kỷ niệm mẹ tự thêm vào</li>
-        </ul>
-        <p>
-          Chúng tôi hiểu rằng đây là <strong>thông tin sức khoẻ của một đứa trẻ</strong> —
-          thuộc nhóm dữ liệu cá nhân nhạy cảm theo Nghị định 13/2023/NĐ-CP. Chúng tôi chỉ
-          thu thập những gì cần thiết để ứng dụng hoạt động, và không bao giờ bán chúng.
-        </p>
-
-        <h3>2.3. Thông tin thu thập tự động</h3>
-        <ul>
-          <li>Loại thiết bị, hệ điều hành, phiên bản ứng dụng</li>
-          <li>
-            Dữ liệu sử dụng ẩn danh qua Google Analytics và Meta Pixel, để hiểu mẹ tìm
-            đến chúng tôi từ đâu và phần nào của trang chưa rõ ràng
-          </li>
-        </ul>
-        <p>
-          Ứng dụng <strong>không</strong> truy cập vị trí GPS, danh bạ hay tin nhắn của mẹ.
-        </p>
-      </LegalSection>
-
-      <LegalSection n={3} title="Chúng tôi dùng thông tin để làm gì">
-        <ul>
-          <li>Xác nhận đăng ký sự kiện, gửi email xác nhận và mã QR check-in</li>
-          <li>
-            Gửi đúng nội dung với giai đoạn của mẹ và bé — một người mẹ đang mang thai và
-            một người mẹ có bé 10 tháng cần những thông tin rất khác nhau
-          </li>
-          <li>Tính toán các mốc phát triển (Wonder Week) từ ngày dự sinh của bé</li>
-          <li>Hiển thị thống kê và biểu đồ về thói quen sinh hoạt của bé</li>
-          <li>
-            Tạo sẵn hồ sơ trên ứng dụng Mama Ơi để mẹ không phải nhập lại thông tin đã
-            cung cấp khi đăng ký sự kiện
-          </li>
-          <li>Cải thiện sản phẩm và khắc phục lỗi</li>
-        </ul>
-        <p>
-          Chúng tôi chỉ gửi email quảng bá cho mẹ khi mẹ đã <strong>chủ động đồng ý</strong>{" "}
-          tại thời điểm đăng ký. Mẹ có thể huỷ đăng ký bất cứ lúc nào bằng liên kết ở cuối
-          mỗi email.
-        </p>
-      </LegalSection>
-
-      <LegalSection n={4} title="Chúng tôi chia sẻ với ai">
-        <p>
-          Chúng tôi <strong>không bán</strong> dữ liệu cá nhân của mẹ cho bất kỳ ai. Chúng
-          tôi chỉ chia sẻ với những nhà cung cấp dịch vụ cần thiết để vận hành:
-        </p>
-        <ul>
-          <li>
-            <strong>Supabase</strong> — lưu trữ thông tin đăng ký và trạng thái check-in
-          </li>
-          <li>
-            <strong>OneMail (onemail.vn)</strong> — gửi email xác nhận và thông báo sự kiện
-          </li>
-          <li>
-            <strong>Google (Sheets, Analytics)</strong> — quản lý danh sách tham dự và đo
-            lường lưu lượng truy cập
-          </li>
-          <li>
-            <strong>Meta</strong> — đo lường hiệu quả quảng cáo qua Meta Pixel
-          </li>
-          <li>
-            <strong>Vercel</strong> — vận hành hạ tầng website
-          </li>
-        </ul>
-        <p>
-          Các đơn vị này chỉ được xử lý dữ liệu theo yêu cầu của chúng tôi và không được
-          dùng cho mục đích riêng. Ngoài ra, chúng tôi chỉ tiết lộ thông tin khi có yêu cầu
-          hợp pháp từ cơ quan nhà nước có thẩm quyền.
-        </p>
-      </LegalSection>
-
-      <LegalSection n={5} title="Quyền của mẹ">
-        <p>Theo Nghị định 13/2023/NĐ-CP, mẹ có quyền:</p>
-        <ul>
-          <li>Biết chúng tôi đang lưu những thông tin gì về mẹ và bé</li>
-          <li>Yêu cầu sửa thông tin sai</li>
-          <li>
-            <strong>Yêu cầu xoá toàn bộ dữ liệu</strong> — bao gồm cả hồ sơ bé và nhật ký
-            chăm sóc
-          </li>
-          <li>Rút lại sự đồng ý đã cho, bất cứ lúc nào</li>
-          <li>Yêu cầu ngừng xử lý dữ liệu của mẹ</li>
-        </ul>
-        <p>
-          Để thực hiện các quyền trên, mẹ gửi email tới{" "}
-          <a href={`mailto:${SITE.email}`}>{SITE.email}</a>. Chúng tôi sẽ phản hồi trong
-          vòng 72 giờ.
-        </p>
-      </LegalSection>
-
-      <LegalSection n={6} title="Lưu trữ và bảo mật">
-        <p>
-          Dữ liệu được truyền qua kết nối mã hoá (HTTPS) và lưu trên hạ tầng của các nhà
-          cung cấp nêu tại mục 4. Chúng tôi giới hạn số người có quyền truy cập ở mức tối
-          thiểu cần thiết.
-        </p>
-        <p>
-          Chúng tôi lưu dữ liệu chừng nào tài khoản của mẹ còn hoạt động. Khi mẹ yêu cầu
-          xoá, dữ liệu sẽ được xoá khỏi hệ thống trong vòng 30 ngày.
-        </p>
-        <p>
-          Chúng tôi nói thật với mẹ: không có hệ thống nào an toàn tuyệt đối. Chúng tôi
-          dùng các biện pháp bảo vệ hợp lý theo tiêu chuẩn ngành, nhưng không thể cam kết
-          rủi ro bằng không.
-        </p>
-      </LegalSection>
-
-      <LegalSection n={7} title="Trẻ em">
-        <p>
-          Ứng dụng Mama Ơi dành cho <strong>người lớn</strong> — cha mẹ và người chăm sóc.
-          Chúng tôi không cho phép trẻ em dưới 16 tuổi tự tạo tài khoản.
-        </p>
-        <p>
-          Dữ liệu về em bé trong ứng dụng là do <strong>chính cha mẹ nhập vào</strong> về
-          con mình. Cha mẹ toàn quyền xem, sửa và xoá những dữ liệu này bất cứ lúc nào.
-        </p>
-      </LegalSection>
-
-      <LegalSection n={8} title="Thay đổi chính sách">
-        <p>
-          Khi có thay đổi, chúng tôi sẽ cập nhật trang này và đổi ngày &quot;Cập nhật lần
-          cuối&quot; ở đầu trang. Với những thay đổi lớn ảnh hưởng đến quyền của mẹ, chúng
-          tôi sẽ thông báo qua email hoặc trong ứng dụng.
-        </p>
-      </LegalSection>
+      <p>
+        <strong>© 2026 Mama Ơi. Bảo lưu mọi quyền.</strong>
+      </p>
     </LegalPage>
   );
 }

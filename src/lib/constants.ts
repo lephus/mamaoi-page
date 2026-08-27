@@ -547,7 +547,14 @@ export const PROVINCES = [
 ] as const;
 
 /** Last updated date shown on the legal pages. */
-export const LEGAL_UPDATED = "15/07/2026";
+export const LEGAL_UPDATED = "27/08/2026";
+
+/**
+ * Email liên hệ ghi trong hai văn bản pháp lý (Điều khoản sử dụng, Chính sách
+ * quyền riêng tư) — lấy nguyên văn từ docx khách gửi 27/08/2026. Cố ý tách khỏi
+ * SITE.email vì khách ghi địa chỉ khác với email liên hệ chung của site.
+ */
+export const LEGAL_EMAIL = "support@mamaoi.vn";
 
 /**
  * Chủ đề quan tâm — chọn nhiều. `value` là thứ lưu xuống DB;

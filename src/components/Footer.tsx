@@ -31,7 +31,7 @@ export function Footer() {
             </li>
             <li>
               <Link href="/privacy-policy" className="hover:text-primary">
-                Chính sách bảo mật
+                Chính sách quyền riêng tư
               </Link>
             </li>
             <li>

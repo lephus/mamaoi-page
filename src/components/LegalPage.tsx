@@ -9,7 +9,8 @@ export function LegalPage({
   children,
 }: {
   title: string;
-  intro: string;
+  /** Đoạn mở đầu (tuỳ chọn) — chuỗi hoặc JSX nhiều đoạn. Bỏ trống nếu tài liệu vào thẳng mục 1. */
+  intro?: React.ReactNode;
   children: React.ReactNode;
 }) {
   return (
@@ -22,7 +23,11 @@ export function LegalPage({
           <p className="mt-2 text-sm text-ink-faded">
             Cập nhật lần cuối: {LEGAL_UPDATED}
           </p>
-          <p className="mt-6 text-lg leading-7 text-ink-faded">{intro}</p>
+          {intro ? (
+            <div className="mt-6 space-y-3 text-lg leading-7 text-ink-faded [&_strong]:font-bold [&_strong]:text-ink">
+              {typeof intro === "string" ? <p>{intro}</p> : intro}
+            </div>
+          ) : null}
 
           <div
             className="
