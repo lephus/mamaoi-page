@@ -10,7 +10,7 @@ export const SITE = {
   tagline: "Theo dõi hành trình lớn lên của bé mỗi ngày",
   url: "https://mamaoi.vn",
   company: "Mama Ơi",
-  email: "talentagent@bonggao.vn",
+  email: "support@mamaoi.vn",
 } as const;
 
 /** Agency credit in the footer bottom bar. */
@@ -551,8 +551,9 @@ export const LEGAL_UPDATED = "27/08/2026";
 
 /**
  * Email liên hệ ghi trong hai văn bản pháp lý (Điều khoản sử dụng, Chính sách
- * quyền riêng tư) — lấy nguyên văn từ docx khách gửi 27/08/2026. Cố ý tách khỏi
- * SITE.email vì khách ghi địa chỉ khác với email liên hệ chung của site.
+ * quyền riêng tư) — lấy nguyên văn từ docx khách gửi 27/08/2026. Tách khỏi
+ * SITE.email để hai văn bản pháp lý có thể đổi địa chỉ độc lập với email liên hệ
+ * chung của site (hiện tại trùng nhau từ 28/08/2026).
  */
 export const LEGAL_EMAIL = "support@mamaoi.vn";
 
