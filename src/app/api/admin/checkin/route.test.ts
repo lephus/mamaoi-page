@@ -83,7 +83,32 @@ describe("/api/admin/checkin", () => {
       MA,
       "2026-08-30T02:30:00.000Z",
       "admin",
+      ROW,
     );
+  });
+
+  /**
+   * Mẹ ngoài danh sách đã bị ops xoá khỏi Sheet. Check-in ở quầy thì dòng phải
+   * quay lại Sheet — nên truyền NGUYÊN dòng DB làm dự phòng để
+   * `ghiCheckinVaoSheet` append khi không thấy mã. Bỏ tick thì không có gì để
+   * append: không truyền dòng dự phòng.
+   */
+  it("check-in truyền nguyên dòng làm dự phòng để Sheet tự append khi thiếu", async () => {
+    await post({ id: "row-1", checkedIn: true });
+    await xongViecNen();
+    expect(vi.mocked(sheets.ghiCheckinVaoSheet).mock.calls[0][3]).toBe(ROW);
+  });
+
+  it("bỏ tick KHÔNG truyền dòng dự phòng", async () => {
+    vi.mocked(supabase.adminUpdateCheckin).mockResolvedValue({
+      ...ROW,
+      checked_in: false,
+      checked_in_at: null,
+      checked_in_source: null,
+    } as unknown as supabase.RegistrationRow);
+    await post({ id: "row-1", checkedIn: false });
+    await xongViecNen();
+    expect(vi.mocked(sheets.ghiCheckinVaoSheet).mock.calls[0]).toHaveLength(3);
   });
 
   it("bỏ tick: mirror lượt XOÁ sang Sheet, không để lại giờ ma", async () => {

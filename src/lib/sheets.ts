@@ -126,6 +126,16 @@ export function hangDbToSheetRow(
 }
 
 /**
+ * Một dòng DB ĐẦY ĐỦ (kể cả ba cột check-in) → 22 ô. Khác `hangDbToSheetRow` ở
+ * chỗ KHÔNG xoá trạng thái check-in: dùng làm dòng dự phòng cho
+ * `ghiCheckinVaoSheet` khi Sheet không có mã — dòng append này là bản ghi duy
+ * nhất của mẹ trên Sheet, không có lượt batchUpdate nào theo sau để điền check-in.
+ */
+export function hangDayDuChoSheet(row: RegistrationRow): (string | number)[] {
+  return rowsToSheet([row]).rows[0];
+}
+
+/**
  * Dựng WaitlistRow tạm rồi đưa qua `waitlistToSheet` để lấy đúng 3 ô theo đúng
  * thứ tự cột — y hệt cách `registrationToSheetRow` tái dùng `rowsToSheet`. Thứ
  * tự cột chỉ tồn tại một chỗ (export-rows.ts), nên Sheet và file Excel không bao
@@ -442,14 +452,21 @@ export function buildCheckinUpdate(
  * `checkedInAt === null` + `source === null` là lượt XOÁ. Tên hàm nói "ghi"
  * chứ không nói "mark", vì nó làm cả hai việc.
  *
- * Ném lỗi nếu KHÔNG thấy dòng nào (thường do Sheet append lỗi lúc đăng ký) —
- * mọi nơi gọi hàm này đều BẮT lỗi và chỉ log, vì check-in đã ghi xong ở Supabase
- * (nguồn chính thức); Sheet lệch là non-fatal.
+ * KHÔNG thấy dòng nào (Sheet append lỗi lúc đăng ký, hoặc ops đã xoá dòng của
+ * mẹ ngoài danh sách khỏi Sheet khi chốt khách mời):
+ *  - có `hangDuPhong` → APPEND nguyên dòng 22 cột, ba ô check-in đã điền sẵn
+ *    (`hangDayDuChoSheet`). Đây là đường để một mẹ ngoài danh sách được
+ *    check-in ở quầy quay lại Sheet của ops.
+ *  - không có → ném lỗi như trước. Lượt XOÁ không bao giờ truyền dòng dự
+ *    phòng: không có dòng thì không có gì để xoá.
+ * Mọi nơi gọi hàm này đều BẮT lỗi và chỉ log, vì check-in đã ghi xong ở
+ * Supabase (nguồn chính thức); Sheet lệch là non-fatal.
  */
 export async function ghiCheckinVaoSheet(
   code: string,
   checkedInAt: string | null,
   source: "qr" | "admin" | null,
+  hangDuPhong?: RegistrationRow,
 ): Promise<void> {
   const headers = rowsToSheet([]).headers;
   const codeIdx = headers.indexOf(HEADER_CODE);
@@ -463,6 +480,10 @@ export async function ghiCheckinVaoSheet(
   const data = (await res.json()) as { values?: string[][] };
   const rowNumbers = findCheckinRows(data.values ?? [], code);
   if (rowNumbers.length === 0) {
+    if (hangDuPhong && checkedInAt !== null) {
+      await appendValues(REGISTER_TAB, [hangDayDuChoSheet(hangDuPhong)]);
+      return;
+    }
     throw new Error(`Không thấy mã ${code} trong tab "${REGISTER_TAB}"`);
   }
 

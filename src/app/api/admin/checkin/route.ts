@@ -45,14 +45,19 @@ export async function POST(request: Request) {
     //
     // Non-fatal y như luồng mẹ tự quét: Supabase đã ghi xong và nó là nguồn
     // chính thức; Sheet lệch thì log để ops back-fill.
+    //
+    // Check-in truyền NGUYÊN `row` làm dòng dự phòng: mẹ ngoài danh sách đã bị
+    // ops xoá khỏi Sheet khi chốt khách mời, `ghiCheckinVaoSheet` sẽ không thấy
+    // mã và append lại dòng của mẹ (kèm check-in). Bỏ tick thì không truyền —
+    // không có dòng thì không có gì để xoá.
     after(async () => {
       if (!sheetsConfigured()) return;
       try {
-        await ghiCheckinVaoSheet(
-          row.checkin_code,
-          row.checked_in_at,
-          row.checked_in ? "admin" : null,
-        );
+        if (row.checked_in) {
+          await ghiCheckinVaoSheet(row.checkin_code, row.checked_in_at, "admin", row);
+        } else {
+          await ghiCheckinVaoSheet(row.checkin_code, null, null);
+        }
       } catch (err) {
         console.error("[admin/checkin] Sheets update failed:", row.checkin_code, err);
       }

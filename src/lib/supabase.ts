@@ -49,12 +49,15 @@ export type RegistrationRow = {
    * chỗ liệt kê (`listRegistrations`), nhưng vẫn tra được bằng mã
    * (`findByCode`) nên check-in QR không đổi hành vi.
    *
-   * DB đặt `default true`, và KHÔNG đường ghi nào được gửi cột này lên — đó là
-   * lý do nó nằm trong `RegistrationInsertRow` bên dưới, dùng ở
+   * DB đặt `default true`, và KHÔNG đường ghi MỚI nào được gửi cột này lên — đó
+   * là lý do nó nằm trong `RegistrationInsertRow` bên dưới, dùng ở
    * `registrationToRow` / `thuCongToRow` / `insertRegistrationThuCong` /
    * `hangDbToSheetRow` / `appendRegistrationThuCong`. Nhờ vậy dòng ops tạo tay
    * mặc định hiện, còn một mẹ đã ẩn gửi lại form thì upsert không bật cô ấy
    * hiện lại.
+   *
+   * NGOẠI LỆ DUY NHẤT: `adminCheckinPayload` bật `true` khi ops check-in hộ —
+   * mẹ đã được cho vào cửa thì phải hiện trên /admin. Xem doc hàm đó.
    */
   duoc_moi: boolean;
 };
@@ -264,6 +267,34 @@ export async function listRegistrations(): Promise<RegistrationRow[]> {
   return (data as RegistrationRow[]) ?? [];
 }
 
+/**
+ * Payload UPDATE cho một lượt admin check-in / bỏ tick. Tách thuần để test.
+ *
+ * Check-in thì bật luôn `duoc_moi = true` — đây là đường ghi DUY NHẤT được
+ * phép gửi cột này lên (xem chú thích tại `RegistrationRow.duoc_moi`). Lý do:
+ * ops ở quầy `/admin/quet-qr` bấm "Check In" cho một mẹ ngoài danh sách nghĩa
+ * là mẹ ấy ĐÃ được cho vào cửa; để `duoc_moi = false` thì mẹ không hiện trên
+ * `/admin`, không nằm trong "Đã check-in: N / …", và không có trong file xuất
+ * Excel — tức là hệ thống coi như chưa từng có người này trong hội trường.
+ *
+ * Bỏ tick KHÔNG đụng `duoc_moi`: bỏ tick là sửa nhầm lẫn về check-in, không
+ * phải quyết định lại danh sách mời.
+ */
+export function adminCheckinPayload(
+  checkedIn: boolean,
+  checkedInAt: string | null,
+): Partial<Pick<RegistrationRow, "checked_in" | "checked_in_at" | "checked_in_source" | "duoc_moi">> {
+  if (!checkedIn) {
+    return { checked_in: false, checked_in_at: null, checked_in_source: null };
+  }
+  return {
+    checked_in: true,
+    checked_in_at: checkedInAt ?? new Date().toISOString(),
+    checked_in_source: "admin",
+    duoc_moi: true,
+  };
+}
+
 export async function adminUpdateCheckin(
   id: string,
   checkedIn: boolean,
@@ -271,11 +302,7 @@ export async function adminUpdateCheckin(
 ): Promise<RegistrationRow> {
   const { data, error } = await db()
     .from("registrations")
-    .update({
-      checked_in: checkedIn,
-      checked_in_at: checkedIn ? (checkedInAt ?? new Date().toISOString()) : null,
-      checked_in_source: checkedIn ? "admin" : null,
-    })
+    .update(adminCheckinPayload(checkedIn, checkedInAt))
     .eq("id", id)
     .select("*")
     .single();

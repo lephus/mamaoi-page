@@ -52,6 +52,21 @@ describe("/api/admin/tra-ma", () => {
     expect((await get(`code=${MA}`)).status).toBe(404);
   });
 
+  /**
+   * Quyết định #2 của spec 2026-08-06: mẹ ngoài danh sách (duoc_moi = false)
+   * vẫn phải tra được ở quầy. Route này đi qua `findByCode`, KHÔNG qua
+   * `listRegistrations` — test khoá lại để không ai "tiện tay" thêm bộ lọc.
+   */
+  it("dòng ngoài danh sách (duoc_moi = false) vẫn tra được", async () => {
+    vi.mocked(supabase.findByCode).mockResolvedValue({
+      ...ROW,
+      duoc_moi: false,
+    } as unknown as supabase.RegistrationRow);
+    const res = await get(`code=${MA}`);
+    expect(res.status).toBe(200);
+    expect((await res.json()).row.checkin_code).toBe(MA);
+  });
+
   it("chuẩn hoá mã viết thường thành hoa", async () => {
     await get("code=mo-abc234");
     expect(supabase.findByCode).toHaveBeenCalledWith(MA);

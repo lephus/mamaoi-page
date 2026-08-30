@@ -5,10 +5,12 @@ import {
   colLetter,
   soLieuTuCotSheet,
   findCheckinRows,
+  hangDayDuChoSheet,
   registrationToSheetRow,
   VALUE_INPUT_OPTION,
   waitlistToSheetRow,
 } from "@/lib/sheets";
+import type { RegistrationRow } from "@/lib/supabase";
 import type { Registration } from "@/lib/validation";
 
 const HEADERS = rowsToSheet([]).headers;
@@ -94,6 +96,64 @@ describe("registrationToSheetRow", () => {
     expect(at(row, "Đã check-in")).toBe("—");
     expect(at(row, "Giờ check-in")).toBe("");
     expect(at(row, "Nguồn check-in")).toBe("");
+  });
+});
+
+/**
+ * Dòng dự phòng cho `ghiCheckinVaoSheet`: mẹ ngoài danh sách (ops đã xoá khỏi
+ * Sheet) được check-in ở quầy thì Sheet phải có lại dòng của mẹ — và dòng đó
+ * phải mang SẴN trạng thái check-in, vì không có lượt batchUpdate nào theo sau.
+ */
+describe("hangDayDuChoSheet", () => {
+  const row = {
+    id: "row-1",
+    created_at: "2026-07-25T13:56:07.000Z",
+    checkin_code: "MO-5442VJ",
+    ho_ten: "Huỳnh Quân",
+    email: "quan@example.com",
+    sdt: "0923093328",
+    facebook: null,
+    tinh_thanh: "TP. Hồ Chí Minh",
+    trang_thai: "da_sinh",
+    thai_tuan: null,
+    ten_be: "Vân Chi",
+    be_ngay_sinh: "2024-06-08",
+    be_gioi_tinh: "nu",
+    be_thang_tuoi: 25,
+    chu_de_quan_tam: ["tiem_chung"],
+    chu_de_khac: null,
+    nguon_biet_den: "facebook",
+    di_cung_chong: true,
+    dong_y_nhan_tin: true,
+    nguon: "su-kien",
+    checked_in: true,
+    checked_in_at: "2026-08-30T03:15:00.000Z",
+    checked_in_source: "admin",
+    duoc_moi: false,
+  } as RegistrationRow;
+
+  it("số ô khớp số cột của header", () => {
+    expect(hangDayDuChoSheet(row)).toHaveLength(HEADERS.length);
+  });
+
+  it("ba ô check-in ĐÃ điền, khớp định dạng file Excel", () => {
+    const r = hangDayDuChoSheet(row);
+    const [da, gio, nguon] = buildCheckinUpdate(
+      "register",
+      HEADERS,
+      2,
+      row.checked_in_at,
+      "admin",
+    ).map((u) => u.values[0][0]);
+    expect(at(r, "Đã check-in")).toBe(da);
+    expect(at(r, "Giờ check-in")).toBe(gio);
+    expect(at(r, "Nguồn check-in")).toBe(nguon);
+  });
+
+  it("mã check-in và họ tên vào đúng cột", () => {
+    const r = hangDayDuChoSheet(row);
+    expect(at(r, "Mã check-in")).toBe("MO-5442VJ");
+    expect(at(r, "Họ tên")).toBe("Huỳnh Quân");
   });
 });
 

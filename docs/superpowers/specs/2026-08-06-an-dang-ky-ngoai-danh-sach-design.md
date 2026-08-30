@@ -157,3 +157,15 @@ Cái làm được:
 Thêm một ca chưa rõ: `buuphung2408@gmail.com` (`MO-PTZJ32`) — cùng tên "Phùng Bửu Bửu" nhưng hai số khác nhau, có thể là gõ nhầm. (`tramnguyen1503@yahoo.com` thì không phải vấn đề: `+84972635454` và `0972635454` là cùng một số.)
 
 Cần ops liên hệ tách thành hai đăng ký riêng trước ngày sự kiện. Cả 4 mã trên đều nằm trong danh sách 517 nên **không bị ẩn** bởi thay đổi này.
+
+## 8. Bổ sung ngày 30/08/2026 — check-in hộ ở quầy bật lại `duoc_moi`
+
+Ngày sự kiện, ops tra mã `MO-5442VJ` ở `/admin/quet-qr`: tra được (đúng quyết định #2), nhưng sau khi bấm "Check In" mẹ vẫn không hiện trên `/admin`, và Sheet `register` (ops đã xoá 486 dòng ngoài danh sách khi chốt khách mời) cũng không có dòng để `ghiCheckinVaoSheet` cập nhật. Rủi ro mục 7 thành sự thật ngay tại cửa. Quyết định sửa:
+
+| # | Thay đổi | Chỗ sửa |
+|---|---|---|
+| 1 | Tra/quét ở `/admin/quet-qr` **giữ nguyên** — vốn đã đi qua `findByCode`, không lọc `duoc_moi`. Thêm test khoá hành vi. | `api/admin/tra-ma/route.test.ts` |
+| 2 | Ops bấm "Check In" → `duoc_moi = true` cùng lúc ghi ba cột check-in. Bỏ tick KHÔNG đụng `duoc_moi`. Đây là đường ghi DUY NHẤT được gửi cột này lên. | `adminCheckinPayload` trong `src/lib/supabase.ts` |
+| 3 | `ghiCheckinVaoSheet` nhận thêm `hangDuPhong?: RegistrationRow`: không thấy mã trên Sheet **và** là lượt check-in → append nguyên dòng 22 cột, ba ô check-in điền sẵn (`hangDayDuChoSheet`). Lượt xoá không truyền dòng dự phòng, vẫn ném lỗi như cũ. | `src/lib/sheets.ts`, `api/admin/checkin/route.ts` |
+
+Hệ quả: mục 7 chỉ còn đúng với mẹ ngoài danh sách **tự quét** QR (`/api/check-in`) — đường đó chưa đổi, vì chưa được yêu cầu. Mẹ ngoài danh sách đi qua quầy admin thì hiện trên `/admin`, cộng vào "Đã check-in: N / …", có trong file xuất Excel, và có lại dòng trên Sheet.

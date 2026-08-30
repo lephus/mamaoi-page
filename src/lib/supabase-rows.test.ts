@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { registrationToRow } from "@/lib/supabase";
+import { adminCheckinPayload, registrationToRow } from "@/lib/supabase";
 import type { Registration } from "@/lib/validation";
 
 const MOC = new Date("2026-07-20T03:00:00.000Z");
@@ -92,5 +92,37 @@ describe("registrationToRow", () => {
   it("KHÔNG gửi duoc_moi lên DB — cột đó do default của Postgres quyết định", () => {
     expect(registrationToRow(mangThai, "MO-23456A", MOC)).not.toHaveProperty("duoc_moi");
     expect(registrationToRow(daSinh, "MO-23456A", MOC)).not.toHaveProperty("duoc_moi");
+  });
+});
+
+/**
+ * Ops bấm "Check In" ở /admin/quet-qr cho một mẹ ngoài danh sách (duoc_moi =
+ * false): mẹ đã đứng ở cửa và được cho vào, thì phải HIỆN trên /admin như mọi
+ * người khác — không thì "Đã check-in: N / …" đếm thiếu chính người vừa vào.
+ */
+describe("adminCheckinPayload", () => {
+  it("check-in: bật duoc_moi = true cùng lúc ghi ba cột check-in", () => {
+    expect(adminCheckinPayload(true, "2026-08-30T02:30:00.000Z")).toEqual({
+      checked_in: true,
+      checked_in_at: "2026-08-30T02:30:00.000Z",
+      checked_in_source: "admin",
+      duoc_moi: true,
+    });
+  });
+
+  it("check-in không kèm giờ: lấy giờ hiện tại, vẫn bật duoc_moi", () => {
+    const p = adminCheckinPayload(true, null);
+    expect(p.duoc_moi).toBe(true);
+    expect(p.checked_in).toBe(true);
+    expect(typeof p.checked_in_at).toBe("string");
+  });
+
+  it("bỏ tick: xoá ba cột check-in, KHÔNG đụng duoc_moi", () => {
+    expect(adminCheckinPayload(false, null)).toEqual({
+      checked_in: false,
+      checked_in_at: null,
+      checked_in_source: null,
+    });
+    expect(adminCheckinPayload(false, null)).not.toHaveProperty("duoc_moi");
   });
 });
