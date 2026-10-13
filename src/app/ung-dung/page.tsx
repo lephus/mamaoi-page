@@ -1,11 +1,18 @@
 import type { Metadata } from "next";
 import Image from "next/image";
+import type { ReactNode } from "react";
 import { Footer } from "@/components/Footer";
 import { Header } from "@/components/Header";
 import { Reveal } from "@/components/Reveal";
-import { AnchorButton, ButtonLink } from "@/components/ui/Button";
-import { WaitlistForm } from "@/components/WaitlistForm";
-import { APP_FEATURES, BABY_MILESTONES, EVENT, SITE } from "@/lib/constants";
+import { ButtonLink } from "@/components/ui/Button";
+import {
+  APP_FEATURES,
+  APP_STORE_URL,
+  BABY_MILESTONES,
+  EVENT,
+  GOOGLE_PLAY_URL,
+  SITE,
+} from "@/lib/constants";
 
 export const metadata: Metadata = {
   // The app intro moved off the root when the event became the homepage. Pin
@@ -59,6 +66,61 @@ function PhoneMockup({
   );
 }
 
+function StoreButton({
+  href,
+  store,
+  icon,
+}: {
+  href: string;
+  store: string;
+  icon: ReactNode;
+}) {
+  return (
+    <a
+      href={href}
+      target="_blank"
+      rel="noopener noreferrer"
+      aria-label={`Tải Mama Ơi trên ${store}`}
+      className="inline-flex min-w-[200px] items-center gap-3 rounded-2xl bg-ink px-6 py-3.5 text-white shadow-sm transition duration-200 hover:scale-[1.03] hover:bg-ink/90 focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-cream focus-visible:outline-none active:scale-[0.97]"
+    >
+      {icon}
+      <span className="flex flex-col text-left leading-tight">
+        <span className="text-xs font-semibold text-white/80">Tải về trên</span>
+        <span className="text-xl font-bold">{store}</span>
+      </span>
+    </a>
+  );
+}
+
+/**
+ * Both store buttons, in the familiar dark badge shape so a parent recognises
+ * them at a glance. Used in the hero and again in the closing CTA.
+ */
+function StoreButtons({ className = "" }: { className?: string }) {
+  return (
+    <div className={`flex flex-wrap justify-center gap-3 ${className}`}>
+      <StoreButton
+        href={APP_STORE_URL}
+        store="App Store"
+        icon={
+          <svg viewBox="0 0 24 24" fill="currentColor" className="h-7 w-7" aria-hidden="true">
+            <path d="M12.152 6.896c-.948 0-2.415-1.078-3.96-1.04-2.04.027-3.91 1.183-4.961 3.014-2.117 3.675-.546 9.103 1.519 12.09 1.013 1.454 2.208 3.09 3.792 3.039 1.52-.065 2.09-.987 3.935-.987 1.831 0 2.35.987 3.96.948 1.637-.026 2.676-1.48 3.676-2.948 1.156-1.688 1.636-3.325 1.662-3.415-.039-.013-3.182-1.221-3.22-4.857-.026-3.04 2.48-4.494 2.597-4.559-1.429-2.09-3.623-2.324-4.39-2.376-2-.156-3.675 1.09-4.61 1.09zM15.53 3.83c.843-1.012 1.4-2.427 1.245-3.83-1.207.052-2.662.805-3.532 1.818-.78.896-1.454 2.338-1.273 3.714 1.338.104 2.715-.688 3.559-1.701" />
+          </svg>
+        }
+      />
+      <StoreButton
+        href={GOOGLE_PLAY_URL}
+        store="Google Play"
+        icon={
+          <svg viewBox="0 0 24 24" fill="currentColor" className="h-6 w-6" aria-hidden="true">
+            <path d="M22.018 13.298l-3.919 2.218-3.515-3.493 3.543-3.521 3.891 2.202a1.49 1.49 0 0 1 0 2.594zM1.337.924a1.486 1.486 0 0 0-.112.568v21.017c0 .217.045.419.124.6l11.155-11.087L1.337.924zm12.207 10.065l3.258-3.238L3.45.195a1.466 1.466 0 0 0-.946-.179l11.04 10.973zm0 2.067l-11 10.933c.298.036.612-.016.906-.183l13.324-7.54-3.23-3.21z" />
+          </svg>
+        }
+      />
+    </div>
+  );
+}
+
 export default function AppPage() {
   return (
     <>
@@ -69,29 +131,7 @@ export default function AppPage() {
         <section className="relative flex min-h-[calc(100dvh_-_4rem)] items-center overflow-hidden px-5 py-12">
           <div className="mx-auto grid w-full max-w-6xl items-center gap-8 md:grid-cols-2 md:gap-12">
             <div className="animate-reveal text-center md:text-left">
-              <span className="inline-flex items-center gap-2.5 rounded-full bg-primary-faded py-2 pr-4 pl-4 text-sm font-bold text-primary">
-                <span
-                  aria-hidden="true"
-                  className="relative flex h-2 w-2 shrink-0 items-center justify-center"
-                >
-                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary opacity-60" />
-                  <span className="relative inline-flex h-2 w-2 rounded-full bg-primary" />
-                </span>
-                Sắp ra mắt trên
-                <span aria-hidden="true" className="h-3.5 w-px bg-primary/30" />
-                <span
-                  role="img"
-                  aria-label="App Store và Google Play"
-                  className="flex items-center gap-2 text-primary-pressed"
-                >
-                  <svg viewBox="0 0 24 24" fill="currentColor" className="h-[18px] w-[18px]" aria-hidden="true">
-                    <path d="M12.152 6.896c-.948 0-2.415-1.078-3.96-1.04-2.04.027-3.91 1.183-4.961 3.014-2.117 3.675-.546 9.103 1.519 12.09 1.013 1.454 2.208 3.09 3.792 3.039 1.52-.065 2.09-.987 3.935-.987 1.831 0 2.35.987 3.96.948 1.637-.026 2.676-1.48 3.676-2.948 1.156-1.688 1.636-3.325 1.662-3.415-.039-.013-3.182-1.221-3.22-4.857-.026-3.04 2.48-4.494 2.597-4.559-1.429-2.09-3.623-2.324-4.39-2.376-2-.156-3.675 1.09-4.61 1.09zM15.53 3.83c.843-1.012 1.4-2.427 1.245-3.83-1.207.052-2.662.805-3.532 1.818-.78.896-1.454 2.338-1.273 3.714 1.338.104 2.715-.688 3.559-1.701" />
-                  </svg>
-                  <svg viewBox="0 0 24 24" fill="currentColor" className="h-4 w-4" aria-hidden="true">
-                    <path d="M22.018 13.298l-3.919 2.218-3.515-3.493 3.543-3.521 3.891 2.202a1.49 1.49 0 0 1 0 2.594zM1.337.924a1.486 1.486 0 0 0-.112.568v21.017c0 .217.045.419.124.6l11.155-11.087L1.337.924zm12.207 10.065l3.258-3.238L3.45.195a1.466 1.466 0 0 0-.946-.179l11.04 10.973zm0 2.067l-11 10.933c.298.036.612-.016.906-.183l13.324-7.54-3.23-3.21z" />
-                  </svg>
-                </span>
-              </span>
+              <StoreButtons className="md:justify-start" />
 
               <h1 className="mt-5 text-4xl leading-tight font-extrabold text-ink sm:text-5xl">
                 {SITE.tagline}
@@ -102,11 +142,6 @@ export default function AppPage() {
                 Ghi lại chỉ bằng một chạm, kể cả khi mẹ đang bế bé một tay.
               </p>
 
-              {/* One button. It scrolls to the email form at the foot of the
-                  page via native smooth-scroll — no form clutter in the hero. */}
-              <div className="mt-8">
-                <AnchorButton href="#nhan-tin">Nhận tin khi ra mắt</AnchorButton>
-              </div>
             </div>
 
             <div className="relative flex justify-center">
@@ -321,9 +356,9 @@ export default function AppPage() {
           </Reveal>
         </section>
 
-        {/* ---------- Closing waitlist CTA — the email lives here ---------- */}
+        {/* ---------- Closing download CTA ---------- */}
         <section
-          id="nhan-tin"
+          id="tai-app"
           className="scroll-mt-20 px-5 py-14 sm:py-16"
         >
           <Reveal className="mx-auto w-full max-w-xl">
@@ -339,36 +374,23 @@ export default function AppPage() {
               />
 
               <div className="relative text-center">
-                {/* Notify bell with a pulsing dot — echoes the hero "coming soon" cue. */}
-                <span className="relative mx-auto inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-primary-faded text-primary">
-                  <svg
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth={1.7}
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    className="h-7 w-7"
-                    aria-hidden="true"
-                  >
-                    <path d="M14.857 17.082a23.848 23.848 0 0 0 5.454-1.31A8.967 8.967 0 0 1 18 9.75V9A6 6 0 0 0 6 9v.75a8.967 8.967 0 0 1-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 0 1-5.714 0m5.714 0a3 3 0 1 1-5.714 0M3.124 7.5A8.969 8.969 0 0 1 5.292 3m13.416 0a8.969 8.969 0 0 1 2.168 4.5" />
-                  </svg>
-                  <span aria-hidden="true" className="absolute -top-1 -right-1 flex h-3.5 w-3.5">
-                    <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary opacity-70" />
-                    <span className="relative inline-flex h-3.5 w-3.5 rounded-full bg-primary ring-2 ring-white" />
-                  </span>
-                </span>
+                {/* The app icon exactly as it sits on the phone's home screen. */}
+                <Image
+                  src="/images/logo-app-icon.png"
+                  alt=""
+                  width={128}
+                  height={128}
+                  className="mx-auto h-16 w-16 rounded-2xl shadow-sm"
+                />
 
                 <h2 className="mt-5 text-2xl font-extrabold text-ink sm:text-3xl">
-                  Nhận tin khi Mama Ơi ra mắt
+                  Tải Mama Ơi ngay hôm nay
                 </h2>
                 <p className="mx-auto mt-2.5 max-w-sm text-base leading-7 text-ink-faded sm:text-lg">
-                  Để lại email, mẹ sẽ là người đầu tiên biết.
+                  Đã có mặt trên App Store và Google Play.
                 </p>
 
-                <div className="mt-7 text-left">
-                  <WaitlistForm />
-                </div>
+                <StoreButtons className="mt-7" />
               </div>
             </div>
           </Reveal>

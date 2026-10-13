@@ -198,7 +198,7 @@ function ThongBaoDong({ tieuDe, mo, nut }: { tieuDe: string; mo: string; nut: st
       <p className="text-lg font-extrabold text-ink">{tieuDe}</p>
       <p className="mt-1.5 text-base leading-6 text-ink-faded">{mo}</p>
       <Link
-        href="/ung-dung#nhan-tin"
+        href="/ung-dung#tai-app"
         className="mt-4 inline-block rounded-full bg-primary px-6 py-3 text-base font-bold text-white transition-colors hover:bg-primary-hover"
       >
         {nut}

@@ -13,6 +13,11 @@ export const SITE = {
   email: "support@mamaoi.vn",
 } as const;
 
+/** Trang tải app trên hai chợ ứng dụng — nút tải ở hero trang /ung-dung. */
+export const APP_STORE_URL = "https://apps.apple.com/vn/app/id6811557845";
+export const GOOGLE_PLAY_URL =
+  "https://play.google.com/store/apps/details?id=com.mamaoi.app&pcampaignid=web_share";
+
 /** Agency credit in the footer bottom bar. */
 export const BUILT_BY = "Built by Digital Unicorn";
 export const BUILT_BY_URL = "https://digitalunicorn.fr";
@@ -84,8 +89,8 @@ export const SUC_CHUA_MAC_DINH = 500;
  */
 export const HET_CHO = {
   tieuDe: (soCho: number) => `Rất tiếc, sự kiện đã đủ ${soCho} mẹ.`,
-  mo: "Mẹ để lại email để Mama Ơi báo ngay khi có chỗ trống nhé.",
-  nut: "Đăng ký nhận tin ứng dụng",
+  mo: "Mẹ tải ứng dụng Mama Ơi để không bỏ lỡ những sự kiện tiếp theo nhé.",
+  nut: "Tải ứng dụng Mama Ơi",
   /**
    * Chữ trên các nút CTA "Đăng ký ngay" khi đã hết chỗ — đối xứng với
    * `DA_DONG.nut`. Ngắn vì phải vừa một nút, kể cả nút trên header điện thoại.
@@ -109,8 +114,8 @@ export const DA_DONG = {
   /** Chữ trên ba nút CTA khi đã đóng. */
   nut: "Đã đóng đăng ký",
   tieuDe: "Đã đóng đăng ký Mama Ơi Day.",
-  mo: "Mẹ để lại email để Mama Ơi báo khi có sự kiện tiếp theo nhé.",
-  nutTin: "Đăng ký nhận tin ứng dụng",
+  mo: "Mẹ tải ứng dụng Mama Ơi để không bỏ lỡ sự kiện tiếp theo nhé.",
+  nutTin: "Tải ứng dụng Mama Ơi",
 } as const;
 
 /**
