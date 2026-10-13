@@ -35,36 +35,22 @@ const FEATURE_TINT: Record<string, string> = {
   info: "bg-info-faded",
 };
 
-function PhoneMockup({
-  src,
-  alt,
-  className = "",
-}: {
-  src: string;
-  alt: string;
-  className?: string;
-}) {
-  return (
-    <div
-      className={`relative w-fit rounded-[2.5rem] border-[10px] border-ink/90 bg-ink/90 shadow-2xl ${className}`}
-    >
-      {/* The source capture is a tall (390×1100) full app screen. Crop it to a
-          real phone aspect with object-cover so the mockup reads as a phone —
-          not a skinny sliver — and comfortably fits one viewport. Mobile sizes
-          by width; desktop sizes by height (minus header + hero padding). */}
-      <div className="relative aspect-[9/19] w-[185px] overflow-hidden rounded-[1.8rem] sm:w-[225px] md:h-[min(calc(100dvh_-_13rem),580px)] md:w-auto">
-        <Image
-          src={src}
-          alt={alt}
-          fill
-          sizes="(min-width: 768px) 280px, 225px"
-          className="object-cover object-top"
-          priority
-        />
-      </div>
-    </div>
-  );
-}
+/**
+ * Ảnh chụp màn hình trên store, theo đúng thứ tự trên App Store. Mỗi tấm đã có
+ * sẵn khung điện thoại và tiêu đề, nên trang chỉ bo góc + đổ bóng, không lồng
+ * thêm khung nào nữa.
+ */
+const APP_SCREENS = [
+  { src: "/images/app-screens/nhat-ky.webp", alt: "Nhật ký của bé, gọn trong một chạm" },
+  { src: "/images/app-screens/ghi-cu-bu.webp", alt: "Ghi cữ bú chỉ vài giây" },
+  { src: "/images/app-screens/ghi-am.webp", alt: "Chỉ cần nói, nhật ký tự ghi" },
+  { src: "/images/app-screens/cot-moc.webp", alt: "Cột mốc phát triển theo từng tháng" },
+  { src: "/images/app-screens/nhieu-be.webp", alt: "Nhiều bé, một ứng dụng" },
+] as const;
+
+/** Kích thước thật của ảnh đã xuất (828×1792, tỉ lệ store 1242×2688). */
+const SCREEN_W = 828;
+const SCREEN_H = 1792;
 
 function StoreButton({
   href,
@@ -81,20 +67,21 @@ function StoreButton({
       target="_blank"
       rel="noopener noreferrer"
       aria-label={`Tải Mama Ơi trên ${store}`}
-      className="inline-flex min-w-[200px] items-center gap-3 rounded-2xl bg-ink px-6 py-3.5 text-white shadow-sm transition duration-200 hover:scale-[1.03] hover:bg-ink/90 focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-cream focus-visible:outline-none active:scale-[0.97]"
+      className="inline-flex w-[210px] items-center gap-3 rounded-2xl border border-line bg-white px-5 py-3 text-ink shadow-[var(--shadow-card)] transition duration-200 hover:-translate-y-0.5 hover:border-primary-border hover:shadow-lg focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-cream focus-visible:outline-none active:translate-y-0"
     >
       {icon}
       <span className="flex flex-col text-left leading-tight">
-        <span className="text-xs font-semibold text-white/80">Tải về trên</span>
-        <span className="text-xl font-bold">{store}</span>
+        <span className="text-xs font-semibold text-ink-faded">Tải về trên</span>
+        <span className="text-lg font-extrabold">{store}</span>
       </span>
     </a>
   );
 }
 
 /**
- * Both store buttons, in the familiar dark badge shape so a parent recognises
- * them at a glance. Used in the hero and again in the closing CTA.
+ * Both store buttons: light cards with each store's own mark, so a parent
+ * recognises them at a glance without a heavy black block breaking the soft
+ * palette. Used in the hero and again in the closing CTA.
  */
 function StoreButtons({ className = "" }: { className?: string }) {
   return (
@@ -112,8 +99,11 @@ function StoreButtons({ className = "" }: { className?: string }) {
         href={GOOGLE_PLAY_URL}
         store="Google Play"
         icon={
-          <svg viewBox="0 0 24 24" fill="currentColor" className="h-6 w-6" aria-hidden="true">
-            <path d="M22.018 13.298l-3.919 2.218-3.515-3.493 3.543-3.521 3.891 2.202a1.49 1.49 0 0 1 0 2.594zM1.337.924a1.486 1.486 0 0 0-.112.568v21.017c0 .217.045.419.124.6l11.155-11.087L1.337.924zm12.207 10.065l3.258-3.238L3.45.195a1.466 1.466 0 0 0-.946-.179l11.04 10.973zm0 2.067l-11 10.933c.298.036.612-.016.906-.183l13.324-7.54-3.23-3.21z" />
+          <svg viewBox="0 0 24 24" className="h-7 w-7" aria-hidden="true">
+            <path fill="#4285F4" d="M3.6 1.8 13.8 12 3.6 22.2c-.4-.2-.6-.7-.6-1.2V3c0-.5.2-1 .6-1.2z" />
+            <path fill="#34A853" d="M3.6 1.8c.4-.2.9-.2 1.4.1l12.2 6.7L13.8 12z" />
+            <path fill="#FBBC04" d="m17.2 8.6 3.5 2c1 .6 1 2.2 0 2.8l-3.5 2-3.4-3.4z" />
+            <path fill="#EA4335" d="m13.8 12 3.4 3.4L5 22.1c-.5.3-1 .3-1.4.1z" />
           </svg>
         }
       />
@@ -131,9 +121,7 @@ export default function AppPage() {
         <section className="relative flex min-h-[calc(100dvh_-_4rem)] items-center overflow-hidden px-5 py-12">
           <div className="mx-auto grid w-full max-w-6xl items-center gap-8 md:grid-cols-2 md:gap-12">
             <div className="animate-reveal text-center md:text-left">
-              <StoreButtons className="md:justify-start" />
-
-              <h1 className="mt-5 text-4xl leading-tight font-extrabold text-ink sm:text-5xl">
+              <h1 className="text-4xl leading-tight font-extrabold text-ink sm:text-5xl">
                 {SITE.tagline}
               </h1>
 
@@ -142,19 +130,45 @@ export default function AppPage() {
                 Ghi lại chỉ bằng một chạm, kể cả khi mẹ đang bế bé một tay.
               </p>
 
+              <StoreButtons className="mt-8 md:justify-start" />
             </div>
 
             <div className="relative flex justify-center">
-              {/* Soft blush behind the phone, echoing the app's warm background. */}
+              {/* Soft blush behind the screens, echoing the app's warm background. */}
               <div
                 aria-hidden="true"
                 className="absolute top-1/2 left-1/2 h-[420px] w-[420px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-primary-faded blur-3xl"
               />
-              <PhoneMockup
-                src="/images/app-home.png"
-                alt="Màn hình chính của ứng dụng Mama Ơi"
-                className="animate-float"
-              />
+              {/* Fan of three store screens: two tilted behind (desktop only —
+                  on a phone they would crowd the headline), the diary in front.
+                  Desktop sizes by height so the hero stays one viewport. */}
+              <div className="relative">
+                <Image
+                  src={APP_SCREENS[2].src}
+                  alt=""
+                  width={SCREEN_W}
+                  height={SCREEN_H}
+                  sizes="240px"
+                  className="absolute top-1/2 right-[55%] hidden h-[min(calc(100dvh_-_17rem),500px)] w-auto -translate-y-1/2 -rotate-6 rounded-[1.75rem] shadow-xl md:block"
+                />
+                <Image
+                  src={APP_SCREENS[3].src}
+                  alt=""
+                  width={SCREEN_W}
+                  height={SCREEN_H}
+                  sizes="240px"
+                  className="absolute top-1/2 left-[55%] hidden h-[min(calc(100dvh_-_17rem),500px)] w-auto -translate-y-1/2 rotate-6 rounded-[1.75rem] shadow-xl md:block"
+                />
+                <Image
+                  src={APP_SCREENS[0].src}
+                  alt={APP_SCREENS[0].alt}
+                  width={SCREEN_W}
+                  height={SCREEN_H}
+                  sizes="(min-width: 768px) 280px, 240px"
+                  priority
+                  className="animate-float relative h-auto w-[220px] rounded-[2rem] shadow-2xl sm:w-[250px] md:h-[min(calc(100dvh_-_13rem),580px)] md:w-auto"
+                />
+              </div>
             </div>
           </div>
 
@@ -209,6 +223,42 @@ export default function AppPage() {
                       {f.description}
                     </p>
                   </div>
+                </Reveal>
+              ))}
+            </ul>
+          </div>
+        </section>
+
+        {/* ---------- Store screens — swipe on mobile, one row on desktop ---------- */}
+        <section className="px-5 py-14 sm:py-16">
+          <div className="mx-auto max-w-6xl">
+            <Reveal className="mx-auto max-w-2xl text-center">
+              <h2 className="text-2xl font-extrabold text-ink sm:text-4xl">
+                Mama Ơi trong tay mẹ
+              </h2>
+              <p className="mt-4 text-lg leading-7 text-ink-faded">
+                Chạm một lần hoặc chỉ cần nói — nhật ký của bé luôn gọn gàng.
+              </p>
+            </Reveal>
+
+            {/* -mx-5/px-5 lets the swipe row run edge to edge on a phone while
+                the first card still lines up with the page gutter. */}
+            <ul className="-mx-5 mt-8 flex snap-x snap-mandatory gap-4 overflow-x-auto px-5 pb-4 lg:mx-0 lg:grid lg:grid-cols-5 lg:overflow-visible lg:px-0">
+              {APP_SCREENS.map((screen, i) => (
+                <Reveal
+                  key={screen.src}
+                  as="li"
+                  delay={i * 60}
+                  className="w-[220px] shrink-0 snap-center lg:w-auto"
+                >
+                  <Image
+                    src={screen.src}
+                    alt={screen.alt}
+                    width={SCREEN_W}
+                    height={SCREEN_H}
+                    sizes="(min-width: 1024px) 220px, 220px"
+                    className="h-auto w-full rounded-[1.5rem] shadow-[var(--shadow-card)]"
+                  />
                 </Reveal>
               ))}
             </ul>
