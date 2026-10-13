@@ -3,7 +3,6 @@ import {
   guiEmailTheoMau,
   guiHangLoat,
   noiDungEmail,
-  sendWaitlistEmail,
 } from "./mail";
 import { MAU_THU_TU } from "./mau-email";
 
@@ -142,15 +141,6 @@ describe("gửi qua SMTP", () => {
     expect(kem[0].encoding).toBe("base64");
     // Base64 THUẦN — còn tiền tố `data:image/png;base64,` là file hỏng khi mở ra.
     expect(kem[0].content).not.toContain("data:");
-  });
-
-  it("mail waitlist không QR → KHÔNG có khoá attachments", async () => {
-    await sendWaitlistEmail({
-      email: "me@example.com",
-      nguon: "app-waitlist",
-      dongYNhanTin: true,
-    } as never);
-    expect("attachments" in thu()).toBe(false);
   });
 
   /**

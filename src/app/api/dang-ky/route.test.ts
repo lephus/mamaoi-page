@@ -11,20 +11,17 @@ import * as supabase from "@/lib/supabase";
 vi.mock("@/lib/mail", () => ({
   existingCheckinCode: vi.fn(async () => null),
   sendEventEmail: vi.fn(async () => {}),
-  sendWaitlistEmail: vi.fn(async () => {}),
 }));
 
 vi.mock("@/lib/supabase", () => ({
   supabaseConfigured: vi.fn(() => true),
   insertRegistration: vi.fn(async () => {}),
-  insertWaitlist: vi.fn(async () => {}),
 }));
 
 vi.mock("@/lib/sheets", () => ({
   sheetsConfigured: vi.fn(() => true),
   docSoLieuDangKy: vi.fn(async () => ({ soDong: 0, emails: new Set<string>() })),
   appendRegistration: vi.fn(async () => {}),
-  appendWaitlist: vi.fn(async () => {}),
 }));
 
 /** Sheet đang có `n` mẹ khác — không email nào trùng `dangKyHopLe()`. */
@@ -70,12 +67,10 @@ beforeEach(() => {
   vi.clearAllMocks();
   vi.mocked(supabase.supabaseConfigured).mockReturnValue(true);
   vi.mocked(supabase.insertRegistration).mockResolvedValue(undefined);
-  vi.mocked(supabase.insertWaitlist).mockResolvedValue(undefined);
   vi.mocked(sheets.sheetsConfigured).mockReturnValue(true);
   vi.mocked(sheets.docSoLieuDangKy).mockResolvedValue(sheetCo(0));
   vi.mocked(sheets.appendRegistration).mockResolvedValue(undefined);
   vi.mocked(mail.sendEventEmail).mockResolvedValue(undefined);
-  vi.mocked(mail.sendWaitlistEmail).mockResolvedValue(undefined);
 
   // Ghim đồng hồ cho MỌI test trong file. Route giờ có cổng chặn theo hạn
   // 30/08/2026, nên để đồng hồ thật thì sau ngày đó toàn bộ test sức chứa nhận
@@ -102,15 +97,6 @@ describe("POST /api/dang-ky — gộp lỗi khi thiếu trangThai", () => {
     expect(fieldErrors.tinhThanh).toBe("Vui lòng chọn thành phố");
     expect(fieldErrors.chuDeQuanTam).toBe("Vui lòng chọn ít nhất một chủ đề");
     expect(fieldErrors.dongYNhanTin).toBe("Vui lòng đồng ý để hoàn tất đăng ký");
-  });
-
-  it("waitlist không bị dính schema sự kiện", async () => {
-    const res = await POST(post({ nguon: "app-waitlist", email: "hong" }));
-    expect(res.status).toBe(400);
-    const { fieldErrors } = await res.json();
-    expect(fieldErrors.email).toBe("Email không hợp lệ");
-    expect(fieldErrors.hoTen).toBeUndefined();
-    expect(fieldErrors.trangThai).toBeUndefined();
   });
 });
 
@@ -155,18 +141,6 @@ describe("POST /api/dang-ky — cổng chặn hết hạn", () => {
     const res = await POST(post(dangKyHopLe()));
     expect(res.status).toBe(200);
     expect(supabase.insertRegistration).toHaveBeenCalledOnce();
-  });
-
-  /** Waitlist app không có hạn — sự kiện xong rồi mẹ vẫn để lại email nhận tin. */
-  it("waitlist app không dính cổng hết hạn", async () => {
-    vi.setSystemTime(QUA_HAN);
-
-    const res = await POST(
-      post({ nguon: "app-waitlist", email: "mai@email.com", dongYNhanTin: true }),
-    );
-
-    expect(res.status).toBe(200);
-    expect(supabase.insertWaitlist).toHaveBeenCalledOnce();
   });
 });
 
@@ -293,18 +267,6 @@ describe("POST /api/dang-ky — cổng chặn sức chứa (đếm trên Google 
     expect(res.status).toBe(502);
     expect(mail.sendEventEmail).not.toHaveBeenCalled();
   });
-
-  it("waitlist app không dính cổng chặn", async () => {
-    vi.mocked(sheets.docSoLieuDangKy).mockResolvedValue(sheetCo(500));
-
-    const res = await POST(
-      post({ nguon: "app-waitlist", email: "mai@email.com", dongYNhanTin: true }),
-    );
-
-    expect(res.status).toBe(200);
-    expect(sheets.docSoLieuDangKy).not.toHaveBeenCalled();
-    expect(supabase.insertWaitlist).toHaveBeenCalledOnce();
-  });
 });
 
 /**
@@ -362,15 +324,6 @@ describe("POST /api/dang-ky — trả số chỗ còn lại cho client", () => {
     vi.mocked(sheets.sheetsConfigured).mockReturnValue(false);
 
     const body = await (await POST(post(dangKyHopLe()))).json();
-
-    expect(body.conLai).toBeUndefined();
-  });
-
-  /** Waitlist app không chiếm chỗ sự kiện nên không có gì để cập nhật. */
-  it("waitlist app: KHÔNG trả conLai", async () => {
-    const body = await (
-      await POST(post({ nguon: "app-waitlist", email: "mai@email.com", dongYNhanTin: true }))
-    ).json();
 
     expect(body.conLai).toBeUndefined();
   });

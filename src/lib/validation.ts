@@ -3,17 +3,10 @@ import { CHU_DE_VALUES, NGUON_VALUES } from "./constants";
 import { VN_OFFSET_MS } from "./time";
 
 /**
- * Two entry points, two shapes.
- *
  * The event form is the full "Membership First" record from the brief:
  * `trangThai` and `beNgaySinh` are typed fields that drive segmentation, not
  * decorative free text. A mother who registers today should never retype any
  * of this when the app launches.
- *
- * The app waitlist asks only for an email. It deliberately does NOT reuse the
- * event schema — padding the missing fields with placeholders would write
- * fake phone numbers and fake baby ages into the CRM, which is worse than
- * having no data at all.
  *
  * `registrationSchema` là discriminated union: mẹ đang mang thai và mẹ đã sinh
  * mang hai bộ field khác nhau, và schema — chứ không phải UI — là nơi quyết
@@ -189,22 +182,7 @@ export const registrationSchema = z.discriminatedUnion("trangThai", [
   { error: "Vui lòng chọn tình trạng hiện tại" },
 );
 
-export const waitlistSchema = z.object({
-  nguon: z.literal("app-waitlist"),
-  email: z.email("Email không hợp lệ").trim().toLowerCase(),
-  dongYNhanTin: z.literal(true, {
-    message: "Vui lòng đồng ý nhận thông tin",
-  }),
-  website: honeypot,
-});
-
 export type Registration = z.infer<typeof registrationSchema>;
-export type Waitlist = z.infer<typeof waitlistSchema>;
-export type Submission = Registration | Waitlist;
-
-export function isRegistration(s: Submission): s is Registration {
-  return s.nguon === "su-kien";
-}
 
 /**
  * Check-in code carried in the confirmation email's QR.

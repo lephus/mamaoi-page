@@ -78,14 +78,6 @@ export type RegistrationInsertRow = Omit<
   "id" | "created_at" | "checked_in" | "checked_in_at" | "checked_in_source" | "duoc_moi"
 >;
 
-/** Waitlist app: chỉ email + consent. Không có gì để check-in. */
-export type WaitlistRow = {
-  id: string;
-  created_at: string;
-  email: string;
-  dong_y_nhan_tin: boolean;
-};
-
 let client: SupabaseClient | null = null;
 function db(): SupabaseClient {
   if (client) return client;
@@ -308,33 +300,4 @@ export async function adminUpdateCheckin(
     .single();
   if (error) throw new Error(`Supabase adminUpdateCheckin failed: ${error.message}`);
   return data as RegistrationRow;
-}
-
-/**
- * Upsert theo email: mẹ bấm "Nhận tin" hai lần vẫn là MỘT dòng, khớp cách
- * `insertRegistration` xử lý trùng.
- */
-export async function insertWaitlist(email: string, dongY: boolean): Promise<void> {
-  const { error } = await db()
-    .from("waitlist")
-    .upsert({ email, dong_y_nhan_tin: dongY }, { onConflict: "email" });
-  if (error) throw new Error(`Supabase waitlist insert failed: ${error.message}`);
-}
-
-/**
- * KHÔNG có `.range()` — cùng cái trần đã ghi ở `listRegistrations()`: project
- * Supabase này đặt `db-max-rows = 1000` ở PostgREST, một truy vấn không giới
- * hạn vẫn trả `HTTP 200` (kèm `content-range` báo bị cắt) chứ không ném lỗi, và
- * `supabase-js` chuyển tiếp y nguyên — gọi hàm này không cách nào tự biết dữ
- * liệu đã bị cắt. Bảng `waitlist` hiện 414 dòng, còn dư khoảng 586 trước khi
- * chạm trần và bắt đầu âm thầm mất dòng cuối. Thêm phân trang hay không là
- * quyết định con người chưa đưa ra; đây chỉ là mốc để lần sau khỏi dò lại.
- */
-export async function listWaitlist(): Promise<WaitlistRow[]> {
-  const { data, error } = await db()
-    .from("waitlist")
-    .select("*")
-    .order("created_at", { ascending: true });
-  if (error) throw new Error(`Supabase waitlist list failed: ${error.message}`);
-  return (data as WaitlistRow[]) ?? [];
 }

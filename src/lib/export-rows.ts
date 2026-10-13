@@ -4,7 +4,7 @@ import {
   nguonCheckinLabel,
   trangThaiLabel,
 } from "./constants";
-import type { RegistrationRow, WaitlistRow } from "./supabase";
+import type { RegistrationRow } from "./supabase";
 import { formatCheckinTime, ngayVN } from "./time";
 
 /**
@@ -48,8 +48,6 @@ const HEADERS = [
   HEADER_GIO_CHECKIN,
   HEADER_NGUON_CHECKIN,
 ] as const;
-
-const WAITLIST_HEADERS = ["Email", "Đồng ý nhận tin", "Thời điểm đăng ký"] as const;
 
 const yesNo = (v: boolean) => (v ? "Có" : "—");
 
@@ -102,21 +100,6 @@ export function rowsToSheet(rows: RegistrationRow[]): {
       r.nguon,
       formatCheckinTime(r.created_at),
       ...checkinCells(r.checked_in, r.checked_in_at, r.checked_in_source),
-    ]),
-  };
-}
-
-/** Waitlist chỉ có ba cột — không có gì để check-in, không có thông tin bé. */
-export function waitlistToSheet(rows: WaitlistRow[]): {
-  headers: string[];
-  rows: (string | number)[][];
-} {
-  return {
-    headers: [...WAITLIST_HEADERS],
-    rows: rows.map((r) => [
-      r.email,
-      yesNo(r.dong_y_nhan_tin),
-      formatCheckinTime(r.created_at),
     ]),
   };
 }

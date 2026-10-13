@@ -1,16 +1,7 @@
 import { NextResponse } from "next/server";
-import {
-  existingCheckinCode,
-  sendEventEmail,
-  sendWaitlistEmail,
-} from "@/lib/mail";
-import {
-  appendRegistration,
-  appendWaitlist,
-  docSoLieuDangKy,
-  sheetsConfigured,
-} from "@/lib/sheets";
-import { insertRegistration, insertWaitlist, supabaseConfigured } from "@/lib/supabase";
+import { existingCheckinCode, sendEventEmail } from "@/lib/mail";
+import { appendRegistration, docSoLieuDangKy, sheetsConfigured } from "@/lib/sheets";
+import { insertRegistration, supabaseConfigured } from "@/lib/supabase";
 import {
   choConLai,
   daDayThuCong,
@@ -24,10 +15,8 @@ import { DA_DONG, HET_CHO } from "@/lib/constants";
 import {
   chungSchema,
   generateCheckinCode,
-  isRegistration,
   registrationSchema,
-  waitlistSchema,
-  type Submission,
+  type Registration,
 } from "@/lib/validation";
 
 // Ba dịch vụ ngoài chạy tuần tự trong request này — Supabase, SMTP, Sheets —
@@ -43,10 +32,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Dữ liệu không hợp lệ" }, { status: 400 });
   }
 
-  // The two forms carry different shapes; `nguon` says which one this is.
-  const nguon = (body as { nguon?: string })?.nguon;
-  const schema = nguon === "app-waitlist" ? waitlistSchema : registrationSchema;
-  const parsed = schema.safeParse(body);
+  const parsed = registrationSchema.safeParse(body);
 
   if (!parsed.success) {
     const fieldErrors: Record<string, string> = {};
@@ -65,10 +51,8 @@ export async function POST(request: Request) {
     // Union short-circuit ở discriminator: khi `trangThai` sai, Zod KHÔNG kiểm
     // một field chung nào. Chạy thêm schema field chung để mẹ thấy hết chỗ
     // thiếu trong MỘT lần, thay vì sửa một lỗi rồi submit lại mới lộ ra sáu.
-    if (schema === registrationSchema) {
-      const chung = chungSchema.safeParse(body);
-      if (!chung.success) thu(chung.error.issues);
-    }
+    const chung = chungSchema.safeParse(body);
+    if (!chung.success) thu(chung.error.issues);
 
     return NextResponse.json(
       { error: "Vui lòng kiểm tra lại thông tin", fieldErrors },
@@ -76,7 +60,7 @@ export async function POST(request: Request) {
     );
   }
 
-  const data = parsed.data as Submission;
+  const data: Registration = parsed.data;
 
   // Honeypot. Answer 200 so the bot believes it won and does not retry.
   if (data.website) {
@@ -88,16 +72,13 @@ export async function POST(request: Request) {
   // tìm thấy mã" do upsert-theo-email ghi đè mã). Chỉ sinh mã mới ở lần đầu. Tra
   // Tra lỗi → sinh mã mới: xấu nhất là quay lại hành vi cũ cho đúng lượt này,
   // chứ không chặn mẹ đăng ký.
-  let checkinCode: string | undefined;
-  if (isRegistration(data)) {
-    let reused: string | null = null;
-    try {
-      reused = await existingCheckinCode(data.email);
-    } catch (err) {
-      console.error("[dang-ky] existingCheckinCode failed:", data.email, err);
-    }
-    checkinCode = reused ?? generateCheckinCode();
+  let reused: string | null = null;
+  try {
+    reused = await existingCheckinCode(data.email);
+  } catch (err) {
+    console.error("[dang-ky] existingCheckinCode failed:", data.email, err);
   }
+  const checkinCode = reused ?? generateCheckinCode();
 
   const warnings: string[] = [];
 
@@ -109,9 +90,7 @@ export async function POST(request: Request) {
   //
   // Đứng TRƯỚC cả cổng sức chứa và lượt ghi Supabase, cùng một lý do: đặt sau thì mẹ đã cầm
   // email xác nhận rồi mới bị báo là muộn.
-  //
-  // Waitlist app không có hạn — chỉ đăng ký sự kiện mới đóng.
-  if (isRegistration(data) && daDongDangKy(Date.now())) {
+  if (daDongDangKy(Date.now())) {
     return NextResponse.json(
       { error: DA_DONG.tieuDe, closed: true },
       { status: 409 },
@@ -127,8 +106,6 @@ export async function POST(request: Request) {
   // nên con số chặn phải là đúng con số ops nhìn thấy. Đánh đổi đã biết — xem
   // doc đầu suc-chua.ts: không nguyên tử như bản đếm trong transaction Postgres,
   // hai mẹ submit cùng nhịp có thể cùng lọt qua mốc cuối.
-  //
-  // Chỉ áp cho đăng ký sự kiện; waitlist app không giới hạn số lượng.
   const gioiHan = sucChua();
 
   // Ops đóng đăng ký thủ công (`DANG_KY_DA_DAY`). Đứng TRƯỚC lượt đọc Sheet: đây
@@ -138,7 +115,7 @@ export async function POST(request: Request) {
   // Khác cổng đếm bên dưới ở đúng một điểm: KHÔNG có ngoại lệ cho email đã đăng
   // ký. Ngoại lệ đó tồn tại để mẹ đang giữ chỗ vẫn sửa được thông tin của mình;
   // khi đăng ký đã đóng hẳn thì không đơn nào được nhận nữa, kể cả đơn sửa.
-  if (isRegistration(data) && daDayThuCong()) {
+  if (daDayThuCong()) {
     return NextResponse.json(
       { error: HET_CHO.tieuDe(gioiHan), full: true, gioiHan },
       { status: 409 },
@@ -152,32 +129,30 @@ export async function POST(request: Request) {
    */
   let soLieu: SoLieuDangKy | null = null;
 
-  if (isRegistration(data)) {
-    // Chưa cấu hình Sheets (dev) thì không có gì để đếm — cho đi tiếp.
-    let ket: KetQuaSucChua = "khong_cau_hinh";
-    if (sheetsConfigured()) {
-      try {
-        soLieu = await docSoLieuDangKy();
-        ket = ketQuaSucChua(soLieu, data.email, gioiHan);
-      } catch (err) {
-        console.error("[dang-ky] đếm chỗ trên Sheet thất bại:", data.email, err);
-        soLieu = null;
-        ket = "loi";
-      }
+  // Chưa cấu hình Sheets (dev) thì không có gì để đếm — cho đi tiếp.
+  let ket: KetQuaSucChua = "khong_cau_hinh";
+  if (sheetsConfigured()) {
+    try {
+      soLieu = await docSoLieuDangKy();
+      ket = ketQuaSucChua(soLieu, data.email, gioiHan);
+    } catch (err) {
+      console.error("[dang-ky] đếm chỗ trên Sheet thất bại:", data.email, err);
+      soLieu = null;
+      ket = "loi";
     }
-
-    if (ket === "het_cho") {
-      return NextResponse.json(
-        { error: HET_CHO.tieuDe(gioiHan), full: true, gioiHan },
-        { status: 409 },
-      );
-    }
-
-    // Cảnh báo RIÊNG, không gộp vào "sheets": ở đây nghĩa là lượt đăng ký này đi
-    // qua mà KHÔNG đối chiếu được sức chứa (fail open) — không đọc được Sheet là
-    // sự cố của mình, không phải lỗi của mẹ. Khác hẳn với việc ghi dòng hỏng.
-    if (ket === "loi") warnings.push("suc-chua");
   }
+
+  if (ket === "het_cho") {
+    return NextResponse.json(
+      { error: HET_CHO.tieuDe(gioiHan), full: true, gioiHan },
+      { status: 409 },
+    );
+  }
+
+  // Cảnh báo RIÊNG, không gộp vào "sheets": ở đây nghĩa là lượt đăng ký này đi
+  // qua mà KHÔNG đối chiếu được sức chứa (fail open) — không đọc được Sheet là
+  // sự cố của mình, không phải lỗi của mẹ. Khác hẳn với việc ghi dòng hỏng.
+  if (ket === "loi") warnings.push("suc-chua");
 
   // Supabase GIỮ bản ghi thành viên. Hỏng ở đây thì lượt đăng ký THẬT SỰ không
   // xảy ra — trả lỗi thật thay vì một lời an ủi.
@@ -202,12 +177,8 @@ export async function POST(request: Request) {
     );
   }
   try {
-    if (isRegistration(data)) {
-      // Upsert theo email nên mẹ gửi lại form chỉ làm mới đúng dòng cũ.
-      await insertRegistration(data, checkinCode!);
-    } else {
-      await insertWaitlist(data.email, data.dongYNhanTin);
-    }
+    // Upsert theo email nên mẹ gửi lại form chỉ làm mới đúng dòng cũ.
+    await insertRegistration(data, checkinCode);
   } catch (err) {
     console.error("[dang-ky] Supabase insert failed:", data.email, err);
     return NextResponse.json(
@@ -220,11 +191,7 @@ export async function POST(request: Request) {
   // mẹ — mẹ sẽ phải điền lại form để sửa một vấn đề hoàn toàn của chúng ta.
 
   try {
-    if (isRegistration(data)) {
-      await sendEventEmail(data, checkinCode!);
-    } else {
-      await sendWaitlistEmail(data);
-    }
+    await sendEventEmail(data, checkinCode);
   } catch (err) {
     console.error("[dang-ky] Email failed:", err);
     warnings.push("email");
@@ -232,17 +199,12 @@ export async function POST(request: Request) {
 
   // Bản mirror thô cho ops. Cố tình KHÔNG phụ thuộc kết quả của Supabase ở
   // trên: lý do tồn tại của bản sao thứ hai là dự phòng, nối tiếp thì Supabase
-  // sập sẽ kéo mất luôn dòng Sheet, đúng lúc nó có giá trị nhất.
-  //  - Đăng ký sự kiện → tab "register".
-  //  - Waitlist app    → tab "waitlist".
+  // sập sẽ kéo mất luôn dòng Sheet, đúng lúc nó có giá trị nhất. Ghi vào tab
+  // "register".
   let daGhiSheet = false;
   if (sheetsConfigured()) {
     try {
-      if (isRegistration(data)) {
-        await appendRegistration(data, checkinCode!);
-      } else {
-        await appendWaitlist(data.email, data.dongYNhanTin);
-      }
+      await appendRegistration(data, checkinCode);
       daGhiSheet = true;
     } catch (err) {
       console.error("[dang-ky] Sheets append failed:", data.email, err);

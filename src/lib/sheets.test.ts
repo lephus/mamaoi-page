@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { rowsToSheet, waitlistToSheet } from "@/lib/export-rows";
+import { rowsToSheet } from "@/lib/export-rows";
 import {
   buildCheckinUpdate,
   colLetter,
@@ -8,16 +8,11 @@ import {
   hangDayDuChoSheet,
   registrationToSheetRow,
   VALUE_INPUT_OPTION,
-  waitlistToSheetRow,
 } from "@/lib/sheets";
 import type { RegistrationRow } from "@/lib/supabase";
 import type { Registration } from "@/lib/validation";
 
 const HEADERS = rowsToSheet([]).headers;
-const WAITLIST_HEADERS = waitlistToSheet([]).headers;
-/** Đọc ô waitlist theo tên cột — test không phụ thuộc thứ tự cột. */
-const wat = (row: (string | number)[], header: string) =>
-  row[WAITLIST_HEADERS.indexOf(header)];
 
 /** Đọc ô theo tên cột — test không phụ thuộc thứ tự cột. */
 const at = (row: (string | number)[], header: string) => row[HEADERS.indexOf(header)];
@@ -154,41 +149,6 @@ describe("hangDayDuChoSheet", () => {
     const r = hangDayDuChoSheet(row);
     expect(at(r, "Mã check-in")).toBe("MO-5442VJ");
     expect(at(r, "Họ tên")).toBe("Huỳnh Quân");
-  });
-});
-
-describe("waitlistToSheetRow", () => {
-  it("số ô khớp số cột header waitlist", () => {
-    expect(waitlistToSheetRow("me@example.com", true)).toHaveLength(
-      WAITLIST_HEADERS.length,
-    );
-  });
-
-  it("email vào đúng cột", () => {
-    expect(wat(waitlistToSheetRow("me@example.com", true), "Email")).toBe(
-      "me@example.com",
-    );
-  });
-
-  it("đồng ý nhận tin: true → 'Có', false → '—'", () => {
-    expect(wat(waitlistToSheetRow("me@example.com", true), "Đồng ý nhận tin")).toBe(
-      "Có",
-    );
-    expect(wat(waitlistToSheetRow("me@example.com", false), "Đồng ý nhận tin")).toBe(
-      "—",
-    );
-  });
-
-  it("có thời điểm đăng ký, không rỗng", () => {
-    expect(
-      wat(waitlistToSheetRow("me@example.com", true), "Thời điểm đăng ký"),
-    ).toBeTruthy();
-  });
-
-  it("không có ô null hay chuỗi 'null'", () => {
-    const row = waitlistToSheetRow("me@example.com", false);
-    expect(row).not.toContain(null);
-    expect(row).not.toContain("null");
   });
 });
 

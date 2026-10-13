@@ -1,7 +1,7 @@
 import nodemailer, { type Transporter } from "nodemailer";
 import QRCode from "qrcode";
 import { EVENT, SITE } from "./constants";
-import { isRegistration, type Submission } from "./validation";
+import type { Registration } from "./validation";
 import { findByEmail } from "./supabase";
 import { checkinUrl } from "./checkin-url";
 import type { MauEmail } from "./mau-email";
@@ -106,8 +106,8 @@ export function escapeHtml(s: string): string {
 /**
  * `kyTen` có BA trạng thái, đừng gộp lại thành hai:
  *
- *  - **bỏ trống** (`undefined`) → ký "Đội ngũ Mama Ơi". Mail xác nhận và mail
- *    waitlist đang chạy production đi đường này, không đổi một ký tự nào.
+ *  - **bỏ trống** (`undefined`) → ký "Đội ngũ Mama Ơi". Mail xác nhận đang
+ *    chạy production đi đường này, không đổi một ký tự nào.
  *  - **một chuỗi** → ký đúng chuỗi đó. Hai mẫu gửi lại (BTC soạn) có chữ ký
  *    riêng "Trân trọng & Cảm ơn, Mama Ơi Team"; ghim cứng mặc định thì email sẽ
  *    ký tên hai lần liên tiếp.
@@ -349,33 +349,14 @@ export async function guiEmailTheoMau(
 
 /** Event confirmation, with the check-in QR attached. */
 export async function sendEventEmail(
-  data: Submission,
+  data: Registration,
   checkinCode: string,
 ): Promise<void> {
-  if (!isRegistration(data)) return;
   await guiEmailTheoMau(
     "xacNhan",
     { email: data.email, hoTen: data.hoTen },
     checkinCode,
   );
-}
-
-/** App waitlist confirmation. No QR — there is nothing to check in to yet. */
-export async function sendWaitlistEmail(data: Submission): Promise<void> {
-  const html = shell(
-    `
-    <h1 style="margin:0 0 8px;font-size:24px;">Cảm ơn mẹ đã quan tâm!</h1>
-    <p style="margin:0 0 16px;font-size:16px;line-height:24px;color:#737373;">
-      Mẹ sẽ là một trong những người đầu tiên biết khi ứng dụng <strong>${SITE.name}</strong> ra mắt.
-    </p>
-    <p style="margin:0;font-size:16px;line-height:24px;">
-      Trong lúc chờ đợi, mẹ có thể tham gia <strong>${EVENT.shortName}</strong> —
-      ${EVENT.dateLabel} tại ${EVENT.venue}.
-    </p>`,
-    `Mẹ nhận được email này vì đã đăng ký nhận tin từ ${SITE.name}.`,
-  );
-
-  await send({ email: data.email }, `Chào mừng mẹ đến với ${SITE.name}!`, html);
 }
 
 export type BanGuiMot = {

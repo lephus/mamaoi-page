@@ -5,7 +5,7 @@
  *
  * No-ops when the trackers are not configured.
  */
-export function trackRegistration(nguon: "su-kien" | "app-waitlist") {
+export function trackRegistration(nguon: "su-kien") {
   if (typeof window === "undefined") return;
 
   const w = window as typeof window & {
@@ -14,5 +14,5 @@ export function trackRegistration(nguon: "su-kien" | "app-waitlist") {
   };
 
   w.gtag?.("event", "sign_up", { method: nguon });
-  w.fbq?.("track", nguon === "su-kien" ? "CompleteRegistration" : "Lead");
+  w.fbq?.("track", "CompleteRegistration");
 }

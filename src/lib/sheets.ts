@@ -6,13 +6,11 @@ import {
   HEADER_GIO_CHECKIN,
   HEADER_NGUON_CHECKIN,
   rowsToSheet,
-  waitlistToSheet,
 } from "./export-rows";
 import {
   registrationToRow,
   type RegistrationInsertRow,
   type RegistrationRow,
-  type WaitlistRow,
 } from "./supabase";
 import type { Registration } from "./validation";
 
@@ -21,11 +19,9 @@ import type { Registration } from "./validation";
  * độc lập với Supabase. Supabase vẫn là kho chính của /admin và /check-in;
  * Sheet chỉ để ops mở link ra xem nhanh.
  *
- * Hai tab RIÊNG trong cùng một spreadsheet:
- *  - Đăng ký sự kiện → tab "register" (22 cột, có mã check-in + thông tin bé).
- *  - Waitlist app    → tab "waitlist" (3 cột: email, consent, thời điểm).
- * Ops tự đặt tên hai tab này trong Sheet; API `values.append` KHÔNG tự tạo tab,
- * nên tab thiếu / gõ sai tên sẽ làm lượt ghi lỗi — nhưng non-fatal (Supabase giữ
+ * Ghi vào tab "register" (22 cột, có mã check-in + thông tin bé). Ops tự đặt
+ * tên tab này trong Sheet; API `values.append` KHÔNG tự tạo tab, nên tab thiếu /
+ * gõ sai tên sẽ làm lượt ghi lỗi — nhưng non-fatal (Supabase giữ
  * lead), route chỉ log cảnh báo.
  *
  * Chủ yếu là append lúc đăng ký. NGOẠI LỆ DUY NHẤT: check-in (mẹ tự quét QR hoặc
@@ -41,9 +37,8 @@ const SCOPE = "https://www.googleapis.com/auth/spreadsheets";
 const TOKEN_URL = "https://oauth2.googleapis.com/token";
 const SHEETS_API = "https://sheets.googleapis.com/v4/spreadsheets";
 
-/** Tên hai tab — ops phải đặt CHÍNH XÁC như thế này trong Google Sheet. */
+/** Tên tab — ops phải đặt CHÍNH XÁC như thế này trong Google Sheet. */
 const REGISTER_TAB = "register";
-const WAITLIST_TAB = "waitlist";
 
 /**
  * `tab!A1` đã escape cho URL. encodeURIComponent KHÔNG escape `!`, mà Google
@@ -68,9 +63,6 @@ const TIMEOUT_MS = 5_000;
  */
 const NOTE =
   "⚠ Bản ghi thô, tự động — có thể có dòng trùng (một mẹ gửi lại form). Sức chứa đếm theo SỐ EMAIL KHÁC NHAU = số mã QR đã gửi, nên số dòng ở đây có thể nhiều hơn số chỗ đã dùng. Cột check-in chỉ điền khi mẹ quét QR (nguồn admin không mirror sang đây). Số liệu chính thức: /admin → Xuất Excel.";
-/** Waitlist không có check-in; chỉ cảnh báo dòng trùng do append thuần tuý. */
-const WAITLIST_NOTE =
-  "⚠ Bản ghi thô, tự động — có thể có dòng trùng. Số liệu chính thức: /admin → Xuất Excel.";
 
 export function sheetsConfigured(): boolean {
   return Boolean(
@@ -133,25 +125,6 @@ export function hangDbToSheetRow(
  */
 export function hangDayDuChoSheet(row: RegistrationRow): (string | number)[] {
   return rowsToSheet([row]).rows[0];
-}
-
-/**
- * Dựng WaitlistRow tạm rồi đưa qua `waitlistToSheet` để lấy đúng 3 ô theo đúng
- * thứ tự cột — y hệt cách `registrationToSheetRow` tái dùng `rowsToSheet`. Thứ
- * tự cột chỉ tồn tại một chỗ (export-rows.ts), nên Sheet và file Excel không bao
- * giờ lệch nhau. `created_at` chụp ngay lúc ghi.
- */
-export function waitlistToSheetRow(
-  email: string,
-  dongY: boolean,
-): (string | number)[] {
-  const row: WaitlistRow = {
-    id: "", // waitlistToSheet không xuất id — giá trị này không bao giờ được đọc
-    created_at: new Date().toISOString(), // giờ server, lệch vài ms so với Postgres
-    email,
-    dong_y_nhan_tin: dongY,
-  };
-  return waitlistToSheet([row]).rows[0];
 }
 
 /** base64url không đệm — định dạng bắt buộc của JWT. */
@@ -262,8 +235,7 @@ async function appendValues(
 // Một lần cho MỖI TAB, cho mỗi tiến trình server — không phải mỗi lượt đăng ký.
 // Giữ chính promise (không phải cờ boolean) để hai đăng ký đồng thời trên cùng
 // một instance cùng chờ một lần kiểm tra, thay vì cùng ghi header hai lần. Map
-// theo tên tab vì register và waitlist có bộ header khác nhau, mỗi tab tự đảm
-// bảo header của riêng mình.
+// theo tên tab để mỗi tab tự đảm bảo header của riêng mình.
 const headerPromises = new Map<string, Promise<void>>();
 
 function ensureHeader(
@@ -311,11 +283,6 @@ export async function appendRegistration(
 export async function appendRegistrationThuCong(hang: RegistrationInsertRow): Promise<void> {
   await ensureHeader(REGISTER_TAB, [[NOTE], rowsToSheet([]).headers]);
   await appendValues(REGISTER_TAB, [hangDbToSheetRow(hang)]);
-}
-
-export async function appendWaitlist(email: string, dongY: boolean): Promise<void> {
-  await ensureHeader(WAITLIST_TAB, [[WAITLIST_NOTE], waitlistToSheet([]).headers]);
-  await appendValues(WAITLIST_TAB, [waitlistToSheetRow(email, dongY)]);
 }
 
 /**
