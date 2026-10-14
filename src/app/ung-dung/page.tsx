@@ -4,12 +4,10 @@ import type { ReactNode } from "react";
 import { Footer } from "@/components/Footer";
 import { Header } from "@/components/Header";
 import { Reveal } from "@/components/Reveal";
-import { ButtonLink } from "@/components/ui/Button";
 import {
   APP_FEATURES,
   APP_STORE_URL,
   BABY_MILESTONES,
-  EVENT,
   GOOGLE_PLAY_URL,
   SITE,
 } from "@/lib/constants";
@@ -378,32 +376,6 @@ export default function AppPage() {
               </ol>
             </div>
           </div>
-        </section>
-
-        {/* ---------- Bridge to the event ---------- */}
-        <section className="px-5 py-14 sm:py-16">
-          <Reveal className="mx-auto max-w-4xl overflow-hidden rounded-3xl bg-primary-faded p-8 text-center sm:p-12">
-            <Image
-              src="/images/illo-baby-girl.png"
-              alt=""
-              width={140}
-              height={140}
-              className="mx-auto h-32 w-32 object-contain"
-            />
-            <h2 className="mt-4 text-2xl font-extrabold text-ink sm:text-4xl">
-              Gặp cộng đồng Mama Ơi ngoài đời thật
-            </h2>
-            <p className="mx-auto mt-4 max-w-xl text-lg leading-7 text-ink-faded">
-              <strong className="text-ink">{EVENT.shortName}</strong> — một ngày trọn vẹn
-              cho mẹ và bé, cùng chuyên gia, workshop và {EVENT.capacity} khác.
-            </p>
-            <p className="mt-2 text-base font-semibold text-primary">
-              {EVENT.dateLabel} · {EVENT.venue}
-            </p>
-            <ButtonLink href="/" className="mt-8">
-              Tìm hiểu sự kiện
-            </ButtonLink>
-          </Reveal>
         </section>
 
         {/* ---------- Closing download CTA ---------- */}
